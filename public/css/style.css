@@ -2,7 +2,7 @@
 
 /* ===== Variables ===== */
 :root {
-    --bg-base: #060608;
+    --bg-base: #000000;
     --bg-surface: #0e0e11;
     --bg-elevated: #141418;
     --bg-hover: #1a1a1f;
@@ -55,6 +55,36 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
+}
+
+/* Cursor Glow Effect */
+.cursor-glow {
+    position: fixed;
+    top: 0; left: 0;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(83, 252, 24, 0.06) 0%, rgba(0,0,0,0) 60%);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    mix-blend-mode: screen;
+    will-change: transform;
+    transition: width 0.3s, height 0.3s;
+}
+
+/* Dashboard Snow */
+.dashboard-snow {
+    position: fixed;
+    top: -10px;
+    background: white;
+    border-radius: 50%;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    animation: dashFall linear forwards;
+    z-index: 0;
+}
+@keyframes dashFall {
+    to { transform: translateY(105vh); }
 }
 
 h1, h2, h3, .stat-number {
@@ -241,6 +271,8 @@ input { font-family: inherit; }
 .main {
     max-width: 1380px; margin: 0 auto;
     padding: 2rem 1.75rem 4rem;
+    position: relative;
+    z-index: 10;
 }
 
 /* ===== Status Bar ===== */
@@ -294,10 +326,14 @@ input { font-family: inherit; }
 
 .stat-card {
     position: relative; overflow: hidden;
-    background: var(--bg-surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 1.5rem;
+    background: rgba(14, 14, 17, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: var(--radius-xl); padding: 1.5rem;
     display: flex; justify-content: space-between; align-items: flex-start;
     transition: all 0.4s var(--ease-out);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 .stat-card:hover {
     transform: translateY(-6px);
@@ -379,9 +415,15 @@ input { font-family: inherit; }
 }
 
 .panel {
-    background: var(--bg-surface); border: 1px solid var(--border);
+    background: rgba(14, 14, 17, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.05);
     border-radius: var(--radius-xl); overflow: hidden;
     height: 100%;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+    position: relative;
+    z-index: 5;
 }
 
 .panel-header {

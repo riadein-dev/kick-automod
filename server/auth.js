@@ -106,6 +106,21 @@ router.get('/callback', async (req, res) => {
     req.session.tokenType = tokenData.token_type;
 
     // Fetch user info
+    let foundName = 'Kullanıcı';
+    
+    // 1. JWT içinden (Access Token) adını çözmeyi dene
+    try {
+        const parts = tokenData.access_token.split('.');
+        if (parts.length === 3) {
+            const payloadB64 = parts[1];
+            const payloadJson = Buffer.from(payloadB64, 'base64').toString('utf8');
+            const payload = JSON.parse(payloadJson);
+            
+            foundName = payload.preferred_username || payload.name || payload.username || payload.sub || foundName;
+        }
+    } catch(e) { console.warn('JWT Decode failed:', e); }
+
+    // 2. API üzerinden detaylı bilgi çekmeyi dene
     try {
       const userResponse = await fetch(`${KICK_API_URL}/users/me`, {
         headers: {
@@ -115,7 +130,6 @@ router.get('/callback', async (req, res) => {
 
       if (userResponse.ok) {
         const rawData = await userResponse.json();
-        let foundName = 'Kick Kullanıcısı';
         
         if (rawData.data) {
             if (Array.isArray(rawData.data) && rawData.data.length > 0) {
@@ -128,10 +142,12 @@ router.get('/callback', async (req, res) => {
         }
         
         req.session.user = { name: foundName, raw: rawData };
+      } else {
+        req.session.user = { name: foundName };
       }
     } catch (userErr) {
-      console.warn('Could not fetch user info:', userErr.message);
-      req.session.user = { name: 'Kick User' };
+      console.warn('Could not fetch user info API:', userErr.message);
+      req.session.user = { name: foundName };
     }
 
     // Clean up PKCE data
