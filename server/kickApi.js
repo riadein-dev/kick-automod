@@ -1,0 +1,211 @@
+/**
+ * Kick AutoMod Dashboard - Kick API Client
+ * Handles all Kick REST API interactions
+ */
+
+const KICK_API_BASE = 'https://api.kick.com/public/v1';
+
+class KickApiClient {
+  constructor(accessToken) {
+    this.accessToken = accessToken;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${KICK_API_BASE}${endpoint}`;
+    const headers = {
+      'Authorization': `Bearer ${this.accessToken}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
+
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After') || 5;
+        throw new Error(`Rate limited. Retry after ${retryAfter}s`);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Kick API error ${response.status}: ${errorText}`);
+      }
+
+      const text = await response.text();
+      return text ? JSON.parse(text) : null;
+    } catch (err) {
+      console.error(`Kick API request failed [${endpoint}]:`, err.message);
+      throw err;
+    }
+  }
+
+  // ============ Channel Endpoints ============
+
+  /**
+   * Get channel info by slug
+   */
+  async getChannel(slug) {
+    try {
+      // 1. Kullanıcının önerdiği yöntem: v2 API'den chatroom id çekmek
+      const resp = await fetch(`https://kick.com/api/v2/channels/${slug}`, {
+        headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+      
+      const text = await resp.text();
+      
+      // 2. Önce JSON parse etmeyi deneyelim
+      try {
+        const data = JSON.parse(text);
+        if (data && data.chatroom && data.chatroom.id) {
+            return data;
+        }
+      } catch(e) {
+        // Parse edilemezse yola devam et
+      }
+      
+      // 3. CTRL+F / Regex taktiği: "chatroom":{"id":12345} veya benzeri yapıyı bul
+      const chatroomMatch = text.match(/"chatroom"\s*:\s*\{[^}]*"id"\s*:\s*(\d+)/i);
+      if (chatroomMatch && chatroomMatch[1]) {
+        return {
+           chatroom: { id: parseInt(chatroomMatch[1], 10) }
+        };
+      }
+      
+      // Belki farklı bir formatta gelmiştir (sadece "chatroom_id": 1234)
+      const simpleMatch = text.match(/"chatroom_id"\s*:\s*(\d+)/i);
+      if (simpleMatch && simpleMatch[1]) {
+        return {
+           chatroom: { id: parseInt(simpleMatch[1], 10) }
+        };
+      }
+      
+      throw new Error("Chatroom ID metin içinde bulunamadı.");
+    } catch(err) {
+      throw new Error(`Kanal bulunamadı veya API erişimi kısıtlı: ${slug}. Hata: ${err.message}`);
+    }
+  }
+
+  /**
+   * Get current user's channel info
+   */
+  async getMyChannel() {
+    return this.request('/channels/me');
+  }
+
+  // ============ Chat Endpoints ============
+
+  /**
+   * Send a chat message
+   */
+  async sendMessage(chatroomId, content) {
+    return this.request('/chat/messages', {
+      method: 'POST',
+      body: JSON.stringify({
+        chatroom_id: chatroomId,
+        content: content
+      })
+    });
+  }
+
+  /**
+   * Delete a chat message
+   */
+  async deleteMessage(messageId) {
+    return this.request(`/chat/messages/${messageId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ============ Moderation Endpoints ============
+
+  /**
+   * Ban a user (permanent)
+   */
+  async banUser(broadcasterUserId, userId, reason = '') {
+    const payload = {
+      broadcaster_user_id: parseInt(broadcasterUserId),
+      user_id: parseInt(userId),
+      reason: reason
+    };
+    console.log('[KickAPI] Sending Ban payload:', payload);
+    return this.request('/moderation/bans', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  /**
+   * Unban or remove timeout from a user
+   */
+  async unbanUser(broadcasterUserId, userId) {
+    const payload = {
+      broadcaster_user_id: parseInt(broadcasterUserId),
+      user_id: parseInt(userId)
+    };
+    console.log('[KickAPI] Sending Unban payload:', payload);
+    return this.request('/moderation/bans', {
+      method: 'DELETE',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  /**
+   * Timeout a user (temporary)
+   */
+  async timeoutUser(broadcasterUserId, userId, duration = 5, reason = '') {
+    const payload = {
+      broadcaster_user_id: parseInt(broadcasterUserId),
+      user_id: parseInt(userId),
+      duration: parseInt(duration), // minutes
+      reason: reason
+    };
+    console.log('[KickAPI] Sending Timeout payload:', payload);
+    return this.request('/moderation/bans', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+
+
+  /**
+   * Get user info
+   */
+  async getUser() {
+    return this.request('/users/me');
+  }
+
+  // ============ Events / Webhooks ============
+
+  /**
+   * Subscribe to events
+   */
+  async subscribeToEvents(events) {
+    return this.request('/events/subscriptions', {
+      method: 'POST',
+      body: JSON.stringify({
+        events: events
+      })
+    });
+  }
+
+  /**
+   * Get active subscriptions
+   */
+  async getSubscriptions() {
+    return this.request('/events/subscriptions');
+  }
+}
+
+// Factory function
+function createKickClient(accessToken) {
+  return new KickApiClient(accessToken);
+}
+
+module.exports = { KickApiClient, createKickClient };

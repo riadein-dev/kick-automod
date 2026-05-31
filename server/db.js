@@ -1,0 +1,55 @@
+const mongoose = require('mongoose');
+
+// Schemas
+const channelSchema = new mongoose.Schema({
+    slug: { type: String, required: true, unique: true },
+    chatroomId: { type: String, required: true },
+    userId: { type: String, required: true }
+});
+
+const wordSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    channel: { type: String, default: '' },
+    word: { type: String, required: true },
+    exactMatch: { type: Boolean, default: false },
+    action: { type: String, default: 'ban' },
+    duration: { type: Number, default: 0 }
+});
+
+const automodRuleSchema = new mongoose.Schema({
+    // Only one document will exist for this schema
+    type: { type: String, default: 'global', unique: true },
+    enabled: { type: Boolean, default: true },
+    mode: { type: String, default: 'auto' },
+    bannedWordsEnabled: { type: Boolean, default: true },
+    spamDetectionEnabled: { type: Boolean, default: true },
+    linkBlockingEnabled: { type: Boolean, default: true },
+    emoteSpamEnabled: { type: Boolean, default: true }
+});
+
+// Models
+const Channel = mongoose.model('Channel', channelSchema);
+const Word = mongoose.model('Word', wordSchema);
+const AutomodRule = mongoose.model('AutomodRule', automodRuleSchema);
+
+async function connectDB() {
+    if (!process.env.MONGODB_URI) {
+        console.log('[MongoDB] Uyarı: MONGODB_URI bulunamadı, veritabanı kapalı olarak çalışıyor.');
+        return false;
+    }
+    try {
+        await mongoose.connect(process.env.MONGODB_URI);
+        console.log('[MongoDB] Veritabanına başarıyla bağlanıldı.');
+        return true;
+    } catch (err) {
+        console.error('[MongoDB] Bağlantı hatası:', err);
+        return false;
+    }
+}
+
+module.exports = {
+    connectDB,
+    Channel,
+    Word,
+    AutomodRule
+};

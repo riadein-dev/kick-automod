@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kick AutoMod - Giriş</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
+            overflow: hidden;
+        }
+
+        .login-container {
+            background: rgba(26, 26, 26, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(83, 252, 24, 0.1);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(83, 252, 24, 0.05);
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: #53FC18;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            font-weight: 800;
+            font-size: 2rem;
+            color: #000;
+            box-shadow: 0 0 30px rgba(83, 252, 24, 0.3);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: #a1a1a1;
+            margin-bottom: 2.5rem;
+            line-height: 1.5;
+        }
+
+        .btn-kick {
+            background: #53FC18;
+            color: #000;
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-kick:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(83, 252, 24, 0.2);
+            background: #4ade80;
+        }
+
+        .btn-kick svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Animated background elements */
+        .bg-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(83,252,24,0.15) 0%, rgba(0,0,0,0) 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            pointer-events: none;
+            animation: pulse 8s infinite alternate ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        }
+
+        .error-message {
+            background: rgba(251, 44, 54, 0.1);
+            border: 1px solid rgba(251, 44, 54, 0.3);
+            color: #ff5252;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+    
+    <div class="login-container">
+        <div class="logo">K</div>
+        <h1>AutoMod Dashboard</h1>
+        <p>Moderasyon kontrol merkezi için Kick hesabınızla giriş yapın.</p>
+        
+        <div id="errorBox" class="error-message"></div>
+
+        <a href="/auth/login" class="btn-kick">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.379.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+            Kick ile Giriş Yap
+        </a>
+    </div>
+
+    <script>
+        // Check for error parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        if (error) {
+            const errorBox = document.getElementById('errorBox');
+            errorBox.style.display = 'block';
+            let msg = 'Giriş başarısız oldu.';
+            if (error === 'token_exchange_failed') msg = 'Token alınamadı. Client ID/Secret hatalı olabilir.';
+            else if (error === 'state_mismatch') msg = 'Güvenlik doğrulaması başarısız.';
+            errorBox.textContent = msg;
+        }
+
+        // Check if already authenticated
+        fetch('/auth/me')
+            .then(res => res.json())
+            .then(data => {
+                if (data.authenticated) {
+                    window.location.href = '/dashboard.html';
+                }
+            })
+            .catch(console.error);
+    </script>
+</body>
+</html>
