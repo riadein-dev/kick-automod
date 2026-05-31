@@ -80,7 +80,9 @@
         .btn-kick:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(83, 252, 24, 0.2);
-            background: #4ade80;
+            background: #000;
+            color: #53FC18;
+            border: 1px solid #53FC18;
         }
 
         .btn-kick svg {
@@ -88,29 +90,16 @@
             height: 24px;
         }
 
-        .btn-kick::after {
-            content: "Tamamen Güvendesin!";
-            position: absolute;
-            bottom: 120%;
-            left: 50%;
-            transform: translateX(-50%) translateY(10px);
-            background: #000;
-            color: #fff;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(83, 252, 24, 0.3);
-            white-space: nowrap;
-            pointer-events: none;
+        .btn-kick .text-hover {
+            display: none;
         }
-
-        .btn-kick:hover::after {
-            opacity: 1;
-            visibility: visible;
-            transform: translateX(-50%) translateY(0);
+        
+        .btn-kick:hover .text-default {
+            display: none;
+        }
+        
+        .btn-kick:hover .text-hover {
+            display: inline;
         }
 
         /* Snow Effect */
@@ -179,7 +168,8 @@
                 <rect x="12" y="3" width="4" height="6" />
                 <rect x="12" y="15" width="4" height="6" />
             </svg>
-            Kick ile Giriş Yap
+            <span class="text-default">Kick ile Giriş Yap</span>
+            <span class="text-hover">Tamamen Güvendesin!</span>
         </a>
     </div>
 
