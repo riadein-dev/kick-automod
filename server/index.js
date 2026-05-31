@@ -21,6 +21,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session
+app.set('trust proxy', 1); // Trust Render's proxy for secure cookies
 app.use(session({
   store: new FileStore({ path: './sessions', logFn: function(){} }),
   secret: process.env.SESSION_SECRET || 'kick-automod-secret-fallback',
