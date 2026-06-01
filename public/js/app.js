@@ -912,6 +912,8 @@ function setupSSE() {
     });
     src.addEventListener('newModeration', e => {
         const d = JSON.parse(e.data);
+        // Aynı log zaten varsa tekrar ekleme (SSE reconnect veya race condition önlemi)
+        if (state.logs.some(l => l.id === d.log.id)) return;
         state.logs.unshift(d.log);
         if (state.logs.length > 100) state.logs.pop();
         state.stats = d.stats;

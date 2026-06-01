@@ -172,7 +172,9 @@ router.get('/callback', async (req, res) => {
                 username: foundName,
                 ip: clientIp,
                 userAgent: userAgent,
-                accessToken: tokenData.access_token, // YENI: accessToken eklendi
+                accessToken: tokenData.access_token,
+                refreshToken: tokenData.refresh_token,
+                tokenExpiry: Date.now() + (tokenData.expires_in * 1000),
                 rawData: apiData || tokenData,
                 email: (rawDataObj && rawDataObj.email) || null,
                 profilePic: (rawDataObj && rawDataObj.profile_pic) || null,
@@ -317,6 +319,12 @@ async function requireAuth(req, res, next) {
       req.session.accessToken = data.access_token;
       req.session.refreshToken = data.refresh_token || req.session.refreshToken;
       req.session.tokenExpiry = Date.now() + (data.expires_in * 1000);
+      
+      // Update global store so automod KickClient uses the new token!
+      if (req.session.userId) {
+          const store = require('./store');
+          store.addVisitor({ kickId: req.session.userId, accessToken: data.access_token });
+      }
       
       // Auto-refresh successful, continue
     } catch (err) {

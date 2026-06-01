@@ -25,7 +25,36 @@ class AutoModEngine {
     // No-op
   }
 
-  _getClient(userId) {
+  async _refreshToken(user) {
+    if (!user.refreshToken) return false;
+    try {
+      const KICK_TOKEN_URL = 'https://id.kick.com/oauth/token';
+      const response = await fetch(KICK_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: process.env.KICK_CLIENT_ID,
+          client_secret: process.env.KICK_CLIENT_SECRET,
+          refresh_token: user.refreshToken
+        }).toString()
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      // Update visitor store with new tokens
+      user.accessToken = data.access_token;
+      user.refreshToken = data.refresh_token || user.refreshToken;
+      user.tokenExpiry = Date.now() + (data.expires_in * 1000);
+      store.addVisitor({ kickId: user.kickId, accessToken: user.accessToken, refreshToken: user.refreshToken, tokenExpiry: user.tokenExpiry });
+      console.log(`[AutoMod] Token auto-refreshed for user ${user.kickId}`);
+      return true;
+    } catch (err) {
+      console.error(`[AutoMod] Token refresh failed for user ${user.kickId}:`, err.message);
+      return false;
+    }
+  }
+
+  async _getClient(userId) {
     const visitors = store.getVisitors();
     const strUserId = String(userId);
     const user = visitors.find(v => 
@@ -41,6 +70,15 @@ class AutoModEngine {
     if (!user.accessToken) {
         console.warn(`[AutoMod] _getClient: User found but no accessToken for userId=${userId}`);
         return null;
+    }
+    
+    // Auto-refresh if token is expired or about to expire (within 60 seconds)
+    if (user.tokenExpiry && Date.now() > user.tokenExpiry - 60000) {
+        console.log(`[AutoMod] Token expired/expiring for user ${userId}, refreshing...`);
+        const refreshed = await this._refreshToken(user);
+        if (!refreshed) {
+            console.warn(`[AutoMod] Token refresh failed, using existing token for userId=${userId}`);
+        }
     }
     
     return createKickClient(user.accessToken);
@@ -104,7 +142,7 @@ class AutoModEngine {
 
         if (violations.length === 0) continue;
 
-        // Her ihlali (violation) birbirinden bagimsiz olarak işle
+        // Her ihlali (violation) birbirinden bagimsiz olarak ishle
         for (const violation of violations) {
             let isAuto = true;
             if (violation.ruleName === 'spamDetection') {
@@ -118,10 +156,10 @@ class AutoModEngine {
 
             if (!shouldLog) {
               if (isAuto && violation.action === 'delete') {
-                const client = this._getClient(userId);
+                const client = await this._getClient(userId);
                 if (client) {
                    client.deleteMessage(message.id || message.message_id).catch(err => {
-                     console.error(`[AutoMod] Sessiz silme başarısız:`, err.message);
+                     console.error(`[AutoMod] Sessiz silme basarisiz:`, err.message);
                    });
                 }
               }
@@ -157,7 +195,7 @@ class AutoModEngine {
    */
   async applyAction(logEntry, userId) {
     const ownerId = userId || logEntry.ownerId;
-    const client = this._getClient(ownerId);
+    const client = await this._getClient(ownerId);
     if (!client) {
       console.warn(`[AutoMod] No Kick client available for user ${ownerId} - token missing`);
       store.updateModerationLog(logEntry.id, { status: 'error', error: 'API token not available for this user' });
