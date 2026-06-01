@@ -64,6 +64,11 @@ const el = {
     wordDurationGroup: $('#wordDurationGroup'),
     wordDurationInput: $('#wordDurationInput'),
     confirmAddWord: $('#confirmAddWord'),
+    spamTimeWindowInput: $('#spamTimeWindowInput'),
+    spamMaxRepeatsInput: $('#spamMaxRepeatsInput'),
+    spamTimeWindowVal: $('#spamTimeWindowVal'),
+    spamMaxRepeatsVal: $('#spamMaxRepeatsVal'),
+    saveSpamSettingsBtn: $('#saveSpamSettingsBtn'),
     wordsListBody: $('#wordsListBody'),
     wordCountLabel: $('#wordCountLabel'),
     // Status
@@ -516,6 +521,15 @@ async function fetchStats() {
             }
             const btns = spamModeToggle.querySelectorAll('.slide-toggle-btn');
             btns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        }
+
+        // Sync Spam Detection Sliders
+        if (el.spamTimeWindowInput && el.spamMaxRepeatsInput && state.automodRules?.rules?.spamDetection) {
+            const spamRules = state.automodRules.rules.spamDetection;
+            el.spamTimeWindowInput.value = spamRules.timeWindow || 10;
+            el.spamTimeWindowVal.textContent = (spamRules.timeWindow || 10) + 'sn';
+            el.spamMaxRepeatsInput.value = spamRules.maxRepeats || 3;
+            el.spamMaxRepeatsVal.textContent = spamRules.maxRepeats || 3;
         }
 
         // Sync Emote Spam Toggle
@@ -1107,6 +1121,53 @@ function setupEventListeners() {
         el.toggleSpamBtn.style.background = isOpen ? 'var(--bg-elevated)' : 'var(--orange)';
         el.toggleSpamBtn.style.color = isOpen ? 'var(--text-1)' : '#000';
     });
+    
+    // Spam Slider Updates
+    if (el.spamTimeWindowInput && el.spamTimeWindowVal) {
+        el.spamTimeWindowInput.addEventListener('input', (e) => {
+            el.spamTimeWindowVal.textContent = e.target.value + 'sn';
+        });
+    }
+    if (el.spamMaxRepeatsInput && el.spamMaxRepeatsVal) {
+        el.spamMaxRepeatsInput.addEventListener('input', (e) => {
+            el.spamMaxRepeatsVal.textContent = e.target.value;
+        });
+    }
+
+    // Save Spam Settings
+    if (el.saveSpamSettingsBtn) {
+        el.saveSpamSettingsBtn.addEventListener('click', async () => {
+            const timeWindow = parseInt(el.spamTimeWindowInput.value);
+            const maxRepeats = parseInt(el.spamMaxRepeatsInput.value);
+            try {
+                const res = await fetch('/api/rules/spamDetection', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ timeWindow, maxRepeats })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const originalText = el.saveSpamSettingsBtn.innerHTML;
+                    el.saveSpamSettingsBtn.innerHTML = '<i class="fa fa-check"></i> Kaydedildi';
+                    el.saveSpamSettingsBtn.style.background = 'var(--green)';
+                    el.saveSpamSettingsBtn.style.color = '#000';
+                    setTimeout(() => {
+                        el.saveSpamSettingsBtn.innerHTML = originalText;
+                        el.saveSpamSettingsBtn.style.background = 'var(--surface-2)';
+                        el.saveSpamSettingsBtn.style.color = 'var(--text-1)';
+                    }, 2000);
+                    if (state.automodRules?.rules?.spamDetection) {
+                        state.automodRules.rules.spamDetection.timeWindow = timeWindow;
+                        state.automodRules.rules.spamDetection.maxRepeats = maxRepeats;
+                    }
+                } else {
+                    alert('Ayarlar kaydedilemedi.');
+                }
+            } catch (err) {
+                alert('Bağlantı hatası.');
+            }
+        });
+    }
     
     // Spam Mode Toggle Button API Link
     const spamModeToggle = document.getElementById('spamModeToggle');

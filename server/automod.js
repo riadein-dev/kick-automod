@@ -296,22 +296,22 @@ class AutoModEngine {
         return null;
       }
     }
-
+    
     const history = store.addUserMessage(userId, content);
-    
+
     // Check for repeated messages
-    const recentMessages = history.filter(h => h.timestamp > Date.now() - (rule.timeWindow * 1000));
+    // Artık kullanıcı panelden bu ayarları (timeWindow, maxRepeats) dinamik olarak değiştirebilir.
+    // Varsayılan olarak timeWindow: 10, maxRepeats: 3 kullanıyoruz (eğer veritabanında eski ayar varsa veya yoksa düzeltiyoruz)
+    const activeTimeWindow = rule.timeWindow || 10; 
+    const limit = rule.maxRepeats || 3;
+
+    const recentMessages = history.filter(h => h.timestamp > Date.now() - (activeTimeWindow * 1000));
     const duplicates = recentMessages.filter(h => h.message === content);
-    
-    // Kullanıcı 'minimum 3 kere yazılınca' dediği için, 
-    // spam sayılabilmesi için aynı mesajın en az 3 kere yazılmış olması gereksin.
-    // Eski default 3 olduğu için veritabanındaki ayarı eziyoruz:
-    const limit = 3;
     
     if (duplicates.length >= limit) {
       return {
         ruleName: 'spamDetection',
-        reason: `Spam tespit edildi: ${duplicates.length}x aynı mesaj (${rule.timeWindow}sn içinde)`,
+        reason: `Spam tespit edildi: ${duplicates.length}x aynı mesaj (${activeTimeWindow}sn içinde)`,
         action: rule.action,
         duration: rule.duration
       };
