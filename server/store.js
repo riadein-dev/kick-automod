@@ -192,7 +192,7 @@ class Store {
 
   broadcastToUser(userId, event, data) {
     for (const client of this.sseClients) {
-      if (client.userId === userId) {
+      if (String(client.userId) === String(userId)) {
         const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
         try {
           client.res.write(payload);
@@ -346,7 +346,7 @@ class Store {
 
   getModerationLogs(filters = {}) {
     let logs = [...this.moderationLogs];
-    if (filters.ownerId) logs = logs.filter(l => l.ownerId === filters.ownerId);
+    if (filters.ownerId) logs = logs.filter(l => String(l.ownerId) === String(filters.ownerId));
     if (filters.channel) logs = logs.filter(l => l.channel === filters.channel);
     if (filters.type) logs = logs.filter(l => l.type === filters.type);
     if (filters.status) logs = logs.filter(l => l.status === filters.status);
