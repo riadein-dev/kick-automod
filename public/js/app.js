@@ -1145,8 +1145,7 @@ function setupEventListeners() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ timeWindow, maxRepeats })
                 });
-                const data = await res.json();
-                if (data.success) {
+                if (res.ok) {
                     const originalText = el.saveSpamSettingsBtn.innerHTML;
                     el.saveSpamSettingsBtn.innerHTML = '<i class="fa fa-check"></i> Kaydedildi';
                     el.saveSpamSettingsBtn.style.background = 'var(--green)';
