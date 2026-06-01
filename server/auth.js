@@ -285,14 +285,44 @@ router.post('/logout', (req, res) => {
 });
 
 // Middleware to check authentication
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   if (!req.session.accessToken) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   
   // Check token expiry
   if (req.session.tokenExpiry && Date.now() > req.session.tokenExpiry) {
-    return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+    if (!req.session.refreshToken) {
+      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+    }
+    
+    try {
+      // Auto-refresh token
+      const response = await fetch(KICK_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: process.env.KICK_CLIENT_ID,
+          client_secret: process.env.KICK_CLIENT_SECRET,
+          refresh_token: req.session.refreshToken
+        }).toString()
+      });
+      
+      if (!response.ok) {
+        return res.status(401).json({ error: 'Token expired and refresh failed', code: 'TOKEN_EXPIRED' });
+      }
+      
+      const data = await response.json();
+      req.session.accessToken = data.access_token;
+      req.session.refreshToken = data.refresh_token || req.session.refreshToken;
+      req.session.tokenExpiry = Date.now() + (data.expires_in * 1000);
+      
+      // Auto-refresh successful, continue
+    } catch (err) {
+      console.error('Auto-refresh error in middleware:', err);
+      return res.status(401).json({ error: 'Token expired and auto-refresh error', code: 'TOKEN_EXPIRED' });
+    }
   }
   
   next();
