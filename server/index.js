@@ -355,6 +355,87 @@ apiRouter.delete('/words/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// Word Preset Sharing
+apiRouter.post('/words/share', async (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const rules = store.getAutomodRules(sessionUserId);
+  const words = rules.rules.bannedWords.words || [];
+  
+  if (words.length === 0) {
+      return res.status(400).json({ error: 'Paylaşılacak kelime bulunamadı.' });
+  }
+
+  // Generate a random 6-character alphanumeric code
+  const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  
+  if (process.env.MONGODB_URI) {
+      const { WordPreset } = require('./db');
+      try {
+          await WordPreset.create({
+              shareCode,
+              ownerId: sessionUserId,
+              words: words.map(w => ({
+                  word: w.word,
+                  exactMatch: w.exactMatch,
+                  action: w.action,
+                  duration: w.duration
+              }))
+          });
+      } catch (err) {
+          console.error('[WordPreset] Paylaşım kodu oluşturulamadı:', err);
+          return res.status(500).json({ error: 'Paylaşım kodu oluşturulamadı.' });
+      }
+  } else {
+      return res.status(500).json({ error: 'Veritabanı bağlı değil, paylaşım özelliği kullanılamaz.' });
+  }
+
+  res.json({ success: true, shareCode });
+});
+
+apiRouter.post('/words/import', async (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  let { shareCode } = req.body;
+  
+  if (!shareCode) return res.status(400).json({ error: 'Paylaşım kodu gerekli.' });
+  shareCode = shareCode.toUpperCase().trim();
+
+  if (!process.env.MONGODB_URI) {
+      return res.status(500).json({ error: 'Veritabanı bağlı değil.' });
+  }
+
+  const { WordPreset } = require('./db');
+  try {
+      const preset = await WordPreset.findOne({ shareCode });
+      if (!preset) {
+          return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş kod.' });
+      }
+
+      const rules = store.getAutomodRules(sessionUserId);
+      const currentWords = rules.rules.bannedWords.words || [];
+      let importedCount = 0;
+
+      for (const w of preset.words) {
+          // Check if word already exists for this user (skip if same word)
+          const exists = currentWords.some(cw => cw.word.toLowerCase() === w.word.toLowerCase());
+          if (!exists) {
+              store.addCustomWord(sessionUserId, {
+                  word: w.word,
+                  exactMatch: w.exactMatch || false,
+                  action: w.action || 'ban',
+                  duration: w.duration || 0,
+                  channel: 'all' // Imported words apply to all channels by default
+              });
+              importedCount++;
+          }
+      }
+
+      res.json({ success: true, importedCount });
+  } catch (err) {
+      console.error('[WordPreset] İçe aktarma hatası:', err);
+      return res.status(500).json({ error: 'İçe aktarma sırasında bir hata oluştu.' });
+  }
+});
+
 // ==== ADMIN PANEL ====
 const requireAdmin = (req, res, next) => {
     // Sadece Kick API'den gelen ve doğrulanmış isim Riadein ise

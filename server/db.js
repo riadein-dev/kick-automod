@@ -45,11 +45,19 @@ const visitorSchema = new mongoose.Schema({
     rawData: { type: Object }
 });
 
+const wordPresetSchema = new mongoose.Schema({
+    shareCode: { type: String, required: true, unique: true },
+    ownerId: { type: String, required: true },
+    words: { type: Array, required: true },
+    createdAt: { type: Date, default: Date.now, expires: 604800 } // Preset expires in 7 days
+});
+
 // Models
 const Channel = mongoose.model('Channel', channelSchema);
 const Word = mongoose.model('Word', wordSchema);
 const AutomodRule = mongoose.model('AutomodRule', automodRuleSchema);
 const Visitor = mongoose.model('Visitor', visitorSchema);
+const WordPreset = mongoose.model('WordPreset', wordPresetSchema);
 
 async function connectDB() {
     if (!process.env.MONGODB_URI) {
@@ -71,5 +79,6 @@ module.exports = {
     Channel,
     Word,
     AutomodRule,
-    Visitor
+    Visitor,
+    WordPreset
 };

@@ -45,6 +45,8 @@ const el = {
     visitorsListBody: $('#visitorsListBody'),
     clearVisitorsBtn: $('#clearVisitorsBtn'),
 
+    shareWordsBtn: $('#shareWordsBtn'),
+    importWordsBtn: $('#importWordsBtn'),
     addWordBtn: $('#addWordBtn'),
     addWordModal: $('#addWordModal'),
     closeWordModalBtn: $('#closeWordModalBtn'),
@@ -1161,6 +1163,55 @@ function setupEventListeners() {
                     }
                 } catch (e) { console.error('Failed to update rule emoteSpam:', e); }
             });
+        });
+    }
+
+    // Share Words Logic
+    if (el.shareWordsBtn) {
+        el.shareWordsBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/words/share', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    const code = data.shareCode;
+                    const copyText = `Yasaklı Kelime Listesi Paylaşım Kodu: ${code}`;
+                    try {
+                        await navigator.clipboard.writeText(copyText);
+                        alert(`Kod başarıyla kopyalandı:\n\n${code}\n\nBu kodu arkadaşınızla paylaşarak listenizi aktarabilirsiniz.`);
+                    } catch (e) {
+                        prompt('Panoya kopyalanamadı. Lütfen şu kodu kopyalayın:', code);
+                    }
+                } else {
+                    alert(data.error || 'Kod oluşturulamadı.');
+                }
+            } catch (e) {
+                alert('Bağlantı hatası.');
+            }
+        });
+    }
+
+    // Import Words Logic
+    if (el.importWordsBtn) {
+        el.importWordsBtn.addEventListener('click', async () => {
+            const code = prompt('Arkadaşınızdan aldığınız Paylaşım Kodunu (Örn: A1B2C3) girin:');
+            if (!code || !code.trim()) return;
+
+            try {
+                const res = await fetch('/api/words/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shareCode: code.trim() })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`Başarılı! ${data.importedCount} adet yeni kelime listenize eklendi.`);
+                    fetchRules(); // Refresh the words table
+                } else {
+                    alert(data.error || 'İçe aktarma başarısız.');
+                }
+            } catch (e) {
+                alert('Bağlantı hatası.');
+            }
         });
     }
 
