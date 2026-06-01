@@ -102,9 +102,9 @@ class Store {
     Channel.create({ slug: channel.slug, chatroomId: channel.chatroomId, userId: channel.userId, addedBy: channel.addedBy || '' }).catch(console.error);
   }
 
-  deleteChannelDB(slug) {
+  deleteChannelDB(slug, userId) {
     if (!process.env.MONGODB_URI) return;
-    Channel.deleteOne({ slug }).catch(console.error);
+    Channel.deleteOne({ slug, addedBy: userId }).catch(console.error);
   }
 
   saveWord(word) {
@@ -226,7 +226,7 @@ class Store {
 
   // Channel Management
   addChannel(channel) {
-    const exists = this.channels.find(c => c.id === channel.id || c.slug === channel.slug);
+    const exists = this.channels.find(c => (c.id === channel.id || c.slug === channel.slug) && c.addedBy === channel.addedBy);
     if (!exists) {
       const newChannel = {
         ...channel,
@@ -242,15 +242,17 @@ class Store {
     return this.channels;
   }
 
-  removeChannel(channelId) {
+  removeChannel(channelId, userId) {
     const strId = String(channelId);
-    const channel = this.channels.find(c => String(c.id) === strId || String(c.chatroomId) === strId || c.slug === channelId);
-    if (channel) {
-      this.deleteChannelDB(channel.slug); // delete from DB
+    const channelIndex = this.channels.findIndex(c => (String(c.id) === strId || String(c.chatroomId) === strId || c.slug === channelId) && c.addedBy === userId);
+    
+    if (channelIndex > -1) {
+      const channel = this.channels[channelIndex];
+      this.deleteChannelDB(channel.slug, userId); // delete from DB for this user
+      this.channels.splice(channelIndex, 1);
+      this.stats.activeChannels = this.channels.filter(c => c.active).length;
+      this.broadcast('channelUpdate', { channels: this.channels });
     }
-    this.channels = this.channels.filter(c => String(c.id) !== strId && String(c.chatroomId) !== strId && c.slug !== channelId);
-    this.stats.activeChannels = this.channels.filter(c => c.active).length;
-    this.broadcast('channelUpdate', { channels: this.channels });
     return this.channels;
   }
 

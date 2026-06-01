@@ -65,7 +65,15 @@ class WebSocketManager {
     const channelName = `chatrooms.${chatroomId}.v2`;
     
     if (this.subscribedChannels.has(chatroomId)) {
-      console.log(`[WebSocket] Already subscribed to ${channelSlug}`);
+      console.log(`[WebSocket] Already subscribed to ${channelSlug}, adding to store for user ${addedBy}`);
+      // Add to store for this user even if already subscribed globally
+      store.addChannel({
+        id: chatroomId,
+        slug: channelSlug,
+        userId: broadcasterUserId,
+        broadcasterUserId: broadcasterUserId,
+        addedBy: addedBy || null
+      });
       return true;
     }
 

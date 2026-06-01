@@ -207,11 +207,19 @@ apiRouter.delete('/channels/all', async (req, res) => {
   console.log(`[Channels] Clearing channels for user: ${sessionUserId}`);
   const allChannels = store.getChannels();
   const userChannels = allChannels.filter(c => c.addedBy === sessionUserId);
-  for (const ch of userChannels) {
-    wsManager.unsubscribeFromChannel(String(ch.id || ch.chatroomId));
-  }
+  
   // Remove only this user's channels from store
   store.channels = allChannels.filter(c => c.addedBy !== sessionUserId);
+  
+  for (const ch of userChannels) {
+    const chatroomId = String(ch.id || ch.chatroomId);
+    // Check if anyone else is still using this channel
+    const otherUsersChannel = store.channels.find(c => String(c.id || c.chatroomId) === chatroomId);
+    if (!otherUsersChannel) {
+        wsManager.unsubscribeFromChannel(chatroomId);
+    }
+  }
+  
   store.stats.activeChannels = store.channels.filter(c => c.active).length;
   res.json({ success: true });
 });
@@ -252,28 +260,33 @@ apiRouter.post('/channels', async (req, res) => {
 
 apiRouter.delete('/channels/:id', (req, res) => {
   const { id } = req.params;
-  console.log(`[Channels] Removing channel: ${id}`);
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  console.log(`[Channels] Removing channel: ${id} for user ${sessionUserId}`);
   
   const channels = store.getChannels();
   const channel = channels.find(c => 
-    String(c.id) === String(id) || 
+    (String(c.id) === String(id) || 
     String(c.chatroomId) === String(id) ||
-    c.slug === id
+    c.slug === id) && c.addedBy === sessionUserId
   );
   
   if (channel) {
     const chatroomId = String(channel.id || channel.chatroomId);
-    wsManager.unsubscribeFromChannel(chatroomId);
-    if (store.getChannels().find(c => c.slug === channel.slug)) {
-      store.removeChannel(channel.slug);
+    store.removeChannel(channel.slug, sessionUserId);
+    
+    // Check if anyone else is still using this channel
+    const otherUsersChannel = store.getChannels().find(c => String(c.id || c.chatroomId) === chatroomId);
+    if (!otherUsersChannel) {
+        wsManager.unsubscribeFromChannel(chatroomId);
+        console.log(`[Channels] ✅ Unsubscribed from channel: ${channel.slug} (${chatroomId}) globally`);
+    } else {
+        console.log(`[Channels] ✅ Removed channel for user ${sessionUserId}, but kept globally for others.`);
     }
-    console.log(`[Channels] ✅ Removed channel: ${channel.slug} (${chatroomId})`);
+    
+    res.json({ success: true });
   } else {
-    wsManager.unsubscribeFromChannel(id);
-    console.log(`[Channels] Removed channel by raw id: ${id}`);
+    res.status(404).json({ error: 'Channel not found' });
   }
-  
-  res.json({ success: true });
 });
 
 // Rules management
