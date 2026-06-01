@@ -789,6 +789,86 @@ window.handleAction = handleAction;
 window.handleTimeoutAction = handleTimeoutAction;
 
 // ===== SSE =====
+// ===== Sound Control & Hover Sounds =====
+function setupSoundControl() {
+    if (typeof SoundEngine === 'undefined') return;
+    const toggleBtn = document.getElementById('soundToggleBtn');
+    const onIcon = document.getElementById('soundOnIcon');
+    const offIcon = document.getElementById('soundOffIcon');
+    const sliderWrap = document.getElementById('soundSliderWrap');
+    const slider = document.getElementById('soundSlider');
+    const label = document.getElementById('soundSliderLabel');
+    if (!toggleBtn || !slider) return;
+
+    // Restore saved state
+    const vol = Math.round(SoundEngine.getVolume() * 100);
+    slider.value = vol;
+    label.textContent = vol + '%';
+    if (!SoundEngine.isEnabled()) {
+        toggleBtn.classList.add('muted');
+        onIcon.style.display = 'none';
+        offIcon.style.display = 'block';
+    }
+
+    // Toggle mute
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const enabled = SoundEngine.isEnabled();
+        SoundEngine.setEnabled(!enabled);
+        toggleBtn.classList.toggle('muted', enabled);
+        onIcon.style.display = enabled ? 'none' : 'block';
+        offIcon.style.display = enabled ? 'block' : 'none';
+        // Toggle slider panel
+        sliderWrap.classList.toggle('open');
+        if (!enabled) SoundEngine.playClick(); // test sound
+    });
+
+    // Volume slider
+    slider.addEventListener('input', () => {
+        const v = parseInt(slider.value);
+        SoundEngine.setVolume(v / 100);
+        label.textContent = v + '%';
+    });
+    slider.addEventListener('change', () => {
+        SoundEngine.playClick(); // preview
+    });
+
+    // Close slider when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.sound-control')) {
+            sliderWrap.classList.remove('open');
+        }
+    });
+}
+
+function attachHoverSounds() {
+    if (typeof SoundEngine === 'undefined') return;
+    
+    // Tüm etkileşimli elementlere hover sesi ekle
+    const selectors = [
+        'button', '.btn-primary', '.sidebar-link', '.channel-tab',
+        '.icon-btn', '.slide-toggle-btn', '.spam-action-btn',
+        '.ch-action-btn', '.sound-toggle-btn', '.modal-close-btn',
+        'select', 'a'
+    ].join(', ');
+
+    // Event delegation - daha performanslı
+    document.addEventListener('mouseenter', (e) => {
+        const target = e.target.closest(selectors);
+        if (target && !target._soundHoverBound) {
+            SoundEngine.playHover();
+        }
+    }, true); // capture phase for delegation
+
+    // Click sesi
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('button, .btn-primary, .sidebar-link, .channel-tab, .spam-action-btn');
+        if (target) {
+            SoundEngine.playClick();
+        }
+    }, true);
+}
+
 function setupSSE() {
     const src = new EventSource('/api/stream');
     src.addEventListener('init', () => console.log('SSE connected'));
@@ -809,6 +889,8 @@ function setupSSE() {
         renderLogs(); 
         renderAllLogs();
         updateStatsUI();
+        // Bildirim sesi çal
+        if (typeof SoundEngine !== 'undefined') SoundEngine.playNotification();
     });
     src.addEventListener('moderationUpdate', e => {
         const d = JSON.parse(e.data);
@@ -836,6 +918,11 @@ function setupSSE() {
 
 // ===== Events =====
 function setupEventListeners() {
+    // --- SES KONTROL AYARLARI ---
+    setupSoundControl();
+    // --- HOVER SES EFEKTLERİ ---
+    attachHoverSounds();
+
     // Sidebar
     function openSidebar() { el.sidebar.classList.add('open'); el.sidebarOverlay.classList.add('open'); }
     function closeSidebar() { el.sidebar.classList.remove('open'); el.sidebarOverlay.classList.remove('open'); }
