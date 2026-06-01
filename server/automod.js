@@ -303,7 +303,12 @@ class AutoModEngine {
     const recentMessages = history.filter(h => h.timestamp > Date.now() - (rule.timeWindow * 1000));
     const duplicates = recentMessages.filter(h => h.message === content);
     
-    if (duplicates.length >= rule.maxRepeats) {
+    // Kullanıcı 'minimum 3 kere yazılınca' dediği için, 
+    // spam sayılabilmesi için aynı mesajın en az 3 kere yazılmış olması gereksin.
+    // Eski default 3 olduğu için veritabanındaki ayarı eziyoruz:
+    const limit = 3;
+    
+    if (duplicates.length >= limit) {
       return {
         ruleName: 'spamDetection',
         reason: `Spam tespit edildi: ${duplicates.length}x aynı mesaj (${rule.timeWindow}sn içinde)`,
