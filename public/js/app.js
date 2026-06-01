@@ -773,6 +773,9 @@ async function handleAction(logId, status, actionType, duration = null) {
             renderLogs();
             renderAllLogs();
             fetchStats();
+        } else {
+            const errorData = await res.json();
+            alert('İşlem başarısız (Lütfen bu hatayı bana söyleyin): ' + (errorData.error || 'Bilinmeyen hata') + ' Detay: ' + (errorData.details || ''));
         }
     } catch (err) { console.error('Action error:', err); alert('İşlem başarısız.'); }
 }
