@@ -4,14 +4,47 @@
  */
 
 const store = require('./store');
+const { createKickClient } = require('./kickApi');
 
 class AutoModEngine {
   constructor() {
-    this.kickClient = null;
+    this._accessToken = null;
   }
 
+  /**
+   * Store the access token so we can create a kickClient on demand.
+   * This survives across WebSocket events unlike the old approach.
+   */
+  setAccessToken(token) {
+    this._accessToken = token;
+    console.log('[AutoMod] Access token stored for API calls');
+  }
+
+  /** Backwards-compatible: also accept a kickClient and extract nothing, just store token */
   setKickClient(client) {
-    this.kickClient = client;
+    // Extract token from client if possible
+    if (client && client.accessToken) {
+      this._accessToken = client.accessToken;
+      console.log('[AutoMod] Access token extracted from kickClient');
+    }
+  }
+
+  /** Get or create a kickClient on demand */
+  _getClient() {
+    if (!this._accessToken) {
+      console.warn('[AutoMod] No access token available');
+      return null;
+    }
+    return createKickClient(this._accessToken);
+  }
+
+  get hasClient() {
+    return !!this._accessToken;
+  }
+
+  // Keep old property for compatibility with middleware check
+  get kickClient() {
+    return this._accessToken ? true : null;
   }
 
   /**
@@ -91,7 +124,7 @@ class AutoModEngine {
     });
 
     // If auto mode for this rule, apply action immediately (except for 'warn' which stays pending)
-    if (isAuto && this.kickClient && primaryViolation.action !== 'warn') {
+    if (isAuto && primaryViolation.action !== 'warn') {
       await this.applyAction(logEntry);
     }
 
@@ -102,35 +135,41 @@ class AutoModEngine {
    * Apply a moderation action via Kick API
    */
   async applyAction(logEntry) {
-    if (!this.kickClient) {
-      console.warn('[AutoMod] No Kick client available for moderation action');
+    const client = this._getClient();
+    if (!client) {
+      console.warn('[AutoMod] No Kick client available for moderation action - token missing');
+      store.updateModerationLog(logEntry.id, { status: 'error', error: 'API token not available' });
       return;
     }
 
     try {
       // Esnek kanal eşleştirme: chatroomId, id veya slug ile ara
       const channels = store.getChannels();
-      console.log(`[AutoMod] Looking for channel. chatroomId=${logEntry.chatroomId}, Available channels:`, channels.map(c => ({ id: c.id, slug: c.slug, chatroomId: c.chatroomId, broadcasterUserId: c.broadcasterUserId })));
+      const logChatroomId = String(logEntry.chatroomId);
       
       const channel = channels.find(c => 
-        String(c.id) === String(logEntry.chatroomId) || 
-        String(c.chatroomId) === String(logEntry.chatroomId) ||
+        String(c.id) === logChatroomId || 
+        String(c.chatroomId) === logChatroomId ||
         c.slug === logEntry.channel
       );
       
       const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
-      console.log(`[AutoMod] Channel found: ${!!channel}, broadcasterUserId: ${broadcasterUserId}, action: ${logEntry.action}`);
+      console.log(`[AutoMod] Action: ${logEntry.action}, User: ${logEntry.username}, Channel: ${logEntry.channel}, broadcasterUserId: ${broadcasterUserId}`);
+
+      if (!broadcasterUserId && logEntry.action !== 'delete') {
+        throw new Error(`Broadcaster User ID not found for channel ${logEntry.channel}`);
+      }
 
       switch (logEntry.action) {
         case 'delete':
           if (logEntry.messageId) {
-            await this.kickClient.deleteMessage(logEntry.messageId);
+            await client.deleteMessage(logEntry.messageId);
           }
           break;
         case 'timeout':
           if (broadcasterUserId && logEntry.userId) {
             const promises = [
-              this.kickClient.timeoutUser(
+              client.timeoutUser(
                 broadcasterUserId,
                 logEntry.userId,
                 logEntry.duration || 5,
@@ -138,36 +177,36 @@ class AutoModEngine {
               )
             ];
             if (logEntry.messageId) {
-              promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
+              promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
             }
             await Promise.all(promises);
           } else {
-            console.error(`[AutoMod] Missing data for timeout: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
+            throw new Error(`Missing data for timeout: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
           break;
         case 'ban':
           if (broadcasterUserId && logEntry.userId) {
             const promises = [
-              this.kickClient.banUser(
+              client.banUser(
                 broadcasterUserId,
                 logEntry.userId,
                 logEntry.reason
               )
             ];
             if (logEntry.messageId) {
-              promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
+              promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
             }
             await Promise.all(promises);
           } else {
-            console.error(`[AutoMod] Missing data for ban: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
+            throw new Error(`Missing data for ban: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
           break;
       }
       
       store.updateModerationLog(logEntry.id, { status: 'applied', appliedAt: new Date().toISOString() });
-      console.log(`[AutoMod] Action applied: ${logEntry.action} on ${logEntry.username} - ${logEntry.reason}`);
+      console.log(`[AutoMod] ✅ Action applied: ${logEntry.action} on ${logEntry.username} - ${logEntry.reason}`);
     } catch (err) {
-      console.error(`[AutoMod] Failed to apply action:`, err.message);
+      console.error(`[AutoMod] ❌ Failed to apply action:`, err.message);
       store.updateModerationLog(logEntry.id, { status: 'error', error: err.message });
     }
   }
@@ -186,7 +225,6 @@ class AutoModEngine {
       
       if (w.exactMatch) {
         // match word boundaries
-        // JavaScript regex \b doesn't work well with non-ASCII. We use a simple approximation for exact word.
         const regex = new RegExp(`(?:^|\\s|[.,!?;:])(${targetWord})(?:$|\\s|[.,!?;:])`, 'i');
         matched = regex.test(content);
       } else {

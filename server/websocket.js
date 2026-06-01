@@ -119,13 +119,31 @@ class WebSocketManager {
    * Unsubscribe from a channel
    */
   unsubscribeFromChannel(chatroomId) {
-    const channelName = `chatrooms.${chatroomId}.v2`;
+    const strId = String(chatroomId);
     
-    if (this.pusher && this.subscribedChannels.has(chatroomId)) {
+    // Find the actual key in the map (could be number or string)
+    let actualKey = null;
+    for (const [key] of this.subscribedChannels) {
+      if (String(key) === strId) {
+        actualKey = key;
+        break;
+      }
+    }
+    
+    if (this.pusher && actualKey !== null) {
+      const channelName = `chatrooms.${actualKey}.v2`;
       this.pusher.unsubscribe(channelName);
+      const info = this.subscribedChannels.get(actualKey);
+      this.subscribedChannels.delete(actualKey);
+      store.removeChannel(strId);
+      console.log(`[WebSocket] Unsubscribed from chatroom ${actualKey} (${info?.channelSlug || 'unknown'})`);
+    } else {
+      // Fallback: try direct
+      const channelName = `chatrooms.${chatroomId}.v2`;
+      if (this.pusher) this.pusher.unsubscribe(channelName);
       this.subscribedChannels.delete(chatroomId);
-      store.removeChannel(chatroomId);
-      console.log(`[WebSocket] Unsubscribed from chatroom ${chatroomId}`);
+      store.removeChannel(strId);
+      console.log(`[WebSocket] Force unsubscribed from chatroom ${chatroomId}`);
     }
   }
 

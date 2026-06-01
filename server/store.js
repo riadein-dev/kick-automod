@@ -210,11 +210,12 @@ class Store {
   }
 
   removeChannel(channelId) {
-    const channel = this.channels.find(c => c.id === channelId || c.slug === channelId);
+    const strId = String(channelId);
+    const channel = this.channels.find(c => String(c.id) === strId || String(c.chatroomId) === strId || c.slug === channelId);
     if (channel) {
       this.deleteChannelDB(channel.slug); // delete from DB
     }
-    this.channels = this.channels.filter(c => c.id !== channelId && c.slug !== channelId);
+    this.channels = this.channels.filter(c => String(c.id) !== strId && String(c.chatroomId) !== strId && c.slug !== channelId);
     this.stats.activeChannels = this.channels.filter(c => c.active).length;
     this.broadcast('channelUpdate', { channels: this.channels, stats: this.stats });
     return this.channels;
