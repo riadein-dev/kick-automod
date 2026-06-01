@@ -229,7 +229,12 @@ class Store {
 
   // Channel Management
   addChannel(channel) {
-    const exists = this.channels.find(c => (c.id === channel.id || c.slug === channel.slug) && c.addedBy === channel.addedBy);
+    const channelIdStr = String(channel.id || channel.chatroomId);
+    const exists = this.channels.find(c => 
+        (String(c.id) === channelIdStr || c.slug === channel.slug) && 
+        c.addedBy === channel.addedBy
+    );
+    
     if (!exists) {
       const newChannel = {
         ...channel,
