@@ -72,7 +72,7 @@ class Store {
     
     try {
       const dbChannels = await Channel.find({});
-      this.channels = dbChannels.map(c => ({ id: c.slug, slug: c.slug, chatroomId: c.chatroomId, userId: c.userId, active: true }));
+      this.channels = dbChannels.map(c => ({ id: c.chatroomId, slug: c.slug, chatroomId: c.chatroomId, userId: c.userId, broadcasterUserId: c.userId, active: true }));
       this.stats.activeChannels = this.channels.length;
 
       const dbWords = await Word.find({});
@@ -197,7 +197,7 @@ class Store {
     if (!exists) {
       const newChannel = {
         ...channel,
-        id: channel.slug, // ensure id is slug
+        chatroomId: channel.id, // chatroomId = id (from websocket)
         addedAt: new Date().toISOString(),
         active: true
       };

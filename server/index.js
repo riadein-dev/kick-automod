@@ -128,9 +128,19 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
     try {
       const kickClient = createKickClient(req.session.accessToken);
       
-      const channel = store.getChannels().find(c => String(c.id) === String(log.chatroomId));
-      const broadcasterUserId = channel ? channel.broadcasterUserId : null;
-      if (!broadcasterUserId) throw new Error("Broadcaster User ID not found for this channel");
+      const channels = store.getChannels();
+      const channel = channels.find(c => 
+        String(c.id) === String(log.chatroomId) || 
+        String(c.chatroomId) === String(log.chatroomId) ||
+        c.slug === log.channel
+      );
+      const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+      
+      console.log(`[ModAction] channel found: ${!!channel}, broadcasterUserId: ${broadcasterUserId}, action: ${action}, userId: ${log.userId}`);
+      
+      if (!broadcasterUserId && action !== 'delete') {
+        throw new Error("Broadcaster User ID not found for this channel");
+      }
       
       if (action === 'delete') {
         await kickClient.deleteMessage(log.messageId);
@@ -209,11 +219,17 @@ apiRouter.patch('/rules', async (req, res) => {
     try {
       const kickClient = createKickClient(req.session.accessToken);
       const pendingSpamLogs = store.getModerationLogs().filter(l => l.ruleName === 'spamDetection' && l.status === 'pending');
+      const channels = store.getChannels();
       
       for (const log of pendingSpamLogs) {
-        const channel = store.getChannels().find(c => String(c.id) === String(log.chatroomId));
-        if (channel && channel.broadcasterUserId) {
-          await kickClient.timeoutUser(channel.broadcasterUserId, log.userId, log.duration || 5, log.reason);
+        const channel = channels.find(c => 
+          String(c.id) === String(log.chatroomId) || 
+          String(c.chatroomId) === String(log.chatroomId) ||
+          c.slug === log.channel
+        );
+        const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+        if (broadcasterUserId) {
+          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason);
           store.updateModerationLog(log.id, { status: 'applied', action: 'timeout', duration: log.duration || 5 });
         }
       }

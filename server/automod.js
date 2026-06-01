@@ -94,11 +94,24 @@ class AutoModEngine {
    */
   async applyAction(logEntry) {
     if (!this.kickClient) {
-      console.warn('No Kick client available for moderation action');
+      console.warn('[AutoMod] No Kick client available for moderation action');
       return;
     }
 
     try {
+      // Esnek kanal eşleştirme: chatroomId, id veya slug ile ara
+      const channels = store.getChannels();
+      console.log(`[AutoMod] Looking for channel. chatroomId=${logEntry.chatroomId}, Available channels:`, channels.map(c => ({ id: c.id, slug: c.slug, chatroomId: c.chatroomId, broadcasterUserId: c.broadcasterUserId })));
+      
+      const channel = channels.find(c => 
+        String(c.id) === String(logEntry.chatroomId) || 
+        String(c.chatroomId) === String(logEntry.chatroomId) ||
+        c.slug === logEntry.channel
+      );
+      
+      const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+      console.log(`[AutoMod] Channel found: ${!!channel}, broadcasterUserId: ${broadcasterUserId}, action: ${logEntry.action}`);
+
       switch (logEntry.action) {
         case 'delete':
           if (logEntry.messageId) {
@@ -106,42 +119,38 @@ class AutoModEngine {
           }
           break;
         case 'timeout':
-          if (logEntry.chatroomId && logEntry.userId) {
-            const channel = store.getChannels().find(c => String(c.id) === String(logEntry.chatroomId));
-            if (channel && channel.broadcasterUserId) {
-              const promises = [
-                this.kickClient.timeoutUser(
-                  channel.broadcasterUserId,
-                  logEntry.userId,
-                  logEntry.duration || 5,
-                  logEntry.reason
-                )
-              ];
-              // Hızlandırma: Kick'in sunucularından ban yayılmasını beklemeden mesajı anında siliyoruz
-              if (logEntry.messageId) {
-                promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
-              }
-              await Promise.all(promises);
+          if (broadcasterUserId && logEntry.userId) {
+            const promises = [
+              this.kickClient.timeoutUser(
+                broadcasterUserId,
+                logEntry.userId,
+                logEntry.duration || 5,
+                logEntry.reason
+              )
+            ];
+            if (logEntry.messageId) {
+              promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
             }
+            await Promise.all(promises);
+          } else {
+            console.error(`[AutoMod] Missing data for timeout: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
           break;
         case 'ban':
-          if (logEntry.chatroomId && logEntry.userId) {
-            const channel = store.getChannels().find(c => String(c.id) === String(logEntry.chatroomId));
-            if (channel && channel.broadcasterUserId) {
-              const promises = [
-                this.kickClient.banUser(
-                  channel.broadcasterUserId,
-                  logEntry.userId,
-                  logEntry.reason
-                )
-              ];
-              // Hızlandırma: Kick'in sunucularından ban yayılmasını beklemeden mesajı anında siliyoruz
-              if (logEntry.messageId) {
-                promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
-              }
-              await Promise.all(promises);
+          if (broadcasterUserId && logEntry.userId) {
+            const promises = [
+              this.kickClient.banUser(
+                broadcasterUserId,
+                logEntry.userId,
+                logEntry.reason
+              )
+            ];
+            if (logEntry.messageId) {
+              promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
             }
+            await Promise.all(promises);
+          } else {
+            console.error(`[AutoMod] Missing data for ban: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
           break;
       }

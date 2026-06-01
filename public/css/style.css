@@ -420,22 +420,35 @@ input { font-family: inherit; outline: none; }
     align-items: stretch;
 }
 .mod-panel {
-    flex: 1;
+    flex: 1.5;
     min-width: 0;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mod-panel .data-table {
+    table-layout: auto;
+    width: 100%;
+}
+.mod-panel .data-table th,
+.mod-panel .data-table td {
+    white-space: nowrap;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.78rem;
+}
+.mod-panel .data-table td:nth-child(3) {
+    white-space: normal;
+    max-width: 250px;
+    word-break: break-word;
 }
 
 .spam-panel-wrapper {
     width: 0;
     opacity: 0;
     overflow: hidden;
-    /* Kapanırken: Önce yazılar solsun, sonra kutu daralsın */
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s, opacity 0.1s ease 0.4s;
 }
 .spam-panel-wrapper.open {
-    width: 40%;
+    width: 35%;
     opacity: 1;
-    /* Açılırken: Önce kutu şeffaflıktan çıksın ve genişlesin */
     transition: opacity 0.1s ease, width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
