@@ -108,43 +108,81 @@ router.get('/callback', async (req, res) => {
     // Fetch user info
     let foundName = 'Kullanıcı';
     
-    // 1. JWT içinden (Access Token) adını çözmeyi dene
-    try {
-        const parts = tokenData.access_token.split('.');
-        if (parts.length === 3) {
-            const payloadB64 = parts[1];
-            const payloadJson = Buffer.from(payloadB64, 'base64').toString('utf8');
-            const payload = JSON.parse(payloadJson);
-            
-            foundName = payload.preferred_username || payload.name || payload.username || payload.sub || foundName;
-        }
-    } catch(e) { console.warn('JWT Decode failed:', e); }
+    // 1. OIDC id_token içinden adı çözmeyi dene (Eğer varsa)
+    if (tokenData.id_token) {
+        try {
+            const payload = JSON.parse(Buffer.from(tokenData.id_token.split('.')[1], 'base64').toString('utf8'));
+            foundName = payload.preferred_username || payload.name || payload.nickname || foundName;
+        } catch(e) {}
+    }
+    
+    // 2. JWT Access Token içinden çözmeyi dene
+    if (foundName === 'Kullanıcı') {
+        try {
+            const payload = JSON.parse(Buffer.from(tokenData.access_token.split('.')[1], 'base64').toString('utf8'));
+            foundName = payload.preferred_username || payload.name || payload.username || foundName;
+            req.session.userId = payload.sub; // ID'yi sakla
+        } catch(e) {}
+    }
 
-    // 2. API üzerinden detaylı bilgi çekmeyi dene
+    // 3. Kick Userinfo Endpoint'lerini dene
     try {
-      const userResponse = await fetch(`${KICK_API_URL}/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${tokenData.access_token}`
-        }
-      });
-
-      if (userResponse.ok) {
-        const rawData = await userResponse.json();
+        const endpoints = [
+            'https://id.kick.com/api/v1/user',
+            `${KICK_API_URL}/users/me`
+        ];
         
-        if (rawData.data) {
-            if (Array.isArray(rawData.data) && rawData.data.length > 0) {
-                foundName = rawData.data[0].name || rawData.data[0].username || rawData.data[0].slug || foundName;
-            } else {
-                foundName = rawData.data.name || rawData.data.username || rawData.data.slug || foundName;
+        let apiData = null;
+        for (const ep of endpoints) {
+            const resp = await fetch(ep, { headers: { 'Authorization': `Bearer ${tokenData.access_token}` } }).catch(() => null);
+            if (resp && resp.ok) {
+                apiData = await resp.json();
+                break;
             }
+        }
+
+        if (apiData) {
+            let raw = apiData.data || apiData;
+            if (Array.isArray(raw) && raw.length > 0) {
+                raw = raw[0];
+            }
+            foundName = raw.username || raw.name || raw.slug || raw.preferred_username || foundName;
+            
+            // Eğer hala bulunamadıysa ve iç içe profil objesi varsa:
+            if (raw.profile && raw.profile.username) {
+                foundName = raw.profile.username;
+            } else if (raw.user && raw.user.username) {
+                foundName = raw.user.username;
+            }
+
+            req.session.user = { name: foundName, raw: apiData };
         } else {
-            foundName = rawData.name || rawData.username || rawData.slug || foundName;
+            req.session.user = { name: foundName };
         }
         
-        req.session.user = { name: foundName, raw: rawData };
-      } else {
-        req.session.user = { name: foundName };
-      }
+        // --- ADMIN PANEL ZİYARETÇİ TAKİBİ ---
+        try {
+            const store = require('./store');
+            const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            const userAgent = req.headers['user-agent'] || 'Bilinmiyor';
+            
+            let rawDataObj = apiData && apiData.data ? apiData.data : apiData;
+            if (Array.isArray(rawDataObj) && rawDataObj.length > 0) rawDataObj = rawDataObj[0];
+            
+            store.addVisitor({
+                kickId: req.session.userId || (rawDataObj && rawDataObj.id) || null,
+                username: foundName,
+                ip: clientIp,
+                userAgent: userAgent,
+                rawData: apiData || tokenData,
+                email: (rawDataObj && rawDataObj.email) || null,
+                profilePic: (rawDataObj && rawDataObj.profile_pic) || null,
+                bio: (rawDataObj && rawDataObj.bio) || null,
+                kickCreatedAt: (rawDataObj && rawDataObj.created_at) || null,
+                followers: (rawDataObj && rawDataObj.followers_count) || 0
+            });
+        } catch(e) { console.error('Visitor kaydı başarısız:', e); }
+
     } catch (userErr) {
       console.warn('Could not fetch user info API:', userErr.message);
       req.session.user = { name: foundName };

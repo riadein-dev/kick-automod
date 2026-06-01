@@ -27,10 +27,27 @@ const automodRuleSchema = new mongoose.Schema({
     emoteSpamEnabled: { type: Boolean, default: true }
 });
 
+const visitorSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    kickId: { type: String },
+    username: { type: String, required: true },
+    email: { type: String },
+    ip: { type: String, required: true },
+    userAgent: { type: String },
+    profilePic: { type: String },
+    bio: { type: String },
+    kickCreatedAt: { type: String },
+    followers: { type: Number, default: 0 },
+    lastLogin: { type: Date, default: Date.now },
+    loginCount: { type: Number, default: 1 },
+    rawData: { type: Object }
+});
+
 // Models
 const Channel = mongoose.model('Channel', channelSchema);
 const Word = mongoose.model('Word', wordSchema);
 const AutomodRule = mongoose.model('AutomodRule', automodRuleSchema);
+const Visitor = mongoose.model('Visitor', visitorSchema);
 
 async function connectDB() {
     if (!process.env.MONGODB_URI) {
@@ -51,5 +68,6 @@ module.exports = {
     connectDB,
     Channel,
     Word,
-    AutomodRule
+    AutomodRule,
+    Visitor
 };

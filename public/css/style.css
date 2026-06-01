@@ -2,8 +2,9 @@
 
 /* ===== Variables ===== */
 :root {
-    --bg-base: #000000;
-    --bg-surface: #0e0e11;
+    --bg-base: #111114;
+    --bg-gradient: linear-gradient(135deg, #16161a 0%, #0a0a0c 100%);
+    --bg-surface: #121216;
     --bg-elevated: #141418;
     --bg-hover: #1a1a1f;
     --bg-input: #0a0a0d;
@@ -48,9 +49,13 @@
     margin: 0; padding: 0; box-sizing: border-box;
 }
 
+html {
+    font-size: 18px; /* Scales up all rem-based sizes */
+}
+
 body {
     font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-    background: var(--bg-base);
+    background: var(--bg-gradient);
     color: var(--text-1);
     min-height: 100vh;
     overflow-x: hidden;

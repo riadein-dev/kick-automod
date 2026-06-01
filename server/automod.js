@@ -56,6 +56,14 @@ class AutoModEngine {
     violations.sort((a, b) => (severity[b.action] || 0) - (severity[a.action] || 0));
     const primaryViolation = violations[0];
 
+    // Sadece spam için manuel/oto modunu dikkate al. Diğerleri her zaman otomatik işler.
+    let isAuto = true;
+    if (primaryViolation.ruleName === 'spamDetection') {
+        isAuto = (rules.mode === 'auto');
+    }
+    
+    const finalStatus = (isAuto && primaryViolation.action !== 'warn') ? 'applied' : 'pending';
+
     // Create moderation log entry
     const logEntry = store.addModerationLog({
       userId: message.sender?.id || message.user_id,
@@ -69,12 +77,12 @@ class AutoModEngine {
       type: 'auto',
       action: primaryViolation.action,
       duration: primaryViolation.duration || 0,
-      status: (rules.mode === 'auto' && primaryViolation.action !== 'warn') ? 'applied' : 'pending',
+      status: finalStatus,
       allViolations: violations.map(v => v.reason)
     });
 
-    // If auto mode, apply action immediately (except for 'warn' which stays pending)
-    if (rules.mode === 'auto' && this.kickClient && primaryViolation.action !== 'warn') {
+    // If auto mode for this rule, apply action immediately (except for 'warn' which stays pending)
+    if (isAuto && this.kickClient && primaryViolation.action !== 'warn') {
       await this.applyAction(logEntry);
     }
 
@@ -101,12 +109,19 @@ class AutoModEngine {
           if (logEntry.chatroomId && logEntry.userId) {
             const channel = store.getChannels().find(c => String(c.id) === String(logEntry.chatroomId));
             if (channel && channel.broadcasterUserId) {
-              await this.kickClient.timeoutUser(
-                channel.broadcasterUserId,
-                logEntry.userId,
-                logEntry.duration || 5,
-                logEntry.reason
-              );
+              const promises = [
+                this.kickClient.timeoutUser(
+                  channel.broadcasterUserId,
+                  logEntry.userId,
+                  logEntry.duration || 5,
+                  logEntry.reason
+                )
+              ];
+              // Hızlandırma: Kick'in sunucularından ban yayılmasını beklemeden mesajı anında siliyoruz
+              if (logEntry.messageId) {
+                promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
+              }
+              await Promise.all(promises);
             }
           }
           break;
@@ -114,11 +129,18 @@ class AutoModEngine {
           if (logEntry.chatroomId && logEntry.userId) {
             const channel = store.getChannels().find(c => String(c.id) === String(logEntry.chatroomId));
             if (channel && channel.broadcasterUserId) {
-              await this.kickClient.banUser(
-                channel.broadcasterUserId,
-                logEntry.userId,
-                logEntry.reason
-              );
+              const promises = [
+                this.kickClient.banUser(
+                  channel.broadcasterUserId,
+                  logEntry.userId,
+                  logEntry.reason
+                )
+              ];
+              // Hızlandırma: Kick'in sunucularından ban yayılmasını beklemeden mesajı anında siliyoruz
+              if (logEntry.messageId) {
+                promises.push(this.kickClient.deleteMessage(logEntry.messageId).catch(() => {}));
+              }
+              await Promise.all(promises);
             }
           }
           break;

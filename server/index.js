@@ -13,12 +13,53 @@ const { createKickClient } = require('./kickApi');
 const wsManager = require('./websocket');
 const automod = require('./automod');
 
+// Güvenlik Kütüphaneleri
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// --- GÜVENLİK KATMANI (SECURITY MIDDLEWARE) ---
+// 1. HTTP Başlıklarını Koru
+app.use(helmet({
+  contentSecurityPolicy: false // Mevcut arayüzü bozmamak için
+}));
+
+// 2. CORS Koruması (Dışarıdan API kullanımını engelle)
+app.use(cors({
+  origin: true, // Aynı domainden gelen isteklere izin ver
+  credentials: true
+}));
+
+// 3. DDoS ve Brute-Force Koruması (Hız Sınırı)
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 500, // Her IP için 500 istek limiti (normal kullanım için bolca yeterli)
+  message: { error: 'Çok fazla istek gönderdiniz, sistem güvenliği için lütfen 15 dakika bekleyin.' }
+});
+app.use('/api', globalLimiter); 
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 30, // Giriş rotaları için daha sıkı limit
+  message: { error: 'Çok fazla giriş denemesi, lütfen daha sonra tekrar deneyin.' }
+});
+app.use('/auth', authLimiter);
+
+// 4. Zararlı kod (XSS) enjeksiyonlarını temizle
+app.use(xss());
+
+// 5. HTTP Parametre Kirliliğini engelle
+app.use(hpp());
+// ----------------------------------------------
 
 // Session
 app.set('trust proxy', 1); // Trust Render's proxy for secure cookies
@@ -200,6 +241,29 @@ apiRouter.delete('/words/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ==== ADMIN PANEL ====
+const requireAdmin = (req, res, next) => {
+    if (req.session.user && req.session.user.name === 'Riadein') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Bu alana sadece geliştirici (Riadein) erişebilir.' });
+    }
+};
+
+apiRouter.get('/admin/visitors', requireAdmin, (req, res) => {
+    res.json(store.getVisitors());
+});
+
+apiRouter.delete('/admin/visitors', requireAdmin, async (req, res) => {
+    store.visitors = [];
+    if (process.env.MONGODB_URI) {
+        const { Visitor } = require('./db');
+        await Visitor.deleteMany({});
+    }
+    res.json({ success: true });
+});
+// =====================
+
 // Server-Sent Events (SSE) stream for real-time updates to frontend
 apiRouter.get('/stream', (req, res) => {
   res.writeHead(200, {
@@ -225,6 +289,17 @@ app.listen(PORT, () => {
   console.log(`Kick AutoMod server running on http://localhost:${PORT}`);
   console.log(`Make sure to set KICK_CLIENT_ID and KICK_CLIENT_SECRET in .env`);
 });
+
+app.use((req, res) => {
+    res.status(404).send('Böyle bir sayfa veya API bulunamadı.');
+});
+
+// Global Error Handler (Sistemin çökmesini engeller)
+app.use((err, req, res, next) => {
+    console.error('Kritik Sunucu Hatası Yakalandı:', err);
+    res.status(500).json({ error: 'Sunucuda beklenmeyen bir hata oluştu ancak sistem güvenle çalışmaya devam ediyor.' });
+});
+
 } // end startServer
 
 startServer().catch(console.error);

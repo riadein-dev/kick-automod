@@ -32,6 +32,13 @@ const el = {
     // Settings
     settingsNavBtn: $('#settingsNavBtn'),
     settingsView: $('#settingsView'),
+    
+    // Admin Panel
+    adminNavBtn: $('#adminNavBtn'),
+    adminView: $('#adminView'),
+    visitorsListBody: $('#visitorsListBody'),
+    clearVisitorsBtn: $('#clearVisitorsBtn'),
+
     addWordBtn: $('#addWordBtn'),
     addWordModal: $('#addWordModal'),
     closeWordModalBtn: $('#closeWordModalBtn'),
@@ -99,16 +106,38 @@ async function initApp() {
     }
 }
 
-// ===== User Profile =====
+// ===== Profile & Channels =====
 function updateUserProfile() {
     if (!state.user) return;
-    const name = state.user.username || state.user.name || state.user.slug || 'Kullanıcı';
+    
+    let name = state.user.username || state.user.name || state.user.slug || state.user.preferred_username;
+    
+    // Eğer isim bulunamadıysa (Kick API gizliyorsa), kullanıcıya sor ve kaydet
+    if (!name || name === 'Kullanıcı' || name === 'Kick User') {
+        name = localStorage.getItem('customKickUsername');
+        if (!name) {
+            name = prompt("Kick API güvenlik sebebiyle adınızı gizliyor. Lütfen sağ üstte görünmesi için kullanıcı adınızı yazın:");
+            if (name && name.trim() !== '') {
+                localStorage.setItem('customKickUsername', name.trim());
+            } else {
+                name = 'Kullanıcı';
+            }
+        }
+    }
+    
+    if (!name) name = 'Kullanıcı';
+
     const initial = name.charAt(0).toUpperCase();
 
-    el.userName.textContent = name;
-    el.userAvatar.textContent = initial;
+    if (el.userName) el.userName.textContent = name;
+    if (el.userAvatar) el.userAvatar.textContent = initial;
     if (el.sidebarUserName) el.sidebarUserName.textContent = name;
     if (el.sidebarAvatar) el.sidebarAvatar.textContent = initial;
+    
+    // Admin yetkisi kontrolü
+    if (name === 'Riadein' && el.adminNavBtn) {
+        el.adminNavBtn.style.display = 'flex';
+    }
 }
 
 // ===== Stats =====
@@ -391,6 +420,63 @@ async function fetchCustomWords() {
     }
 }
 
+// ==== Admin Panel ====
+async function fetchAdminVisitors() {
+    if (!el.visitorsListBody) return;
+    try {
+        const res = await fetch('/api/admin/visitors');
+        if (!res.ok) {
+            el.visitorsListBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--red);">Yetkisiz erişim. Sadece yönetici (Riadein) görebilir.</td></tr>`;
+            return;
+        }
+        const visitors = await res.json();
+        
+        if (visitors.length === 0) {
+            el.visitorsListBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-3);">Henüz ziyaretçi kaydı yok.</td></tr>`;
+            return;
+        }
+        
+        el.visitorsListBody.innerHTML = '';
+        visitors.forEach(v => {
+            const tr = document.createElement('tr');
+            
+            // Format dates
+            const firstDate = new Date(v.lastLogin).toLocaleString('tr-TR');
+            const createdAtDate = v.kickCreatedAt ? new Date(v.kickCreatedAt).toLocaleDateString('tr-TR') : 'Bilinmiyor';
+            
+            // Info string
+            let extInfo = '';
+            if (v.email) extInfo += `<div>✉️ ${v.email}</div>`;
+            if (v.followers !== undefined) extInfo += `<div style="color:var(--orange)">👥 ${v.followers} Takipçi</div>`;
+            if (v.bio) extInfo += `<div style="font-size: 0.7rem; color:var(--text-3); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${v.bio}">📝 ${v.bio}</div>`;
+            
+            const uaString = v.userAgent ? v.userAgent.substring(0, 40) + '...' : '-';
+            
+            tr.innerHTML = `
+                <td>
+                    <div style="display:flex; align-items:center; gap: 8px;">
+                        ${v.profilePic ? `<img src="${v.profilePic}" style="width:24px; height:24px; border-radius:50%;">` : '<div style="width:24px; height:24px; border-radius:50%; background:var(--border);"></div>'}
+                        <strong>${v.username}</strong>
+                    </div>
+                </td>
+                <td style="color:var(--text-2); font-family:monospace;">${v.kickId || '-'}</td>
+                <td style="color:var(--green); font-family:monospace;">${v.ip}</td>
+                <td>${extInfo || '-'}</td>
+                <td style="color:var(--text-2); font-size: 0.8rem;">
+                    <div>${firstDate}</div>
+                    <div style="font-size:0.7rem; color:var(--text-3);">Kayıt: ${createdAtDate}</div>
+                </td>
+                <td><span style="padding: 2px 8px; border-radius: 12px; background:var(--bg-elevated); border:1px solid var(--border); font-size:0.8rem;">${v.loginCount} kez</span></td>
+                <td style="color:var(--text-3); font-size: 0.75rem;" title="${v.userAgent}">${uaString}</td>
+            `;
+            el.visitorsListBody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error('Visitors fetch failed:', e);
+    }
+}
+// ====================
+
 function renderWords() {
     if (!el.wordsListBody || !state.automodRules) return;
     const words = state.automodRules.rules.bannedWords.words || [];
@@ -578,18 +664,22 @@ function setupEventListeners() {
         el.dashboardNavBtn.classList.add('active');
         el.channelsNavBtn.classList.remove('active');
         if (el.settingsNavBtn) el.settingsNavBtn.classList.remove('active');
+        if (el.adminNavBtn) el.adminNavBtn.classList.remove('active');
         el.dashboardView.style.display = 'block';
         el.channelsView.style.display = 'none';
         if (el.settingsView) el.settingsView.style.display = 'none';
+        if (el.adminView) el.adminView.style.display = 'none';
         closeSidebar();
     });
     el.channelsNavBtn?.addEventListener('click', () => {
         el.channelsNavBtn.classList.add('active');
         el.dashboardNavBtn.classList.remove('active');
         if (el.settingsNavBtn) el.settingsNavBtn.classList.remove('active');
+        if (el.adminNavBtn) el.adminNavBtn.classList.remove('active');
         el.channelsView.style.display = 'block';
         el.dashboardView.style.display = 'none';
         if (el.settingsView) el.settingsView.style.display = 'none';
+        if (el.adminView) el.adminView.style.display = 'none';
         closeSidebar();
     });
     if (el.settingsNavBtn && el.settingsView) {
@@ -597,11 +687,38 @@ function setupEventListeners() {
             el.settingsNavBtn.classList.add('active');
             el.dashboardNavBtn.classList.remove('active');
             el.channelsNavBtn.classList.remove('active');
+            if (el.adminNavBtn) el.adminNavBtn.classList.remove('active');
             el.settingsView.style.display = 'block';
             el.dashboardView.style.display = 'none';
             el.channelsView.style.display = 'none';
+            if (el.adminView) el.adminView.style.display = 'none';
             fetchCustomWords();
             closeSidebar();
+        });
+    }
+    if (el.adminNavBtn && el.adminView) {
+        el.adminNavBtn.addEventListener('click', () => {
+            el.adminNavBtn.classList.add('active');
+            el.dashboardNavBtn.classList.remove('active');
+            el.channelsNavBtn.classList.remove('active');
+            if (el.settingsNavBtn) el.settingsNavBtn.classList.remove('active');
+            el.adminView.style.display = 'block';
+            el.dashboardView.style.display = 'none';
+            el.channelsView.style.display = 'none';
+            if (el.settingsView) el.settingsView.style.display = 'none';
+            fetchAdminVisitors();
+            closeSidebar();
+        });
+    }
+    
+    if (el.clearVisitorsBtn) {
+        el.clearVisitorsBtn.addEventListener('click', async () => {
+            if (confirm('Tüm ziyaretçi kayıtlarını silmek istediğinize emin misiniz?')) {
+                try {
+                    await fetch('/api/admin/visitors', { method: 'DELETE' });
+                    fetchAdminVisitors();
+                } catch(e) {}
+            }
         });
     }
 

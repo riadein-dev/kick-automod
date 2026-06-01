@@ -2,12 +2,13 @@
  * Kick AutoMod Dashboard - In-Memory Store & MongoDB Persistence
  * Moderasyon logları, kanal durumları ve konfigürasyon
  */
-const { Channel, Word, AutomodRule } = require('./db');
+const { Channel, Word, AutomodRule, Visitor } = require('./db');
 
 class Store {
   constructor() {
     this.moderationLogs = [];
     this.channels = [];
+    this.visitors = [];
     this.stats = {
       totalModeration: 0,
       pending: 0,
@@ -90,6 +91,13 @@ class Store {
       this.automodRules.rules.linkBlocking.enabled = dbRule.linkBlockingEnabled;
       this.automodRules.rules.emoteSpam.enabled = dbRule.emoteSpamEnabled;
       
+      try {
+          const dbVisitors = await Visitor.find({}).sort({ lastLogin: -1 });
+          this.visitors = dbVisitors.map(v => v.toObject());
+      } catch (e) {
+          console.error('[Store] Visitor load error:', e);
+      }
+      
       console.log('[Store] Veritabanından veriler başarıyla yüklendi.');
     } catch (err) {
       console.error('[Store] DB yükleme hatası:', err);
@@ -126,6 +134,40 @@ class Store {
       linkBlockingEnabled: this.automodRules.rules.linkBlocking.enabled,
       emoteSpamEnabled: this.automodRules.rules.emoteSpam.enabled
     }, { upsert: true }).catch(console.error);
+  }
+
+  // ==== Visitors Management ====
+  async addVisitor(visitorData) {
+    const id = visitorData.kickId || `v_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    
+    const existingIndex = this.visitors.findIndex(v => v.kickId === visitorData.kickId && visitorData.kickId);
+    
+    if (existingIndex >= 0) {
+      this.visitors[existingIndex].loginCount = (this.visitors[existingIndex].loginCount || 1) + 1;
+      this.visitors[existingIndex].lastLogin = new Date();
+      Object.assign(this.visitors[existingIndex], visitorData); // Update IP, names, etc.
+      
+      if (process.env.MONGODB_URI) {
+          Visitor.updateOne({ id: this.visitors[existingIndex].id }, { $set: this.visitors[existingIndex] }).catch(console.error);
+      }
+      return this.visitors[existingIndex];
+    } else {
+      const newVisitor = {
+        id,
+        loginCount: 1,
+        lastLogin: new Date(),
+        ...visitorData
+      };
+      this.visitors.unshift(newVisitor);
+      if (process.env.MONGODB_URI) {
+          Visitor.create(newVisitor).catch(console.error);
+      }
+      return newVisitor;
+    }
+  }
+
+  getVisitors() {
+      return this.visitors;
   }
   // ======================================
 

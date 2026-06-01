@@ -69,10 +69,17 @@ class KickApiClient {
         // Parse edilemezse yola devam et
       }
       
+      let extractedUserId = null;
+      const userMatch = text.match(/"user_id"\s*:\s*(\d+)/i);
+      if (userMatch && userMatch[1]) {
+        extractedUserId = parseInt(userMatch[1], 10);
+      }
+      
       // 3. CTRL+F / Regex taktiği: "chatroom":{"id":12345} veya benzeri yapıyı bul
       const chatroomMatch = text.match(/"chatroom"\s*:\s*\{[^}]*"id"\s*:\s*(\d+)/i);
       if (chatroomMatch && chatroomMatch[1]) {
         return {
+           user_id: extractedUserId,
            chatroom: { id: parseInt(chatroomMatch[1], 10) }
         };
       }
@@ -81,6 +88,7 @@ class KickApiClient {
       const simpleMatch = text.match(/"chatroom_id"\s*:\s*(\d+)/i);
       if (simpleMatch && simpleMatch[1]) {
         return {
+           user_id: extractedUserId,
            chatroom: { id: parseInt(simpleMatch[1], 10) }
         };
       }
