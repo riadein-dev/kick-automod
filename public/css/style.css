@@ -62,12 +62,30 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Cursor Glow Effect */
+/* Premium Background Enhancements */
+html::before {
+    content: ''; position: fixed; bottom: -20%; left: -10%; width: 900px; height: 900px; z-index: -2; pointer-events: none;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.03) 0%, transparent 60%);
+}
+html::after {
+    content: ''; position: fixed; top: 10%; left: 40%; width: 1000px; height: 1000px; z-index: -2; pointer-events: none;
+    background: radial-gradient(circle, rgba(255, 140, 0, 0.02) 0%, transparent 60%);
+}
+body::before {
+    content: ''; position: fixed; inset: -50%; z-index: -3; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Outfit' font-size='26' font-weight='800' fill='rgba(255,255,255,0.012)' transform='rotate(-20 200 100)' letter-spacing='4'%3EMADE BY RIADEIN%3C/text%3E%3C/svg%3E");
+}
+body::after {
+    content: ''; position: fixed; top: -10%; right: -5%; width: 800px; height: 800px; z-index: -2; pointer-events: none;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.04) 0%, transparent 60%);
+}
+
+/* Cursor Glow Effect (Göz yormayan, daha soft sürüm) */
 .cursor-glow {
     position: fixed;
     top: 0; left: 0;
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(83, 252, 24, 0.06) 0%, rgba(0,0,0,0) 60%);
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(83, 252, 24, 0.035) 0%, rgba(0,0,0,0) 60%);
     border-radius: 50%;
     pointer-events: none;
     transform: translate(-50%, -50%);
@@ -96,8 +114,13 @@ h1, h2, h3, .stat-number {
     font-family: 'Outfit', sans-serif;
 }
 
-button { cursor: pointer; font-family: inherit; }
-input { font-family: inherit; }
+button { 
+    cursor: pointer; 
+    font-family: inherit; 
+    outline: none; 
+    -webkit-tap-highlight-color: transparent;
+}
+input { font-family: inherit; outline: none; }
 
 /* ===== Scrollbar ===== */
 ::-webkit-scrollbar { width: 6px; }
@@ -320,6 +343,16 @@ input { font-family: inherit; }
     color: #000; background: var(--green);
     border-color: var(--green);
     box-shadow: 0 2px 12px var(--green-glow);
+    position: relative; overflow: hidden;
+}
+.channel-tab.active::after {
+    content: ''; position: absolute; top: 0; left: -150%; width: 50%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transform: skewX(-25deg); transition: left 0s;
+}
+.channel-tab.active:hover::after {
+    left: 150%;
+    transition: left 0.6s ease-in-out;
 }
 
 /* ===== Stats Grid ===== */
@@ -680,10 +713,20 @@ input { font-family: inherit; }
     font-size: 0.8rem; font-weight: 700;
     box-shadow: 0 2px 12px var(--green-glow);
     transition: all 0.35s var(--ease-bounce);
+    position: relative; overflow: hidden;
+}
+.btn-primary::after {
+    content: ''; position: absolute; top: 0; left: -150%; width: 50%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transform: skewX(-25deg); transition: left 0s;
 }
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(83,252,24,0.35);
+}
+.btn-primary:hover::after {
+    left: 150%;
+    transition: left 0.6s ease-in-out;
 }
 .btn-primary:active { transform: translateY(0) scale(0.97); }
 .btn-primary:disabled {
