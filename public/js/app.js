@@ -49,7 +49,14 @@ const el = {
     importWordsBtn: $('#importWordsBtn'),
     addWordBtn: $('#addWordBtn'),
     addWordModal: $('#addWordModal'),
+    shareWordsModal: $('#shareWordsModal'),
+    importWordsModal: $('#importWordsModal'),
     closeWordModalBtn: $('#closeWordModalBtn'),
+    closeShareModalBtn: $('#closeShareModalBtn'),
+    closeImportModalBtn: $('#closeImportModalBtn'),
+    copyShareCodeBtn: $('#copyShareCodeBtn'),
+    shareCodeDisplay: $('#shareCodeDisplay'),
+    confirmImportWords: $('#confirmImportWords'),
     wordChannelSelect: $('#wordChannelSelect'),
     wordInput: $('#wordInput'),
     wordExactMatch: $('#wordExactMatch'),
@@ -1167,20 +1174,14 @@ function setupEventListeners() {
     }
 
     // Share Words Logic
-    if (el.shareWordsBtn) {
+    if (el.shareWordsBtn && el.shareWordsModal) {
         el.shareWordsBtn.addEventListener('click', async () => {
             try {
                 const res = await fetch('/api/words/share', { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    const code = data.shareCode;
-                    const copyText = `Yasaklı Kelime Listesi Paylaşım Kodu: ${code}`;
-                    try {
-                        await navigator.clipboard.writeText(copyText);
-                        alert(`Kod başarıyla kopyalandı:\n\n${code}\n\nBu kodu arkadaşınızla paylaşarak listenizi aktarabilirsiniz.`);
-                    } catch (e) {
-                        prompt('Panoya kopyalanamadı. Lütfen şu kodu kopyalayın:', code);
-                    }
+                    el.shareCodeDisplay.textContent = data.shareCode;
+                    el.shareWordsModal.classList.add('open');
                 } else {
                     alert(data.error || 'Kod oluşturulamadı.');
                 }
@@ -1188,24 +1189,87 @@ function setupEventListeners() {
                 alert('Bağlantı hatası.');
             }
         });
+        
+        el.closeShareModalBtn.addEventListener('click', () => {
+            el.shareWordsModal.classList.remove('open');
+        });
+
+        el.copyShareCodeBtn.addEventListener('click', async () => {
+            const code = el.shareCodeDisplay.textContent;
+            try {
+                await navigator.clipboard.writeText(code);
+                const originalText = el.copyShareCodeBtn.innerHTML;
+                el.copyShareCodeBtn.innerHTML = '<i class="fa fa-check"></i> Kopyalandı!';
+                setTimeout(() => el.copyShareCodeBtn.innerHTML = originalText, 2000);
+            } catch (e) {
+                alert('Panoya kopyalanamadı.');
+            }
+        });
     }
 
     // Import Words Logic
-    if (el.importWordsBtn) {
-        el.importWordsBtn.addEventListener('click', async () => {
-            const code = prompt('Arkadaşınızdan aldığınız Paylaşım Kodunu (Örn: A1B2C3) girin:');
-            if (!code || !code.trim()) return;
+    if (el.importWordsBtn && el.importWordsModal) {
+        const otpInputs = document.querySelectorAll('.otp-input');
+
+        el.importWordsBtn.addEventListener('click', () => {
+            otpInputs.forEach(input => input.value = '');
+            el.importWordsModal.classList.add('open');
+            setTimeout(() => { if(otpInputs[0]) otpInputs[0].focus(); }, 100);
+        });
+
+        el.closeImportModalBtn.addEventListener('click', () => {
+            el.importWordsModal.classList.remove('open');
+        });
+
+        // OTP input navigation & paste logic
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (input.value.length === 1 && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && input.value === '' && index > 0) {
+                    otpInputs[index - 1].focus();
+                }
+            });
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').trim().toUpperCase();
+                if (pastedData) {
+                    for (let i = 0; i < otpInputs.length; i++) {
+                        if (i < pastedData.length) {
+                            otpInputs[i].value = pastedData[i];
+                        }
+                    }
+                    // Focus last filled input
+                    const focusIndex = Math.min(pastedData.length, otpInputs.length) - 1;
+                    if(otpInputs[focusIndex]) otpInputs[focusIndex].focus();
+                }
+            });
+        });
+
+        el.confirmImportWords.addEventListener('click', async () => {
+            let code = '';
+            otpInputs.forEach(input => code += input.value.trim());
+            
+            if (code.length !== 5) {
+                alert('Lütfen 5 haneli kodu tam girin.');
+                return;
+            }
 
             try {
                 const res = await fetch('/api/words/import', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ shareCode: code.trim() })
+                    body: JSON.stringify({ shareCode: code })
                 });
                 const data = await res.json();
                 if (data.success) {
                     alert(`Başarılı! ${data.importedCount} adet yeni kelime listenize eklendi.`);
-                    fetchRules(); // Refresh the words table
+                    el.importWordsModal.classList.remove('open');
+                    await fetchStats(); // Updates state.automodRules
+                    fetchCustomWords(); // Renders the list
                 } else {
                     alert(data.error || 'İçe aktarma başarısız.');
                 }

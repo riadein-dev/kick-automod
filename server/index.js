@@ -365,8 +365,8 @@ apiRouter.post('/words/share', async (req, res) => {
       return res.status(400).json({ error: 'Paylaşılacak kelime bulunamadı.' });
   }
 
-  // Generate a random 6-character alphanumeric code
-  const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  // Generate a random 5-character alphanumeric code
+  const shareCode = Math.random().toString(36).substring(2, 7).toUpperCase();
   
   if (process.env.MONGODB_URI) {
       const { WordPreset } = require('./db');
