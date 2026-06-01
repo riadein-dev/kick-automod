@@ -415,9 +415,17 @@ apiRouter.post('/words/import', async (req, res) => {
       let importedCount = 0;
 
       for (const w of preset.words) {
-          // Check if word already exists for this user (skip if same word)
-          const exists = currentWords.some(cw => cw.word.toLowerCase() === w.word.toLowerCase());
+          // Check if word already exists with the exact same settings
+          const exists = currentWords.some(cw => 
+              cw.word.toLowerCase() === w.word.toLowerCase() &&
+              cw.action === w.action &&
+              String(cw.duration) === String(w.duration) &&
+              Boolean(cw.exactMatch) === Boolean(w.exactMatch)
+          );
+          
           if (!exists) {
+              // If word text exists but settings are different, we still add it.
+              // (If you prefer to overwrite instead of add duplicate texts, we can change this logic).
               store.addCustomWord(sessionUserId, {
                   word: w.word,
                   exactMatch: w.exactMatch || false,
