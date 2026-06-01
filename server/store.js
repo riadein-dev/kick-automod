@@ -57,12 +57,20 @@ class Store {
     
     try {
       const dbChannels = await Channel.find({});
-      this.channels = dbChannels.map(c => ({ id: c.chatroomId, slug: c.slug, chatroomId: c.chatroomId, userId: c.userId, broadcasterUserId: c.userId, active: true }));
+      this.channels = dbChannels.map(c => ({ 
+        id: c.chatroomId, 
+        slug: c.slug, 
+        chatroomId: c.chatroomId, 
+        userId: c.userId, 
+        broadcasterUserId: c.userId, 
+        addedBy: c.addedBy || '', 
+        active: true 
+      }));
       this.stats.activeChannels = this.channels.length;
 
       const dbWords = await Word.find({});
       this.automodRules.rules.bannedWords.words = dbWords.map(w => ({
-        id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration
+        id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy || ''
       }));
 
       let dbRule = await AutomodRule.findOne({ type: 'global' });
@@ -91,7 +99,7 @@ class Store {
 
   saveChannel(channel) {
     if (!process.env.MONGODB_URI) return;
-    Channel.create({ slug: channel.slug, chatroomId: channel.chatroomId, userId: channel.userId }).catch(console.error);
+    Channel.create({ slug: channel.slug, chatroomId: channel.chatroomId, userId: channel.userId, addedBy: channel.addedBy || '' }).catch(console.error);
   }
 
   deleteChannelDB(slug) {
@@ -101,7 +109,7 @@ class Store {
 
   saveWord(word) {
     if (!process.env.MONGODB_URI) return;
-    Word.create({ id: word.id, channel: word.channel, word: word.word, exactMatch: word.exactMatch, action: word.action, duration: word.duration }).catch(console.error);
+    Word.create({ id: word.id, channel: word.channel, word: word.word, exactMatch: word.exactMatch, action: word.action, duration: word.duration, addedBy: word.addedBy || '' }).catch(console.error);
   }
 
   deleteWordDB(id) {
@@ -157,23 +165,63 @@ class Store {
   // ======================================
 
   // SSE Client Management
-  addSSEClient(res) {
-    this.sseClients.add(res);
+  addSSEClient(res, userId) {
+    this.sseClients.add({ res, userId });
   }
 
   removeSSEClient(res) {
-    this.sseClients.delete(res);
+    for (const client of this.sseClients) {
+      if (client.res === res) {
+        this.sseClients.delete(client);
+        break;
+      }
+    }
   }
 
-  broadcast(event, data) {
-    const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  broadcast(event, data, targetUserId = null) {
     for (const client of this.sseClients) {
+      if (targetUserId && client.userId !== targetUserId) continue;
+      
+      // Filter data for this specific user before sending
+      let userSpecificData = { ...data };
+      
+      if (event === 'channelUpdate' && data.channels) {
+        userSpecificData.channels = data.channels.filter(c => c.addedBy === client.userId);
+        userSpecificData.stats = this.getUserStats(client.userId);
+      } else if ((event === 'newModeration' || event === 'moderationUpdate') && data.log) {
+        // Only send log if it belongs to a channel added by this user
+        const logChannel = this.channels.find(c => String(c.id) === String(data.log.chatroomId) || c.slug === data.log.channel);
+        if (logChannel && logChannel.addedBy !== client.userId) {
+           continue; // skip sending this log to this user
+        }
+        userSpecificData.stats = this.getUserStats(client.userId);
+      }
+
+      const payload = `event: ${event}\ndata: ${JSON.stringify(userSpecificData)}\n\n`;
       try {
-        client.write(payload);
+        client.res.write(payload);
       } catch (e) {
         this.sseClients.delete(client);
       }
     }
+  }
+
+  getUserStats(userId) {
+    const userChannels = this.channels.filter(c => c.addedBy === userId);
+    const userChannelSlugs = userChannels.map(c => c.slug);
+    const userChatroomIds = userChannels.map(c => String(c.id));
+    
+    const userLogs = this.moderationLogs.filter(l => 
+      userChannelSlugs.includes(l.channel) || userChatroomIds.includes(String(l.chatroomId))
+    );
+
+    return {
+      totalModeration: userLogs.length,
+      pending: userLogs.filter(l => l.status === 'pending').length,
+      applied: userLogs.filter(l => l.status === 'applied').length,
+      activeChannels: userChannels.filter(c => c.active).length,
+      messagesReceived: this.stats.messagesReceived // Global or keep track per user?
+    };
   }
 
   // Channel Management
@@ -189,7 +237,7 @@ class Store {
       this.channels.push(newChannel);
       this.stats.activeChannels = this.channels.filter(c => c.active).length;
       this.saveChannel(newChannel); // save to DB
-      this.broadcast('channelUpdate', { channels: this.channels, stats: this.stats });
+      this.broadcast('channelUpdate', { channels: this.channels });
     }
     return this.channels;
   }
@@ -202,7 +250,7 @@ class Store {
     }
     this.channels = this.channels.filter(c => String(c.id) !== strId && String(c.chatroomId) !== strId && c.slug !== channelId);
     this.stats.activeChannels = this.channels.filter(c => c.active).length;
-    this.broadcast('channelUpdate', { channels: this.channels, stats: this.stats });
+    this.broadcast('channelUpdate', { channels: this.channels });
     return this.channels;
   }
 

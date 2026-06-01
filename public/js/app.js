@@ -876,10 +876,17 @@ function setupSSE() {
         state.stats = JSON.parse(e.data).stats;
         updateStatsUI();
     });
-    src.addEventListener('channelUpdate', e => {
+    src.addEventListener('channelUpdate', async e => {
+        // SSE broadcasts ALL channels, but we only want our own - re-fetch from API
+        try {
+            const res = await fetch('/api/channels');
+            if (res.ok) {
+                state.channels = await res.json();
+                renderChannelTabs();
+            }
+        } catch(err) { console.warn('Channel refresh failed:', err); }
         const d = JSON.parse(e.data);
-        state.channels = d.channels; state.stats = d.stats;
-        renderChannelTabs(); updateStatsUI();
+        if (d.stats) { state.stats = d.stats; updateStatsUI(); }
     });
     src.addEventListener('newModeration', e => {
         const d = JSON.parse(e.data);

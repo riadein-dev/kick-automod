@@ -118,7 +118,13 @@ apiRouter.get('/stats', (req, res) => {
 
 // Moderation logs
 apiRouter.get('/moderation', (req, res) => {
-  res.json(store.getModerationLogs(req.query));
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const logs = store.getModerationLogs(req.query);
+  const userChannels = store.getChannels().filter(c => c.addedBy === sessionUserId);
+  const userChannelSlugs = userChannels.map(c => c.slug);
+  const userChatroomIds = userChannels.map(c => String(c.id));
+  const userLogs = logs.filter(l => userChannelSlugs.includes(l.channel) || userChatroomIds.includes(String(l.chatroomId)));
+  res.json(userLogs);
 });
 
 // Clear all moderation logs
@@ -184,21 +190,24 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
 
 // Channels management
 apiRouter.get('/channels', (req, res) => {
-  res.json(store.getChannels());
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const allChannels = store.getChannels();
+  const userChannels = allChannels.filter(c => c.addedBy === sessionUserId);
+  res.json(userChannels);
 });
 
-// Clear all channels and re-subscribe (used on login)
+// Clear only THIS user's channels on login
 apiRouter.delete('/channels/all', async (req, res) => {
-  console.log('[Channels] Clearing all channels...');
-  // Unsubscribe from all WebSocket channels
-  const channels = store.getChannels();
-  for (const ch of channels) {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  console.log(`[Channels] Clearing channels for user: ${sessionUserId}`);
+  const allChannels = store.getChannels();
+  const userChannels = allChannels.filter(c => c.addedBy === sessionUserId);
+  for (const ch of userChannels) {
     wsManager.unsubscribeFromChannel(String(ch.id || ch.chatroomId));
   }
-  // Clear from store (but keep in DB for reload)
-  store.channels = [];
-  store.stats.activeChannels = 0;
-  store.broadcast('channelUpdate', { channels: [], stats: store.getStats() });
+  // Remove only this user's channels from store
+  store.channels = allChannels.filter(c => c.addedBy !== sessionUserId);
+  store.stats.activeChannels = store.channels.filter(c => c.active).length;
   res.json({ success: true });
 });
 
@@ -222,7 +231,9 @@ apiRouter.post('/channels', async (req, res) => {
         finalUserId = channelData.user_id || null;
     }
 
-    const success = wsManager.subscribeToChannel(finalChatroomId, slug, finalUserId);
+    // Tag channel with the user who added it
+    const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+    const success = wsManager.subscribeToChannel(finalChatroomId, slug, finalUserId, sessionUserId);
     if (!success) {
       return res.status(500).json({ error: 'Failed to subscribe to chat' });
     }
@@ -238,7 +249,6 @@ apiRouter.delete('/channels/:id', (req, res) => {
   const { id } = req.params;
   console.log(`[Channels] Removing channel: ${id}`);
   
-  // Try to find the channel first to get its actual chatroomId
   const channels = store.getChannels();
   const channel = channels.find(c => 
     String(c.id) === String(id) || 
@@ -249,13 +259,11 @@ apiRouter.delete('/channels/:id', (req, res) => {
   if (channel) {
     const chatroomId = String(channel.id || channel.chatroomId);
     wsManager.unsubscribeFromChannel(chatroomId);
-    // Also try with slug in case id matching fails
     if (store.getChannels().find(c => c.slug === channel.slug)) {
       store.removeChannel(channel.slug);
     }
     console.log(`[Channels] ✅ Removed channel: ${channel.slug} (${chatroomId})`);
   } else {
-    // Fallback: try direct
     wsManager.unsubscribeFromChannel(id);
     console.log(`[Channels] Removed channel by raw id: ${id}`);
   }
@@ -265,7 +273,11 @@ apiRouter.delete('/channels/:id', (req, res) => {
 
 // Rules management
 apiRouter.get('/rules', (req, res) => {
-  res.json(store.getAutomodRules());
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const rules = JSON.parse(JSON.stringify(store.getAutomodRules()));
+  // Filter custom words
+  rules.rules.bannedWords.words = rules.rules.bannedWords.words.filter(w => w.addedBy === sessionUserId);
+  res.json(rules);
 });
 
 apiRouter.patch('/rules', async (req, res) => {
@@ -307,7 +319,9 @@ apiRouter.patch('/rules/:ruleName', (req, res) => {
 
 // Custom Words Management
 apiRouter.post('/words', (req, res) => {
-  const word = store.addCustomWord(req.body);
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const wordData = { ...req.body, addedBy: sessionUserId };
+  const word = store.addCustomWord(wordData);
   res.json(word);
 });
 
@@ -351,7 +365,8 @@ apiRouter.get('/stream', (req, res) => {
   // Send initial data
   res.write(`event: init\ndata: ${JSON.stringify({ connected: true })}\n\n`);
 
-  store.addSSEClient(res);
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  store.addSSEClient(res, sessionUserId);
 
   req.on('close', () => {
     store.removeSSEClient(res);

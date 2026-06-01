@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const channelSchema = new mongoose.Schema({
     slug: { type: String, required: true, unique: true },
     chatroomId: { type: String, required: true },
-    userId: { type: String, default: '' }
+    userId: { type: String, default: '' },
+    addedBy: { type: String, default: '' }
 });
 
 const wordSchema = new mongoose.Schema({
@@ -13,7 +14,8 @@ const wordSchema = new mongoose.Schema({
     word: { type: String, required: true },
     exactMatch: { type: Boolean, default: false },
     action: { type: String, default: 'ban' },
-    duration: { type: Number, default: 0 }
+    duration: { type: Number, default: 0 },
+    addedBy: { type: String, default: '' }
 });
 
 const automodRuleSchema = new mongoose.Schema({
@@ -24,7 +26,8 @@ const automodRuleSchema = new mongoose.Schema({
     bannedWordsEnabled: { type: Boolean, default: true },
     spamDetectionEnabled: { type: Boolean, default: true },
     linkBlockingEnabled: { type: Boolean, default: true },
-    emoteSpamEnabled: { type: Boolean, default: true }
+    emoteSpamEnabled: { type: Boolean, default: true },
+    addedBy: { type: String, default: 'global' } // to store per-user rules
 });
 
 const visitorSchema = new mongoose.Schema({

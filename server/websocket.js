@@ -56,7 +56,7 @@ class WebSocketManager {
   /**
    * Subscribe to a channel's chatroom
    */
-  subscribeToChannel(chatroomId, channelSlug, broadcasterUserId) {
+  subscribeToChannel(chatroomId, channelSlug, broadcasterUserId, addedBy) {
     if (!this.pusher) {
       console.warn('[WebSocket] Not connected, cannot subscribe');
       return false;
@@ -105,7 +105,8 @@ class WebSocketManager {
         id: chatroomId,
         slug: channelSlug,
         userId: broadcasterUserId,
-        broadcasterUserId: broadcasterUserId
+        broadcasterUserId: broadcasterUserId,
+        addedBy: addedBy || null
       });
 
       return true;
