@@ -85,7 +85,17 @@ const el = {
     spamPanelWrapper: $('#spamPanelWrapper'),
     // Channels View
     channelsEmpty: $('#channelsEmpty'),
-    channelsList: $('#channelsList')
+    channelsList: $('#channelsList'),
+    // Spam panel channel name
+    spamPanelChannelName: $('#spamPanelChannelName'),
+    // Channel Edit Modal
+    channelEditModal: $('#channelEditModal'),
+    channelEditTitle: $('#channelEditTitle'),
+    closeChannelEditModal: $('#closeChannelEditModal'),
+    channelWordInput: $('#channelWordInput'),
+    channelWordAction: $('#channelWordAction'),
+    addChannelWordBtn: $('#addChannelWordBtn'),
+    channelWordsBody: $('#channelWordsBody')
 };
 
 // ===== Init =====
@@ -169,6 +179,7 @@ function renderChannelTabs() {
             $$('.channel-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             state.activeTab = ch.slug;
+            updateSpamPanelTitle();
             renderLogs();
         });
         el.channelTabs.appendChild(btn);
@@ -187,34 +198,32 @@ function renderChannelsList() {
     }
 
     el.channelsEmpty.style.display = 'none';
-    el.channelsList.style.display = 'grid';
+    el.channelsList.style.display = 'flex';
     el.channelsList.innerHTML = '';
 
     state.channels.forEach(ch => {
-        const card = document.createElement('div');
-        card.className = 'panel';
-        card.style.position = 'relative';
-        card.style.display = 'flex';
-        card.style.alignItems = 'center';
-        card.style.gap = '1rem';
-        
-        card.innerHTML = `
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; color: var(--text-2);">
-                ${ch.slug.charAt(0).toUpperCase()}
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.5rem;">
+        const row = document.createElement('div');
+        row.className = 'channel-list-row';
+        row.innerHTML = `
+            <div class="channel-list-avatar">${ch.slug.charAt(0).toUpperCase()}</div>
+            <div class="channel-list-info">
+                <div class="channel-list-name">
                     ${ch.slug}
-                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green);"></span>
-                </h3>
-                <div style="color: var(--text-3); font-size: 0.8rem;">Chatroom ID: ${ch.chatroomId || 'Bilinmiyor'}</div>
+                    <span class="ch-status-dot"></span>
+                </div>
+                <div class="channel-list-meta">Chatroom ID: ${ch.chatroomId || 'Bilinmiyor'}</div>
             </div>
-            <button class="btn-primary remove-ch-btn" style="background: rgba(239, 68, 68, 0.1); color: var(--red); border: none; padding: 0.5rem;" title="Kaldır">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
+            <div class="channel-list-actions">
+                <button class="ch-action-btn edit" title="Düzenle">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <button class="ch-action-btn delete" title="Sil">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+            </div>
         `;
 
-        card.querySelector('.remove-ch-btn').addEventListener('click', async () => {
+        row.querySelector('.ch-action-btn.delete').addEventListener('click', async () => {
             if (confirm(`${ch.slug} kanalını kaldırmak istediğinize emin misiniz?`)) {
                 try {
                     await fetch(`/api/channels/${ch.id}`, { method: 'DELETE' });
@@ -223,8 +232,85 @@ function renderChannelsList() {
             }
         });
 
-        el.channelsList.appendChild(card);
+        row.querySelector('.ch-action-btn.edit').addEventListener('click', () => {
+            openChannelEditModal(ch.slug);
+        });
+
+        el.channelsList.appendChild(row);
     });
+}
+
+// ===== Spam Panel Title =====
+function updateSpamPanelTitle() {
+    if (!el.spamPanelChannelName) return;
+    if (state.activeTab === 'all') {
+        el.spamPanelChannelName.textContent = '';
+    } else {
+        el.spamPanelChannelName.textContent = '- ' + state.activeTab;
+    }
+}
+
+// ===== Channel Edit Modal =====
+let editingChannel = null;
+
+function openChannelEditModal(slug) {
+    editingChannel = slug;
+    if (el.channelEditTitle) el.channelEditTitle.textContent = `${slug} - Yasaklı Kelimeler`;
+    if (el.channelEditModal) el.channelEditModal.classList.add('open');
+    loadChannelWords(slug);
+}
+
+function closeChannelEditModalFn() {
+    if (el.channelEditModal) el.channelEditModal.classList.remove('open');
+    editingChannel = null;
+}
+
+async function loadChannelWords(slug) {
+    if (!el.channelWordsBody) return;
+    try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) return;
+        const data = await res.json();
+        const words = (data.rules?.bannedWords?.words || []).filter(w => w.channel === slug);
+        if (words.length === 0) {
+            el.channelWordsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color: var(--text-3);">Henüz kelime eklenmedi</td></tr>';
+            return;
+        }
+        el.channelWordsBody.innerHTML = words.map(w => `
+            <tr>
+                <td style="font-weight:600;">${w.word}</td>
+                <td><span style="padding:3px 10px; border-radius:6px; font-size:0.72rem; font-weight:600; background:${w.action==='ban'?'rgba(239,68,68,0.12);color:var(--red)':w.action==='timeout'?'rgba(255,140,0,0.12);color:var(--orange)':'rgba(59,130,246,0.12);color:var(--blue)'}">${w.action}</span></td>
+                <td class="text-right"><button class="ch-action-btn delete" data-word-id="${w.id}" title="Sil"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></td>
+            </tr>
+        `).join('');
+        el.channelWordsBody.querySelectorAll('.ch-action-btn.delete').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const wordId = btn.dataset.wordId;
+                try {
+                    await fetch(`/api/words/${wordId}`, { method: 'DELETE' });
+                    loadChannelWords(slug);
+                    fetchWords();
+                } catch(e) { alert('Hata'); }
+            });
+        });
+    } catch(e) { console.error(e); }
+}
+
+async function addChannelWord() {
+    if (!editingChannel || !el.channelWordInput) return;
+    const word = el.channelWordInput.value.trim();
+    if (!word) return;
+    const action = el.channelWordAction ? el.channelWordAction.value : 'ban';
+    try {
+        await fetch('/api/words', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ word, channel: editingChannel, action, exactMatch: false, duration: action === 'timeout' ? 5 : 0 })
+        });
+        el.channelWordInput.value = '';
+        loadChannelWords(editingChannel);
+        fetchWords();
+    } catch(e) { alert('Hata'); }
 }
 
 // ===== Moderation Logs =====
@@ -738,6 +824,7 @@ function setupEventListeners() {
         $$('.channel-tab').forEach(b => b.classList.remove('active'));
         el.channelTabs.querySelector('.channel-tab[data-channel="all"]').classList.add('active');
         state.activeTab = 'all';
+        updateSpamPanelTitle();
         renderLogs();
     });
 
@@ -750,6 +837,12 @@ function setupEventListeners() {
     });
     el.closeModalBtn?.addEventListener('click', () => el.addChannelModal.classList.remove('open'));
     window.addEventListener('click', e => { if (e.target === el.addChannelModal) el.addChannelModal.classList.remove('open'); });
+
+    // Channel Edit Modal events
+    el.closeChannelEditModal?.addEventListener('click', closeChannelEditModalFn);
+    el.addChannelWordBtn?.addEventListener('click', addChannelWord);
+    el.channelWordInput?.addEventListener('keydown', e => { if (e.key === 'Enter') addChannelWord(); });
+    window.addEventListener('click', e => { if (e.target === el.channelEditModal) closeChannelEditModalFn(); });
 
     // Add channel
     el.confirmAddChannel?.addEventListener('click', async () => {

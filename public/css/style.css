@@ -703,6 +703,55 @@ input { font-family: inherit; outline: none; }
 
 .channels-empty { padding: 0; }
 
+/* ===== Channel List Table ===== */
+.channel-list-table {
+    display: flex; flex-direction: column; gap: 2px;
+    margin-top: 0.5rem;
+}
+.channel-list-row {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: all 0.25s var(--ease-out);
+}
+.channel-list-row:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+}
+.channel-list-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--green-dim); color: var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; font-weight: 700; flex-shrink: 0;
+}
+.channel-list-info { flex: 1; min-width: 0; }
+.channel-list-name {
+    font-size: 0.88rem; font-weight: 700; color: var(--text-1);
+    display: flex; align-items: center; gap: 8px;
+}
+.channel-list-name .ch-status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 6px var(--green);
+    flex-shrink: 0;
+}
+.channel-list-meta {
+    font-size: 0.72rem; color: var(--text-3); margin-top: 2px;
+}
+.channel-list-actions {
+    display: flex; gap: 6px; flex-shrink: 0;
+}
+.ch-action-btn {
+    width: 34px; height: 34px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-2); display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease; cursor: pointer;
+}
+.ch-action-btn:hover { background: var(--bg-hover); color: var(--text-1); border-color: var(--border-hover); }
+.ch-action-btn.edit:hover { color: var(--blue); border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); }
+.ch-action-btn.delete:hover { color: var(--red); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); }
+
 /* ================================================================
    BUTTONS
    ================================================================ */

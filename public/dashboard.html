@@ -164,7 +164,7 @@
                     <div class="panel spam-panel" style="background: #0a0a0a;">
                     <div class="panel-header" style="border-bottom: none; padding-bottom: 0.5rem; flex-direction: column; align-items: flex-start; gap: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                            <h2 style="color: #FACC15; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">SPAM PANELİ</h2>
+                            <h2 style="color: #FACC15; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">SPAM PANELİ <span id="spamPanelChannelName" style="color: var(--text-2);"></span></h2>
                             <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                                 <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
                                     <span style="font-size: 0.65rem; color: var(--text-3); font-weight: 600; text-transform: uppercase;">Emote Spam</span>
@@ -253,10 +253,45 @@
                         <p>Yukarıdaki butona tıklayarak kanal ekleyebilirsiniz</p>
                     </div>
                 </div>
+                <!-- Professional Channel List -->
+                <div class="channel-list-table" id="channelsList"></div>
             </div>
         </div>
-        <!-- Channel List Container -->
-        <div class="channels-grid" id="channelsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-top: 1.5rem;"></div>
+
+        <!-- Channel Edit Modal -->
+        <div class="modal-overlay" id="channelEditModal">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3 id="channelEditTitle">Kanal Ayarları</h3>
+                    <button class="modal-close" id="closeChannelEditModal">&times;</button>
+                </div>
+                <div style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="channelWordInput" placeholder="Yasaklı kelime girin..." class="input" style="flex:1;">
+                        <select id="channelWordAction" class="input" style="width: 120px;">
+                            <option value="ban">Ban</option>
+                            <option value="timeout">Timeout</option>
+                            <option value="delete">Sil</option>
+                        </select>
+                        <button class="btn-primary" id="addChannelWordBtn" style="white-space: nowrap;">+ Ekle</button>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table class="data-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Kelime</th>
+                                    <th>İşlem</th>
+                                    <th class="text-right">Sil</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channelWordsBody">
+                                <tr><td colspan="3" style="text-align:center; padding:1.5rem; color: var(--text-3);">Henüz kelime eklenmedi</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- Settings View -->
         <div id="settingsView" style="display: none;">
