@@ -29,36 +29,41 @@ class AutoModEngine {
       if (result) violations.push(result);
     }
 
-    // Kelime filtresi varsa diğer kuralları (spam vb.) kontrol etmeye gerek yok
-    // Böylece kullanıcının o kelime için seçtiği "uyarı" veya "timeout" aksiyonu ban ile ezilmez
-    if (violations.length === 0) {
-      if (rules.rules.spamDetection.enabled) {
-        const result = this.checkSpam(message, rules.rules.spamDetection);
-        if (result) violations.push(result);
-      }
+    if (rules.rules.spamDetection.enabled) {
+      const result = this.checkSpam(message, rules.rules.spamDetection);
+      if (result) violations.push(result);
+    }
 
-      if (rules.rules.linkBlocking.enabled) {
-        const result = this.checkLinks(message, rules.rules.linkBlocking);
-        if (result) violations.push(result);
-      }
+    if (rules.rules.linkBlocking.enabled) {
+      const result = this.checkLinks(message, rules.rules.linkBlocking);
+      if (result) violations.push(result);
+    }
 
-      if (rules.rules.capsLock.enabled) {
-        const result = this.checkCapsLock(message, rules.rules.capsLock);
-        if (result) violations.push(result);
-      }
+    if (rules.rules.capsLock.enabled) {
+      const result = this.checkCapsLock(message, rules.rules.capsLock);
+      if (result) violations.push(result);
+    }
 
-      if (rules.rules.emoteSpam.enabled) {
-        const result = this.checkEmoteSpam(message, rules.rules.emoteSpam);
-        if (result) violations.push(result);
-      }
+    if (rules.rules.emoteSpam.enabled) {
+      const result = this.checkEmoteSpam(message, rules.rules.emoteSpam);
+      if (result) violations.push(result);
     }
 
     if (violations.length === 0) return null;
 
-    // Get the most severe violation
-    const severity = { 'ban': 3, 'timeout': 2, 'delete': 1 };
-    violations.sort((a, b) => (severity[b.action] || 0) - (severity[a.action] || 0));
-    const primaryViolation = violations[0];
+    // Özel İstenen Davranış: Eğer yasaklı kelime varsa, diğer tüm kuralları (spam dahil) ezmeli.
+    // Çünkü kullanıcı o kelime için özel bir ceza belirledi, spam kuralının otomatik Ban'ı bunu ezmemeli.
+    let primaryViolation;
+    const bannedWordViolation = violations.find(v => v.ruleName === 'bannedWords');
+    
+    if (bannedWordViolation) {
+      primaryViolation = bannedWordViolation;
+    } else {
+      // Get the most severe violation
+      const severity = { 'ban': 3, 'timeout': 2, 'delete': 1, 'warn': 0 };
+      violations.sort((a, b) => (severity[b.action] || 0) - (severity[a.action] || 0));
+      primaryViolation = violations[0];
+    }
 
     // Sadece spam için manuel/oto modunu dikkate al. Diğerleri her zaman otomatik işler.
     let isAuto = true;
