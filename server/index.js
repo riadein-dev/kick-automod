@@ -243,7 +243,7 @@ apiRouter.delete('/words/:id', (req, res) => {
 
 // ==== ADMIN PANEL ====
 const requireAdmin = (req, res, next) => {
-    if (req.session.user && req.session.user.name === 'Riadein') {
+    if (req.session.user && req.session.user.name && req.session.user.name.toLowerCase() === 'riadein') {
         next();
     } else {
         res.status(403).json({ error: 'Bu alana sadece geliştirici (Riadein) erişebilir.' });

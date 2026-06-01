@@ -154,11 +154,9 @@ router.get('/callback', async (req, res) => {
             } else if (raw.user && raw.user.username) {
                 foundName = raw.user.username;
             }
-
-            req.session.user = { name: foundName, raw: apiData };
-        } else {
-            req.session.user = { name: foundName };
-        }
+        } 
+        
+        req.session.user = { name: foundName, raw: apiData || {} };
         
         // --- ADMIN PANEL ZİYARETÇİ TAKİBİ ---
         try {

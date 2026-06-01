@@ -396,11 +396,32 @@ input { font-family: inherit; }
     width: 0;
     opacity: 0;
     overflow: hidden;
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    /* Kapanırken: Önce yazılar solsun, sonra kutu daralsın */
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s, opacity 0.1s ease 0.4s;
 }
 .spam-panel-wrapper.open {
     width: 40%;
     opacity: 1;
+    /* Açılırken: Önce kutu şeffaflıktan çıksın ve genişlesin */
+    transition: opacity 0.1s ease, width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.spam-panel-wrapper .panel {
+    /* Genişlerken içerideki yazıların sıkışıp kırılmasını önler (Kayan kapı efekti) */
+    min-width: 400px; 
+}
+
+/* Yazıların Dissolve (Belirme) Efekti */
+.spam-panel-wrapper .panel > * {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.spam-panel-wrapper.open .panel > * {
+    opacity: 1;
+    transform: translateY(0);
+    /* Genişleme (0.4s) bitmeye yakınken yazılar dissolve ile belirir */
+    transition: opacity 0.4s ease 0.35s, transform 0.4s ease 0.35s;
 }
 
 @media (max-width: 1024px) {

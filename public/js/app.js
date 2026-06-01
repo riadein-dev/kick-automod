@@ -112,20 +112,19 @@ function updateUserProfile() {
     
     let name = state.user.username || state.user.name || state.user.slug || state.user.preferred_username;
     
-    // Eğer isim bulunamadıysa (Kick API gizliyorsa), kullanıcıya sor ve kaydet
+    // Eğer isim bulunamadıysa arka plandan gelene kadar geçici isim ver
     if (!name || name === 'Kullanıcı' || name === 'Kick User') {
-        name = localStorage.getItem('customKickUsername');
-        if (!name) {
-            name = prompt("Kick API güvenlik sebebiyle adınızı gizliyor. Lütfen sağ üstte görünmesi için kullanıcı adınızı yazın:");
-            if (name && name.trim() !== '') {
-                localStorage.setItem('customKickUsername', name.trim());
-            } else {
-                name = 'Kullanıcı';
-            }
+        // Önceden kaydedilmiş varsa onu kullan (sessizce)
+        const cached = localStorage.getItem('customKickUsername');
+        if (cached) {
+            name = cached;
+        } else {
+            // ID varsa onu göster, yoksa Yönetici yaz
+            name = state.user.id ? `User_${String(state.user.id).substring(0,4)}` : 'Yönetici';
         }
     }
     
-    if (!name) name = 'Kullanıcı';
+    if (name.toLowerCase() === 'riadein') name = 'Riadein'; // Görsellik için baş harfi büyüt
 
     const initial = name.charAt(0).toUpperCase();
 
@@ -135,8 +134,10 @@ function updateUserProfile() {
     if (el.sidebarAvatar) el.sidebarAvatar.textContent = initial;
     
     // Admin yetkisi kontrolü
-    if (name === 'Riadein' && el.adminNavBtn) {
+    if (name && name.toLowerCase() === 'riadein' && el.adminNavBtn) {
         el.adminNavBtn.style.display = 'flex';
+    } else if (el.adminNavBtn) {
+        el.adminNavBtn.style.display = 'none';
     }
 }
 
