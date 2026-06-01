@@ -98,6 +98,11 @@ apiRouter.use(auth.requireAuth);
 apiRouter.use((req, res, next) => {
   if (req.session && req.session.accessToken) {
     automod.setAccessToken(req.session.accessToken);
+    // Logged-in admin shouldn't be moderated
+    const currentUserId = req.session.userId || (req.session.user && req.session.user.raw && req.session.user.raw.id) || null;
+    if (currentUserId) {
+        automod.setAdminUserId(currentUserId);
+    }
   }
   next();
 });

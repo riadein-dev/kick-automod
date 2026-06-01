@@ -9,6 +9,11 @@ const { createKickClient } = require('./kickApi');
 class AutoModEngine {
   constructor() {
     this._accessToken = null;
+    this._adminUserId = null;
+  }
+
+  setAdminUserId(userId) {
+    this._adminUserId = userId;
   }
 
   /**
@@ -17,7 +22,6 @@ class AutoModEngine {
    */
   setAccessToken(token) {
     this._accessToken = token;
-    console.log('[AutoMod] Access token stored for API calls');
   }
 
   /** Backwards-compatible: also accept a kickClient and extract nothing, just store token */
@@ -25,14 +29,12 @@ class AutoModEngine {
     // Extract token from client if possible
     if (client && client.accessToken) {
       this._accessToken = client.accessToken;
-      console.log('[AutoMod] Access token extracted from kickClient');
     }
   }
 
   /** Get or create a kickClient on demand */
   _getClient() {
     if (!this._accessToken) {
-      console.warn('[AutoMod] No access token available');
       return null;
     }
     return createKickClient(this._accessToken);
@@ -53,6 +55,26 @@ class AutoModEngine {
   async processMessage(message) {
     const rules = store.getAutomodRules();
     if (!rules.enabled) return null;
+    
+    const senderId = message.sender?.id || message.user_id;
+    
+    // YÖNETİCİ/YAYINCI KORUMASI: Sistem sahibini veya kanal sahibini asla algılama
+    if (this._adminUserId && String(senderId) === String(this._adminUserId)) {
+        return null;
+    }
+    
+    const channels = store.getChannels();
+    const logChatroomId = String(message.chatroom_id || message.chatroomId);
+    const channel = channels.find(c => 
+      String(c.id) === logChatroomId || 
+      String(c.chatroomId) === logChatroomId ||
+      c.slug === (message.channel || message.chatroom_slug)
+    );
+    const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+    
+    if (broadcasterUserId && String(senderId) === String(broadcasterUserId)) {
+        return null; // Kanal sahibi de moderasyondan muaf
+    }
 
     const violations = [];
 
