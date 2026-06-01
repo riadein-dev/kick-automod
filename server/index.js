@@ -94,6 +94,16 @@ app.use('/auth', auth.router);
 const apiRouter = express.Router();
 apiRouter.use(auth.requireAuth);
 
+// Middleware to ensure automod has kickClient
+apiRouter.use((req, res, next) => {
+  if (req.session && req.session.accessToken && !automod.kickClient) {
+    const kickClient = createKickClient(req.session.accessToken);
+    automod.setKickClient(kickClient);
+    console.log('[AutoMod] Restored kickClient from session');
+  }
+  next();
+});
+
 // Dashboard stats
 apiRouter.get('/stats', (req, res) => {
   res.json({

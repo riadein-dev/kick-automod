@@ -104,7 +104,7 @@ class WebSocketManager {
       store.addChannel({
         id: chatroomId,
         slug: channelSlug,
-        name: channelSlug,
+        userId: broadcasterUserId,
         broadcasterUserId: broadcasterUserId
       });
 
