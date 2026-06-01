@@ -190,8 +190,11 @@ class Store {
         userSpecificData.stats = this.getUserStats(client.userId);
       } else if ((event === 'newModeration' || event === 'moderationUpdate') && data.log) {
         // Only send log if it belongs to a channel added by this user
-        const logChannel = this.channels.find(c => String(c.id) === String(data.log.chatroomId) || c.slug === data.log.channel);
-        if (logChannel && logChannel.addedBy !== client.userId) {
+        const hasChannel = this.channels.some(c => 
+             (String(c.id) === String(data.log.chatroomId) || c.slug === data.log.channel) 
+             && c.addedBy === client.userId
+        );
+        if (!hasChannel) {
            continue; // skip sending this log to this user
         }
         userSpecificData.stats = this.getUserStats(client.userId);
