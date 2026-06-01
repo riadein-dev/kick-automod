@@ -447,14 +447,14 @@ input { font-family: inherit; outline: none; }
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s, opacity 0.1s ease 0.4s;
 }
 .spam-panel-wrapper.open {
-    width: 35%;
+    width: 28%;
     opacity: 1;
     transition: opacity 0.1s ease, width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .spam-panel-wrapper .panel {
     /* Genişlerken içerideki yazıların sıkışıp kırılmasını önler (Kayan kapı efekti) */
-    min-width: 400px; 
+    min-width: 320px; 
 }
 
 /* Yazıların Dissolve (Belirme) Efekti */
