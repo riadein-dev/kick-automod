@@ -67,15 +67,7 @@ class AutoModEngine {
       if (result) violations.push(result);
     }
 
-    if (rules.rules.linkBlocking.enabled) {
-      const result = this.checkLinks(message, rules.rules.linkBlocking);
-      if (result) violations.push(result);
-    }
 
-    if (rules.rules.capsLock.enabled) {
-      const result = this.checkCapsLock(message, rules.rules.capsLock);
-      if (result) violations.push(result);
-    }
 
     if (rules.rules.emoteSpam.enabled) {
       const result = this.checkEmoteSpam(message, rules.rules.emoteSpam);
@@ -105,6 +97,24 @@ class AutoModEngine {
     }
     
     const finalStatus = (isAuto && primaryViolation.action !== 'warn') ? 'applied' : 'pending';
+
+    // Kullanıcı İsteği: "Sadece eylem uygulanan (ban/timeout) veya spam/yasaklı kelime kaydedilsin"
+    // CapsLock, Link, EmoteSpam gibi kuralların sadece 'delete' işlemi varsa logu kirletmemesi için:
+    const shouldLog = ['ban', 'timeout'].includes(primaryViolation.action) || 
+                      ['spamDetection', 'bannedWords'].includes(primaryViolation.ruleName);
+
+    if (!shouldLog) {
+      // Loglamadan sadece sessizce işlemi yap
+      if (isAuto && primaryViolation.action === 'delete') {
+        const client = this._getClient();
+        if (client) {
+           client.deleteMessage(message.id || message.message_id).catch(err => {
+             console.error(`[AutoMod] Sessiz silme başarısız:`, err.message);
+           });
+        }
+      }
+      return null;
+    }
 
     // Create moderation log entry
     const logEntry = store.addModerationLog({
@@ -306,68 +316,7 @@ class AutoModEngine {
     return null;
   }
 
-  checkLinks(message, rule) {
-    const content = message.content || message.message || '';
-    const urlRegex = /https?:\/\/[^\s]+|www\.[^\s]+/gi;
-    const urls = content.match(urlRegex);
-    
-    if (!urls || urls.length === 0) return null;
 
-    if (rule.blockAll) {
-      return {
-        ruleName: 'linkBlocking',
-        reason: `Link engellendi: Tüm linkler yasaklı`,
-        action: rule.action,
-        duration: rule.duration
-      };
-    }
-
-    for (const url of urls) {
-      let hostname;
-      try {
-        hostname = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
-      } catch {
-        hostname = url;
-      }
-
-      const isAllowed = rule.allowedDomains.some(domain => 
-        hostname === domain || hostname.endsWith(`.${domain}`)
-      );
-
-      if (!isAllowed) {
-        return {
-          ruleName: 'linkBlocking',
-          reason: `İzinsiz link tespit edildi: ${hostname}`,
-          action: rule.action,
-          duration: rule.duration
-        };
-      }
-    }
-
-    return null;
-  }
-
-  checkCapsLock(message, rule) {
-    const content = message.content || message.message || '';
-    if (content.length < rule.minLength) return null;
-
-    const letters = content.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ]/g, '');
-    if (letters.length === 0) return null;
-
-    const upperCase = letters.replace(/[^A-ZÇĞİÖŞÜ]/g, '');
-    const percentage = (upperCase.length / letters.length) * 100;
-
-    if (percentage >= rule.threshold) {
-      return {
-        ruleName: 'capsLock',
-        reason: `Aşırı büyük harf kullanımı: %${Math.round(percentage)} (limit: %${rule.threshold})`,
-        action: rule.action,
-        duration: rule.duration
-      };
-    }
-
-    return null;
-  }
 
   checkEmoteSpam(message, rule) {
     const content = message.content || message.message || '';

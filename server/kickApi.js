@@ -125,7 +125,7 @@ class KickApiClient {
    * Delete a chat message
    */
   async deleteMessage(messageId) {
-    return this.request(`/chat/messages/${messageId}`, {
+    return this.request(`/chat/${messageId}`, {
       method: 'DELETE'
     });
   }

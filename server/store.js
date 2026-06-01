@@ -37,22 +37,7 @@ class Store {
           action: 'timeout',
           duration: 5
         },
-        linkBlocking: {
-          enabled: true,
-          name: 'Link Engelleme',
-          allowedDomains: ['kick.com', 'youtube.com', 'twitch.tv'],
-          blockAll: false,
-          action: 'delete',
-          duration: 0
-        },
-        capsLock: {
-          enabled: true,
-          name: 'Caps Lock Limiti',
-          threshold: 70, // percentage
-          minLength: 10,
-          action: 'delete',
-          duration: 0
-        },
+
         emoteSpam: {
           enabled: true,
           name: 'Emote Spam',
@@ -88,7 +73,7 @@ class Store {
       this.automodRules.enabled = dbRule.enabled;
       this.automodRules.rules.bannedWords.enabled = dbRule.bannedWordsEnabled;
       this.automodRules.rules.spamDetection.enabled = dbRule.spamDetectionEnabled;
-      this.automodRules.rules.linkBlocking.enabled = dbRule.linkBlockingEnabled;
+
       this.automodRules.rules.emoteSpam.enabled = dbRule.emoteSpamEnabled;
       
       try {
@@ -131,7 +116,7 @@ class Store {
       enabled: this.automodRules.enabled,
       bannedWordsEnabled: this.automodRules.rules.bannedWords.enabled,
       spamDetectionEnabled: this.automodRules.rules.spamDetection.enabled,
-      linkBlockingEnabled: this.automodRules.rules.linkBlocking.enabled,
+
       emoteSpamEnabled: this.automodRules.rules.emoteSpam.enabled
     }, { upsert: true }).catch(console.error);
   }
