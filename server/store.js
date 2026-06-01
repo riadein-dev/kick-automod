@@ -16,7 +16,14 @@ class Store {
       activeChannels: 0,
       messagesReceived: 0
     };
-    this.automodRules = {
+    this.userRules = new Map(); // userId -> rules object
+    this.userMessageHistory = new Map(); // userId -> [{message, timestamp}]
+    this.sseClients = new Set();
+  }
+
+  // Generate default rules for a new user
+  _getDefaultRules() {
+    return {
       enabled: true,
       mode: 'auto', // 'auto' or 'manual'
       rules: {
@@ -37,7 +44,6 @@ class Store {
           action: 'timeout',
           duration: 5
         },
-
         emoteSpam: {
           enabled: true,
           name: 'Emote Spam',
@@ -47,8 +53,6 @@ class Store {
         }
       }
     };
-    this.userMessageHistory = new Map(); // userId -> [{message, timestamp}]
-    this.sseClients = new Set();
   }
 
   // ==== Database Persistence Methods ====
@@ -69,20 +73,24 @@ class Store {
       this.stats.activeChannels = this.channels.length;
 
       const dbWords = await Word.find({});
-      this.automodRules.rules.bannedWords.words = dbWords.map(w => ({
-        id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy || ''
-      }));
-
-      let dbRule = await AutomodRule.findOne({ type: 'global' });
-      if (!dbRule) {
-        dbRule = await AutomodRule.create({ type: 'global' });
+      const dbRules = await AutomodRule.find({});
+      
+      // Initialize map with fetched rules
+      for (const dbRule of dbRules) {
+         const rules = this._getDefaultRules();
+         rules.mode = dbRule.mode;
+         rules.enabled = dbRule.enabled;
+         rules.rules.bannedWords.enabled = dbRule.bannedWordsEnabled;
+         rules.rules.spamDetection.enabled = dbRule.spamDetectionEnabled;
+         rules.rules.emoteSpam.enabled = dbRule.emoteSpamEnabled;
+         
+         // Attach words for this user
+         rules.rules.bannedWords.words = dbWords.filter(w => w.addedBy === dbRule.userId).map(w => ({
+            id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy
+         }));
+         
+         this.userRules.set(dbRule.userId, rules);
       }
-      this.automodRules.mode = dbRule.mode;
-      this.automodRules.enabled = dbRule.enabled;
-      this.automodRules.rules.bannedWords.enabled = dbRule.bannedWordsEnabled;
-      this.automodRules.rules.spamDetection.enabled = dbRule.spamDetectionEnabled;
-
-      this.automodRules.rules.emoteSpam.enabled = dbRule.emoteSpamEnabled;
       
       try {
           const dbVisitors = await Visitor.find({}).sort({ lastLogin: -1 });
@@ -117,15 +125,17 @@ class Store {
     Word.deleteOne({ id }).catch(console.error);
   }
 
-  async saveRules() {
+  async saveRules(userId) {
     if (!process.env.MONGODB_URI) return;
-    await AutomodRule.updateOne({ type: 'global' }, {
-      mode: this.automodRules.mode,
-      enabled: this.automodRules.enabled,
-      bannedWordsEnabled: this.automodRules.rules.bannedWords.enabled,
-      spamDetectionEnabled: this.automodRules.rules.spamDetection.enabled,
-
-      emoteSpamEnabled: this.automodRules.rules.emoteSpam.enabled
+    const rules = this.userRules.get(userId);
+    if (!rules) return;
+    await AutomodRule.updateOne({ userId: userId }, {
+      mode: rules.mode,
+      enabled: rules.enabled,
+      bannedWordsEnabled: rules.rules.bannedWords.enabled,
+      spamDetectionEnabled: rules.rules.spamDetection.enabled,
+      emoteSpamEnabled: rules.rules.emoteSpam.enabled,
+      addedBy: userId
     }, { upsert: true }).catch(console.error);
   }
 
@@ -174,6 +184,19 @@ class Store {
       if (client.res === res) {
         this.sseClients.delete(client);
         break;
+      }
+    }
+  }
+
+  broadcastToUser(userId, event, data) {
+    for (const client of this.sseClients) {
+      if (client.userId === userId) {
+        const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+        try {
+          client.res.write(payload);
+        } catch (e) {
+          this.sseClients.delete(client);
+        }
       }
     }
   }
@@ -286,7 +309,11 @@ class Store {
       this.moderationLogs = this.moderationLogs.slice(0, 500);
     }
 
-    this.broadcast('newModeration', { log: entry, stats: this.stats });
+    if (entry.ownerId) {
+        this.broadcastToUser(entry.ownerId, 'newModeration', { log: entry, stats: this.stats });
+    } else {
+        this.broadcast('newModeration', { log: entry, stats: this.stats });
+    }
     return entry;
   }
 
@@ -306,13 +333,18 @@ class Store {
       if (oldStatus === 'pending' && updates.status !== 'pending') this.stats.pending--;
       if (updates.status === 'applied' && oldStatus !== 'applied') this.stats.applied++;
       
-      this.broadcast('moderationUpdate', { log, stats: this.stats });
+      if (log.ownerId) {
+          this.broadcastToUser(log.ownerId, 'moderationUpdate', { log, stats: this.stats });
+      } else {
+          this.broadcast('moderationUpdate', { log, stats: this.stats });
+      }
     }
     return log;
   }
 
   getModerationLogs(filters = {}) {
     let logs = [...this.moderationLogs];
+    if (filters.ownerId) logs = logs.filter(l => l.ownerId === filters.ownerId);
     if (filters.channel) logs = logs.filter(l => l.channel === filters.channel);
     if (filters.type) logs = logs.filter(l => l.type === filters.type);
     if (filters.status) logs = logs.filter(l => l.status === filters.status);
@@ -359,41 +391,49 @@ class Store {
   }
 
   // AutoMod Rules
-  getAutomodRules() {
-    return this.automodRules;
-  }
-
-  updateAutomodRules(updates) {
-    Object.assign(this.automodRules, updates);
-    this.saveRules(); // save to DB
-    this.broadcast('rulesUpdate', { rules: this.automodRules });
-    return this.automodRules;
-  }
-
-  updateRule(ruleName, updates) {
-    if (this.automodRules.rules[ruleName]) {
-      Object.assign(this.automodRules.rules[ruleName], updates);
-      this.saveRules(); // save to DB
-      this.broadcast('rulesUpdate', { rules: this.automodRules });
+  getAutomodRules(userId) {
+    if (!this.userRules.has(userId)) {
+        this.userRules.set(userId, this._getDefaultRules());
     }
-    return this.automodRules;
+    return this.userRules.get(userId);
   }
 
-  addCustomWord(wordData) {
+  updateAutomodRules(userId, updates) {
+    const rules = this.getAutomodRules(userId);
+    Object.assign(rules, updates);
+    this.saveRules(userId); // save to DB
+    this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
+    return rules;
+  }
+
+  updateRule(userId, ruleName, updates) {
+    const rules = this.getAutomodRules(userId);
+    if (rules.rules[ruleName]) {
+      Object.assign(rules.rules[ruleName], updates);
+      this.saveRules(userId); // save to DB
+      this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
+    }
+    return rules;
+  }
+
+  addCustomWord(userId, wordData) {
+    const rules = this.getAutomodRules(userId);
     const word = {
       id: `w_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      addedBy: userId,
       ...wordData
     };
-    this.automodRules.rules.bannedWords.words.push(word);
+    rules.rules.bannedWords.words.push(word);
     this.saveWord(word); // save to DB
-    this.broadcast('rulesUpdate', { rules: this.automodRules });
+    this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
     return word;
   }
 
-  removeCustomWord(wordId) {
-    this.automodRules.rules.bannedWords.words = this.automodRules.rules.bannedWords.words.filter(w => w.id !== wordId);
+  removeCustomWord(userId, wordId) {
+    const rules = this.getAutomodRules(userId);
+    rules.rules.bannedWords.words = rules.rules.bannedWords.words.filter(w => w.id !== wordId);
     this.deleteWordDB(wordId); // delete from DB
-    this.broadcast('rulesUpdate', { rules: this.automodRules });
+    this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
     return true;
   }
 }

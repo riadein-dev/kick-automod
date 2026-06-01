@@ -110,9 +110,7 @@ apiRouter.use((req, res, next) => {
 // Dashboard stats
 apiRouter.get('/stats', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
-  const rules = JSON.parse(JSON.stringify(store.getAutomodRules()));
-  // Filter custom words to only include this user's words
-  rules.rules.bannedWords.words = rules.rules.bannedWords.words.filter(w => w.addedBy === sessionUserId);
+  const rules = store.getAutomodRules(sessionUserId);
 
   res.json({
     stats: store.getUserStats(sessionUserId),
@@ -124,12 +122,8 @@ apiRouter.get('/stats', (req, res) => {
 // Moderation logs
 apiRouter.get('/moderation', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
-  const logs = store.getModerationLogs(req.query);
-  const userChannels = store.getChannels().filter(c => c.addedBy === sessionUserId);
-  const userChannelSlugs = userChannels.map(c => c.slug);
-  const userChatroomIds = userChannels.map(c => String(c.id));
-  const userLogs = logs.filter(l => userChannelSlugs.includes(l.channel) || userChatroomIds.includes(String(l.chatroomId)));
-  res.json(userLogs);
+  const logs = store.getModerationLogs({ ...req.query, ownerId: sessionUserId });
+  res.json(logs);
 });
 
 // Clear all moderation logs
@@ -143,15 +137,17 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
   const { id } = req.params;
   const { status, action, duration } = req.body;
   
+  // (Race condition kontrolü iptal edildi, kullanıcı iki moderatörün de işleminin Kick API'ye gönderilmesini istiyor)
+  const existingLog = store.getModerationLogs().find(l => l.id === id);
+  if (!existingLog) {
+    return res.status(404).json({ error: 'Log not found' });
+  }
+
   const updates = { status };
   if (action) updates.action = action;
   if (duration !== undefined) updates.duration = duration;
 
   const log = store.updateModerationLog(id, updates);
-  
-  if (!log) {
-    return res.status(404).json({ error: 'Log not found' });
-  }
 
   // If approved and action requested, execute it via Kick API
   if ((status === 'applied' || status === 'unbanned') && action && req.session.accessToken) {
@@ -302,22 +298,21 @@ apiRouter.delete('/channels/:id', (req, res) => {
 // Rules management
 apiRouter.get('/rules', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
-  const rules = JSON.parse(JSON.stringify(store.getAutomodRules()));
-  // Filter custom words
-  rules.rules.bannedWords.words = rules.rules.bannedWords.words.filter(w => w.addedBy === sessionUserId);
+  const rules = store.getAutomodRules(sessionUserId);
   res.json(rules);
 });
 
 apiRouter.patch('/rules', async (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
   const updates = req.body;
-  const oldMode = store.getAutomodRules().mode;
-  const result = store.updateAutomodRules(updates);
+  const oldMode = store.getAutomodRules(sessionUserId).mode;
+  const result = store.updateAutomodRules(sessionUserId, updates);
   
   // If switching from manual to auto, apply retroactive timeouts
   if (oldMode === 'manual' && updates.mode === 'auto') {
     try {
       const kickClient = createKickClient(req.session.accessToken);
-      const pendingSpamLogs = store.getModerationLogs().filter(l => l.ruleName === 'spamDetection' && l.status === 'pending');
+      const pendingSpamLogs = store.getModerationLogs({ ownerId: sessionUserId }).filter(l => l.ruleName === 'spamDetection' && l.status === 'pending');
       const channels = store.getChannels();
       
       for (const log of pendingSpamLogs) {
@@ -341,20 +336,22 @@ apiRouter.patch('/rules', async (req, res) => {
 });
 
 apiRouter.patch('/rules/:ruleName', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
   const { ruleName } = req.params;
-  res.json(store.updateRule(ruleName, req.body));
+  res.json(store.updateRule(sessionUserId, ruleName, req.body));
 });
 
 // Custom Words Management
 apiRouter.post('/words', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
-  const wordData = { ...req.body, addedBy: sessionUserId };
-  const word = store.addCustomWord(wordData);
+  const wordData = req.body;
+  const word = store.addCustomWord(sessionUserId, wordData);
   res.json(word);
 });
 
 apiRouter.delete('/words/:id', (req, res) => {
-  store.removeCustomWord(req.params.id);
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  store.removeCustomWord(sessionUserId, req.params.id);
   res.json({ success: true });
 });
 

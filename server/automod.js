@@ -8,174 +8,157 @@ const { createKickClient } = require('./kickApi');
 
 class AutoModEngine {
   constructor() {
-    this._accessToken = null;
-    this._adminUserId = null;
+    // Singleton state removed for SaaS architecture.
+    // Each action fetches the required user token from store/db.
   }
 
+  // Backwards compatibility for middleware
   setAdminUserId(userId) {
-    this._adminUserId = userId;
+     // No-op for SaaS architecture
   }
 
-  /**
-   * Store the access token so we can create a kickClient on demand.
-   * This survives across WebSocket events unlike the old approach.
-   */
   setAccessToken(token) {
-    this._accessToken = token;
+    // No-op for SaaS architecture
   }
 
-  /** Backwards-compatible: also accept a kickClient and extract nothing, just store token */
   setKickClient(client) {
-    // Extract token from client if possible
-    if (client && client.accessToken) {
-      this._accessToken = client.accessToken;
-    }
+    // No-op
   }
 
-  /** Get or create a kickClient on demand */
-  _getClient() {
-    if (!this._accessToken) {
-      return null;
-    }
-    return createKickClient(this._accessToken);
+  _getClient(userId) {
+    const visitors = store.getVisitors();
+    const user = visitors.find(v => v.kickId === userId || v.id === userId);
+    if (!user || !user.accessToken) return null;
+    return createKickClient(user.accessToken);
   }
 
   get hasClient() {
-    return !!this._accessToken;
+    return true; // Assume true, validated per user
   }
 
   // Keep old property for compatibility with middleware check
   get kickClient() {
-    return this._accessToken ? true : null;
+    return true; // SaaS: tokens are per-user, not singleton
   }
 
   /**
    * Process an incoming chat message against all automod rules
    */
   async processMessage(message) {
-    const rules = store.getAutomodRules();
-    if (!rules.enabled) return null;
-    
     const senderId = message.sender?.id || message.user_id;
-    
-    // YÖNETİCİ/YAYINCI KORUMASI: Sistem sahibini veya kanal sahibini asla algılama
-    if (this._adminUserId && String(senderId) === String(this._adminUserId)) {
-        return null;
-    }
-    
-    const channels = store.getChannels();
     const logChatroomId = String(message.chatroom_id || message.chatroomId);
-    const channel = channels.find(c => 
+    
+    // Find all unique users who added this channel
+    const channels = store.getChannels();
+    const activeChannels = channels.filter(c => 
       String(c.id) === logChatroomId || 
       String(c.chatroomId) === logChatroomId ||
       c.slug === (message.channel || message.chatroom_slug)
     );
-    const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
     
-    if (broadcasterUserId && String(senderId) === String(broadcasterUserId)) {
-        return null; // Kanal sahibi de moderasyondan muaf
-    }
-
-    const violations = [];
-
-    // Check each rule
-    if (rules.rules.bannedWords.enabled) {
-      const result = this.checkBannedWords(message, rules.rules.bannedWords);
-      if (result) violations.push(result);
-    }
-
-    if (rules.rules.spamDetection.enabled) {
-      const result = this.checkSpam(message, rules.rules.spamDetection);
-      if (result) violations.push(result);
-    }
-
-
-
-    if (rules.rules.emoteSpam.enabled) {
-      const result = this.checkEmoteSpam(message, rules.rules.emoteSpam);
-      if (result) violations.push(result);
-    }
-
-    if (violations.length === 0) return null;
-
-    // Özel İstenen Davranış: Eğer yasaklı kelime varsa, diğer tüm kuralları (spam dahil) ezmeli.
-    // Çünkü kullanıcı o kelime için özel bir ceza belirledi, spam kuralının otomatik Ban'ı bunu ezmemeli.
-    let primaryViolation;
-    const bannedWordViolation = violations.find(v => v.ruleName === 'bannedWords');
+    if (activeChannels.length === 0) return null;
     
-    if (bannedWordViolation) {
-      primaryViolation = bannedWordViolation;
-    } else {
-      // Get the most severe violation
-      const severity = { 'ban': 3, 'timeout': 2, 'delete': 1, 'warn': 0 };
-      violations.sort((a, b) => (severity[b.action] || 0) - (severity[a.action] || 0));
-      primaryViolation = violations[0];
-    }
-
-    // Sadece spam için manuel/oto modunu dikkate al. Diğerleri her zaman otomatik işler.
-    let isAuto = true;
-    if (primaryViolation.ruleName === 'spamDetection') {
-        isAuto = (rules.mode === 'auto');
-    }
-    
-    const finalStatus = (isAuto && primaryViolation.action !== 'warn') ? 'applied' : 'pending';
-
-    // Kullanıcı İsteği: "Sadece eylem uygulanan (ban/timeout) veya spam/yasaklı kelime kaydedilsin"
-    // CapsLock, Link, EmoteSpam gibi kuralların sadece 'delete' işlemi varsa logu kirletmemesi için:
-    const shouldLog = ['ban', 'timeout'].includes(primaryViolation.action) || 
-                      ['spamDetection', 'bannedWords'].includes(primaryViolation.ruleName);
-
-    if (!shouldLog) {
-      // Loglamadan sadece sessizce işlemi yap
-      if (isAuto && primaryViolation.action === 'delete') {
-        const client = this._getClient();
-        if (client) {
-           client.deleteMessage(message.id || message.message_id).catch(err => {
-             console.error(`[AutoMod] Sessiz silme başarısız:`, err.message);
-           });
+    // Process for each user who added the channel
+    for (const channel of activeChannels) {
+        const userId = channel.addedBy;
+        if (!userId) continue;
+        
+        const broadcasterUserId = channel.broadcasterUserId || channel.userId;
+        if (broadcasterUserId && String(senderId) === String(broadcasterUserId)) {
+            continue; // Kanal sahibi moderasyondan muaf
         }
-      }
-      return null;
+        
+        const rules = store.getAutomodRules(userId);
+        if (!rules || !rules.enabled) continue;
+        
+        const violations = [];
+
+        if (rules.rules.bannedWords.enabled) {
+          const result = this.checkBannedWords(message, rules.rules.bannedWords);
+          if (result) violations.push(result);
+        }
+
+        if (rules.rules.spamDetection.enabled) {
+          const result = this.checkSpam(message, rules.rules.spamDetection);
+          if (result) violations.push(result);
+        }
+
+        if (rules.rules.emoteSpam.enabled) {
+          const result = this.checkEmoteSpam(message, rules.rules.emoteSpam);
+          if (result) violations.push(result);
+        }
+
+        if (violations.length === 0) continue;
+
+        let primaryViolation;
+        const bannedWordViolation = violations.find(v => v.ruleName === 'bannedWords');
+        
+        if (bannedWordViolation) {
+          primaryViolation = bannedWordViolation;
+        } else {
+          const severity = { 'ban': 3, 'timeout': 2, 'delete': 1, 'warn': 0 };
+          violations.sort((a, b) => (severity[b.action] || 0) - (severity[a.action] || 0));
+          primaryViolation = violations[0];
+        }
+
+        let isAuto = true;
+        if (primaryViolation.ruleName === 'spamDetection') {
+            isAuto = (rules.mode === 'auto');
+        }
+        
+        const finalStatus = (isAuto && primaryViolation.action !== 'warn') ? 'applied' : 'pending';
+
+        const shouldLog = ['ban', 'timeout'].includes(primaryViolation.action) || 
+                          ['spamDetection', 'bannedWords'].includes(primaryViolation.ruleName);
+
+        if (!shouldLog) {
+          if (isAuto && primaryViolation.action === 'delete') {
+            const client = this._getClient(userId);
+            if (client) {
+               client.deleteMessage(message.id || message.message_id).catch(err => {
+                 console.error(`[AutoMod] Sessiz silme başarısız:`, err.message);
+               });
+            }
+          }
+          continue;
+        }
+
+        const logEntry = store.addModerationLog({
+          ownerId: userId, // YENİ: Hangi kullanıcının kurallarına göre işlem yapıldığını kaydet
+          userId: message.sender?.id || message.user_id,
+          username: message.sender?.username || message.username || 'Unknown',
+          channel: message.channel || message.chatroom_slug || 'Unknown',
+          chatroomId: message.chatroom_id,
+          messageId: message.id || message.message_id,
+          messageContent: message.content || message.message,
+          reason: primaryViolation.reason,
+          ruleName: primaryViolation.ruleName,
+          type: 'auto',
+          action: primaryViolation.action,
+          duration: primaryViolation.duration || 0,
+          status: finalStatus,
+          allViolations: violations.map(v => v.reason)
+        });
+
+        if (isAuto && primaryViolation.action !== 'warn') {
+          await this.applyAction(logEntry, userId);
+        }
     }
-
-    // Create moderation log entry
-    const logEntry = store.addModerationLog({
-      userId: message.sender?.id || message.user_id,
-      username: message.sender?.username || message.username || 'Unknown',
-      channel: message.channel || message.chatroom_slug || 'Unknown',
-      chatroomId: message.chatroom_id,
-      messageId: message.id || message.message_id,
-      messageContent: message.content || message.message,
-      reason: primaryViolation.reason,
-      ruleName: primaryViolation.ruleName,
-      type: 'auto',
-      action: primaryViolation.action,
-      duration: primaryViolation.duration || 0,
-      status: finalStatus,
-      allViolations: violations.map(v => v.reason)
-    });
-
-    // If auto mode for this rule, apply action immediately (except for 'warn' which stays pending)
-    if (isAuto && primaryViolation.action !== 'warn') {
-      await this.applyAction(logEntry);
-    }
-
-    return logEntry;
   }
 
   /**
    * Apply a moderation action via Kick API
    */
-  async applyAction(logEntry) {
-    const client = this._getClient();
+  async applyAction(logEntry, userId) {
+    const ownerId = userId || logEntry.ownerId;
+    const client = this._getClient(ownerId);
     if (!client) {
-      console.warn('[AutoMod] No Kick client available for moderation action - token missing');
-      store.updateModerationLog(logEntry.id, { status: 'error', error: 'API token not available' });
+      console.warn(`[AutoMod] No Kick client available for user ${ownerId} - token missing`);
+      store.updateModerationLog(logEntry.id, { status: 'error', error: 'API token not available for this user' });
       return;
     }
 
     try {
-      // Esnek kanal eşleştirme: chatroomId, id veya slug ile ara
       const channels = store.getChannels();
       const logChatroomId = String(logEntry.chatroomId);
       
@@ -186,7 +169,7 @@ class AutoModEngine {
       );
       
       const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
-      console.log(`[AutoMod] Action: ${logEntry.action}, User: ${logEntry.username}, Channel: ${logEntry.channel}, broadcasterUserId: ${broadcasterUserId}`);
+      console.log(`[AutoMod] Action: ${logEntry.action}, User: ${logEntry.username}, Channel: ${logEntry.channel}, broadcasterUserId: ${broadcasterUserId}, ownerId: ${ownerId}`);
 
       if (!broadcasterUserId && logEntry.action !== 'delete') {
         throw new Error(`Broadcaster User ID not found for channel ${logEntry.channel}`);
@@ -236,7 +219,7 @@ class AutoModEngine {
       }
       
       store.updateModerationLog(logEntry.id, { status: 'applied', appliedAt: new Date().toISOString() });
-      console.log(`[AutoMod] ✅ Action applied: ${logEntry.action} on ${logEntry.username} - ${logEntry.reason}`);
+      console.log(`[AutoMod] ✅ Action applied: ${logEntry.action} on ${logEntry.username} by owner ${ownerId}`);
     } catch (err) {
       console.error(`[AutoMod] ❌ Failed to apply action:`, err.message);
       store.updateModerationLog(logEntry.id, { status: 'error', error: err.message });

@@ -19,15 +19,13 @@ const wordSchema = new mongoose.Schema({
 });
 
 const automodRuleSchema = new mongoose.Schema({
-    // Only one document will exist for this schema
-    type: { type: String, default: 'global', unique: true },
+    userId: { type: String, required: true, unique: true },
     enabled: { type: Boolean, default: true },
     mode: { type: String, default: 'auto' },
     bannedWordsEnabled: { type: Boolean, default: true },
     spamDetectionEnabled: { type: Boolean, default: true },
     linkBlockingEnabled: { type: Boolean, default: true },
-    emoteSpamEnabled: { type: Boolean, default: true },
-    addedBy: { type: String, default: 'global' } // to store per-user rules
+    emoteSpamEnabled: { type: Boolean, default: true }
 });
 
 const visitorSchema = new mongoose.Schema({
@@ -43,6 +41,7 @@ const visitorSchema = new mongoose.Schema({
     followers: { type: Number, default: 0 },
     lastLogin: { type: Date, default: Date.now },
     loginCount: { type: Number, default: 1 },
+    accessToken: { type: String }, // NEW: Store access token for background moderation
     rawData: { type: Object }
 });
 

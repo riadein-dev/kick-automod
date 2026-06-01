@@ -167,12 +167,12 @@ router.get('/callback', async (req, res) => {
             
             let rawDataObj = apiData && apiData.data ? apiData.data : apiData;
             if (Array.isArray(rawDataObj) && rawDataObj.length > 0) rawDataObj = rawDataObj[0];
-            
             store.addVisitor({
                 kickId: req.session.userId || (rawDataObj && rawDataObj.id) || null,
                 username: foundName,
                 ip: clientIp,
                 userAgent: userAgent,
+                accessToken: tokenData.access_token, // YENI: accessToken eklendi
                 rawData: apiData || tokenData,
                 email: (rawDataObj && rawDataObj.email) || null,
                 profilePic: (rawDataObj && rawDataObj.profile_pic) || null,
