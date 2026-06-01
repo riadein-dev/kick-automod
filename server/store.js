@@ -143,7 +143,9 @@ class Store {
   async addVisitor(visitorData) {
     const id = visitorData.kickId || `v_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     
-    const existingIndex = this.visitors.findIndex(v => v.kickId === visitorData.kickId && visitorData.kickId);
+    const existingIndex = this.visitors.findIndex(v => 
+        visitorData.kickId && String(v.kickId) === String(visitorData.kickId)
+    );
     
     if (existingIndex >= 0) {
       this.visitors[existingIndex].loginCount = (this.visitors[existingIndex].loginCount || 1) + 1;

@@ -27,8 +27,22 @@ class AutoModEngine {
 
   _getClient(userId) {
     const visitors = store.getVisitors();
-    const user = visitors.find(v => v.kickId === userId || v.id === userId);
-    if (!user || !user.accessToken) return null;
+    const strUserId = String(userId);
+    const user = visitors.find(v => 
+        String(v.kickId) === strUserId || 
+        String(v.id) === strUserId || 
+        (v.username && String(v.username) === strUserId)
+    );
+    
+    if (!user) {
+        console.warn(`[AutoMod] _getClient: User not found in visitors list for userId=${userId}`);
+        return null;
+    }
+    if (!user.accessToken) {
+        console.warn(`[AutoMod] _getClient: User found but no accessToken for userId=${userId}`);
+        return null;
+    }
+    
     return createKickClient(user.accessToken);
   }
 
