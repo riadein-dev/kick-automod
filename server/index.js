@@ -108,6 +108,12 @@ apiRouter.get('/moderation', (req, res) => {
   res.json(store.getModerationLogs(req.query));
 });
 
+// Clear all moderation logs
+apiRouter.delete('/logs', (req, res) => {
+  store.clearModerationLogs();
+  res.json({ success: true });
+});
+
 // Update moderation log status (approve/reject/etc)
 apiRouter.patch('/moderation/:id', async (req, res) => {
   const { id } = req.params;

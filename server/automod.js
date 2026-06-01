@@ -29,24 +29,28 @@ class AutoModEngine {
       if (result) violations.push(result);
     }
 
-    if (rules.rules.spamDetection.enabled) {
-      const result = this.checkSpam(message, rules.rules.spamDetection);
-      if (result) violations.push(result);
-    }
+    // Kelime filtresi varsa diğer kuralları (spam vb.) kontrol etmeye gerek yok
+    // Böylece kullanıcının o kelime için seçtiği "uyarı" veya "timeout" aksiyonu ban ile ezilmez
+    if (violations.length === 0) {
+      if (rules.rules.spamDetection.enabled) {
+        const result = this.checkSpam(message, rules.rules.spamDetection);
+        if (result) violations.push(result);
+      }
 
-    if (rules.rules.linkBlocking.enabled) {
-      const result = this.checkLinks(message, rules.rules.linkBlocking);
-      if (result) violations.push(result);
-    }
+      if (rules.rules.linkBlocking.enabled) {
+        const result = this.checkLinks(message, rules.rules.linkBlocking);
+        if (result) violations.push(result);
+      }
 
-    if (rules.rules.capsLock.enabled) {
-      const result = this.checkCapsLock(message, rules.rules.capsLock);
-      if (result) violations.push(result);
-    }
+      if (rules.rules.capsLock.enabled) {
+        const result = this.checkCapsLock(message, rules.rules.capsLock);
+        if (result) violations.push(result);
+      }
 
-    if (rules.rules.emoteSpam.enabled) {
-      const result = this.checkEmoteSpam(message, rules.rules.emoteSpam);
-      if (result) violations.push(result);
+      if (rules.rules.emoteSpam.enabled) {
+        const result = this.checkEmoteSpam(message, rules.rules.emoteSpam);
+        if (result) violations.push(result);
+      }
     }
 
     if (violations.length === 0) return null;
@@ -170,7 +174,7 @@ class AutoModEngine {
     const channelName = message.channel || message.chatroom_slug;
     
     for (const w of rule.words) {
-      if (w.channel && w.channel !== channelName) continue; // Check channel match
+      if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue; // Check channel match
       
       const targetWord = w.word.toLowerCase();
       let matched = false;

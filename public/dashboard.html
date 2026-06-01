@@ -34,6 +34,10 @@
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 <span>Ayarlar</span>
             </button>
+            <button class="sidebar-link" id="logsNavBtn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span>Loglar</span>
+            </button>
             <button class="sidebar-link" id="adminNavBtn" style="display: none; color: var(--green);">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                 <span>Geliştirici Paneli</span>
@@ -202,6 +206,10 @@
                 <div class="panel mod-panel">
                     <div class="panel-header">
                         <h2>Genel Moderasyon</h2>
+                        <button class="btn-primary" id="clearLogsBtn" style="background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.2); box-shadow: none; font-size: 0.72rem; padding: 6px 14px;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            Logları Temizle
+                        </button>
                     </div>
                     <div class="table-wrap">
                         <table class="data-table">
@@ -258,41 +266,6 @@
             </div>
         </div>
 
-        <!-- Channel Edit Modal -->
-        <div class="modal-overlay" id="channelEditModal">
-            <div class="modal" style="max-width: 600px;">
-                <div class="modal-header">
-                    <h3 id="channelEditTitle">Kanal Ayarları</h3>
-                    <button class="modal-close" id="closeChannelEditModal">&times;</button>
-                </div>
-                <div style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="text" id="channelWordInput" placeholder="Yasaklı kelime girin..." class="input" style="flex:1;">
-                        <select id="channelWordAction" class="input" style="width: 120px;">
-                            <option value="ban">Ban</option>
-                            <option value="timeout">Timeout</option>
-                            <option value="delete">Sil</option>
-                        </select>
-                        <button class="btn-primary" id="addChannelWordBtn" style="white-space: nowrap;">+ Ekle</button>
-                    </div>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        <table class="data-table" style="width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>Kelime</th>
-                                    <th>İşlem</th>
-                                    <th class="text-right">Sil</th>
-                                </tr>
-                            </thead>
-                            <tbody id="channelWordsBody">
-                                <tr><td colspan="3" style="text-align:center; padding:1.5rem; color: var(--text-3);">Henüz kelime eklenmedi</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <!-- Settings View -->
         <div id="settingsView" style="display: none;">
             <div class="panel">
@@ -376,6 +349,36 @@
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                     Kanala Bağlan
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs View -->
+    <div id="logsView" style="display: none;">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Tüm Moderasyon Logları</h2>
+                <button class="btn-primary" id="clearAllLogsBtn" style="background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.2); box-shadow: none; font-size: 0.72rem; padding: 6px 14px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Logları Temizle
+                </button>
+            </div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Kullanıcı</th>
+                            <th>Kanal</th>
+                            <th>Mesaj / Neden</th>
+                            <th>Aksiyon</th>
+                            <th>Durum</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allLogsBody">
+                        <!-- Logs will be inserted here -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

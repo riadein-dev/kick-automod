@@ -269,6 +269,14 @@ class Store {
     return logs;
   }
 
+  clearModerationLogs() {
+    this.moderationLogs = [];
+    this.stats.totalModeration = 0;
+    this.stats.pending = 0;
+    this.stats.applied = 0;
+    this.broadcast('stats', this.stats);
+  }
+
   // Stats
   getStats() {
     return { ...this.stats };

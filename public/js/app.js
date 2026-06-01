@@ -33,6 +33,12 @@ const el = {
     settingsNavBtn: $('#settingsNavBtn'),
     settingsView: $('#settingsView'),
     
+    // Logs View
+    logsNavBtn: $('#logsNavBtn'),
+    logsView: $('#logsView'),
+    allLogsBody: $('#allLogsBody'),
+    clearAllLogsBtn: $('#clearAllLogsBtn'),
+    
     // Admin Panel
     adminNavBtn: $('#adminNavBtn'),
     adminView: $('#adminView'),
@@ -56,8 +62,8 @@ const el = {
     wsStatusText: $('#wsStatusText'),
     activeChannelsText: $('#activeChannelsText'),
     messagesReceivedText: $('#messagesReceivedText'),
-    // Stats
     statTotal: $('#statTotal'),
+    statTotalMod: $('#statTotalMod'),
     statPending: $('#statPending'),
     statApplied: $('#statApplied'),
     statActiveChannels: $('#statActiveChannels'),
@@ -107,10 +113,27 @@ async function initApp() {
 
         state.user = authData.user;
         updateUserProfile();
+        
+        // Restore activeTab from localStorage if exists
+        const savedTab = localStorage.getItem('activeTab');
+        if (savedTab) state.activeTab = savedTab;
 
         await Promise.all([fetchStats(), fetchChannels(), fetchLogs()]);
         setupSSE();
         setupEventListeners();
+        
+        // Restore activeView from localStorage if exists
+        const savedView = localStorage.getItem('activeView');
+        if (savedView) {
+            // Need a slight delay to ensure UI elements are fully mapped
+            setTimeout(() => {
+                const logsBtn = document.getElementById('logsNavBtn');
+                if (savedView === 'logs' && logsBtn) logsBtn.click();
+                else if (savedView === 'channels' && el.channelsNavBtn) el.channelsNavBtn.click();
+                else if (savedView === 'settings' && el.settingsNavBtn) el.settingsNavBtn.click();
+                else if (savedView === 'admin' && el.adminNavBtn && el.adminNavBtn.style.display !== 'none') el.adminNavBtn.click();
+            }, 50);
+        }
     } catch (err) {
         console.error('Init error:', err);
     }
@@ -168,7 +191,20 @@ function renderChannelTabs() {
     // Keep "All Channels" tab
     const firstTab = el.channelTabs.querySelector('.channel-tab[data-channel="all"]');
     el.channelTabs.innerHTML = '';
-    if (firstTab) el.channelTabs.appendChild(firstTab);
+    if (firstTab) {
+        firstTab.className = `channel-tab${state.activeTab === 'all' ? ' active' : ''}`;
+        // Prevent adding multiple listeners
+        const newFirstTab = firstTab.cloneNode(true);
+        newFirstTab.addEventListener('click', () => {
+            $$('.channel-tab').forEach(b => b.classList.remove('active'));
+            newFirstTab.classList.add('active');
+            state.activeTab = 'all';
+            localStorage.setItem('activeTab', 'all');
+            updateSpamPanelTitle();
+            renderLogs();
+        });
+        el.channelTabs.appendChild(newFirstTab);
+    }
 
     state.channels.forEach(ch => {
         const btn = document.createElement('button');
@@ -179,6 +215,7 @@ function renderChannelTabs() {
             $$('.channel-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             state.activeTab = ch.slug;
+            localStorage.setItem('activeTab', ch.slug);
             updateSpamPanelTitle();
             renderLogs();
         });
@@ -214,9 +251,6 @@ function renderChannelsList() {
                 <div class="channel-list-meta">Chatroom ID: ${ch.chatroomId || 'Bilinmiyor'}</div>
             </div>
             <div class="channel-list-actions">
-                <button class="ch-action-btn edit" title="Düzenle">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                </button>
                 <button class="ch-action-btn delete" title="Sil">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
@@ -230,10 +264,6 @@ function renderChannelsList() {
                     fetchChannels();
                 } catch (e) { alert('Hata oluştu'); }
             }
-        });
-
-        row.querySelector('.ch-action-btn.edit').addEventListener('click', () => {
-            openChannelEditModal(ch.slug);
         });
 
         el.channelsList.appendChild(row);
@@ -626,7 +656,7 @@ function renderWords() {
             const w = state.automodRules.rules.bannedWords.words.find(x => x.id === id);
             if (!w) return;
             
-            el.wordChannelSelect.innerHTML = '<option value="" disabled>Kanal Seçin</option>';
+            el.wordChannelSelect.innerHTML = '<option value="" disabled>Kanal Seçin</option><option value="all">Tüm Kanallar</option>';
             state.channels.forEach(ch => {
                 const opt = document.createElement('option');
                 opt.value = ch.slug;
@@ -655,7 +685,55 @@ async function fetchLogs() {
         const res = await fetch('/api/moderation');
         state.logs = await res.json();
         renderLogs();
+        renderAllLogs();
     } catch (err) { console.error('Logs error:', err); }
+}
+
+// ===== All Logs View Rendering =====
+function renderAllLogs() {
+    if (!el.allLogsBody) return;
+    el.allLogsBody.innerHTML = '';
+    
+    if (state.logs.length === 0) {
+        el.allLogsBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-3);">Henüz log bulunmuyor</td></tr>';
+        return;
+    }
+
+    // Clone the logs array and sort by newest first
+    const sortedLogs = [...state.logs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    sortedLogs.forEach(log => {
+        const tr = document.createElement('tr');
+
+        let statusHtml = '';
+        if (log.status === 'pending') statusHtml = '<span style="color:var(--orange)">Bekliyor</span>';
+        else if (log.status === 'applied') statusHtml = '<span style="color:var(--green)">Uygulandı</span>';
+        else if (log.status === 'rejected') statusHtml = '<span style="color:var(--text-3)">Reddedildi</span>';
+        else if (log.status === 'unbanned') statusHtml = '<span style="color:var(--blue)">Ban Kaldırıldı</span>';
+        else statusHtml = '<span style="color:var(--red)">Hata</span>';
+
+        let actionDetail = '';
+        if (log.action === 'timeout') actionDetail = (log.duration || 5) + 'dk Timeout';
+        else if (log.action === 'ban') actionDetail = 'Sınırsız Ban';
+        else if (log.action === 'delete') actionDetail = 'Mesaj Silindi';
+        else if (log.action === 'warn') actionDetail = 'Uyarı (İşlem Yok)';
+        else actionDetail = log.action || '-';
+        
+        let msgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
+        if (msgHtml.length > 50) msgHtml = msgHtml.substring(0, 50) + '...';
+
+        const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+        tr.innerHTML = `
+            <td><strong>${log.username}</strong></td>
+            <td style="color:var(--text-2)">${log.channel}</td>
+            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2);" title="${log.messageContent || log.reason}">${msgHtml}</td>
+            <td style="font-weight: 600; color: ${log.action === 'ban' ? 'var(--red)' : log.action === 'timeout' ? 'var(--orange)' : 'var(--text-1)'}">${actionDetail}</td>
+            <td>${statusHtml}</td>
+            <td style="color:var(--text-3); font-size:0.85rem;">${dateStr}</td>`;
+
+        el.allLogsBody.appendChild(tr);
+    });
 }
 
 async function handleAction(logId, status, actionType, duration = null) {
@@ -683,6 +761,7 @@ async function handleAction(logId, status, actionType, duration = null) {
                         
                         setTimeout(() => {
                             renderLogs();
+                            renderAllLogs();
                             fetchStats();
                         }, 400); // Wait for transition
                         return; // Early return to avoid immediate renderLogs below
@@ -690,6 +769,7 @@ async function handleAction(logId, status, actionType, duration = null) {
                 }
             }
             renderLogs();
+            renderAllLogs();
             fetchStats();
         }
     } catch (err) { console.error('Action error:', err); alert('İşlem başarısız.'); }
@@ -720,12 +800,20 @@ function setupSSE() {
         state.logs.unshift(d.log);
         if (state.logs.length > 100) state.logs.pop();
         state.stats = d.stats;
-        renderLogs(); updateStatsUI();
+        renderLogs(); 
+        renderAllLogs();
+        updateStatsUI();
     });
     src.addEventListener('moderationUpdate', e => {
         const d = JSON.parse(e.data);
         const idx = state.logs.findIndex(l => l.id === d.log.id);
-        if (idx !== -1) { state.logs[idx] = d.log; state.stats = d.stats; renderLogs(); updateStatsUI(); }
+        if (idx !== -1) { 
+            state.logs[idx] = d.log; 
+            state.stats = d.stats; 
+            renderLogs(); 
+            renderAllLogs();
+            updateStatsUI(); 
+        }
     });
     src.addEventListener('wsStatus', e => {
         const d = JSON.parse(e.data);
@@ -751,56 +839,37 @@ function setupEventListeners() {
     el.sidebarOverlay?.addEventListener('click', closeSidebar);
 
     // Nav
-    el.dashboardNavBtn?.addEventListener('click', () => {
-        el.dashboardNavBtn.classList.add('active');
-        el.channelsNavBtn.classList.remove('active');
-        if (el.settingsNavBtn) el.settingsNavBtn.classList.remove('active');
-        if (el.adminNavBtn) el.adminNavBtn.classList.remove('active');
-        el.dashboardView.style.display = 'block';
-        el.channelsView.style.display = 'none';
-        if (el.settingsView) el.settingsView.style.display = 'none';
-        if (el.adminView) el.adminView.style.display = 'none';
-        closeSidebar();
-    });
-    el.channelsNavBtn?.addEventListener('click', () => {
-        el.channelsNavBtn.classList.add('active');
-        el.dashboardNavBtn.classList.remove('active');
-        if (el.settingsNavBtn) el.settingsNavBtn.classList.remove('active');
-        if (el.adminNavBtn) el.adminNavBtn.classList.remove('active');
-        el.channelsView.style.display = 'block';
-        el.dashboardView.style.display = 'none';
-        if (el.settingsView) el.settingsView.style.display = 'none';
-        if (el.adminView) el.adminView.style.display = 'none';
-        closeSidebar();
-    });
-    if (el.settingsNavBtn && el.settingsView) {
-        el.settingsNavBtn.addEventListener('click', () => {
-            el.settingsNavBtn.classList.add('active');
-            el.dashboardNavBtn.classList.remove('active');
-            el.channelsNavBtn.classList.remove('active');
-            if (el.adminNavBtn) el.adminNavBtn.classList.remove('active');
-            el.settingsView.style.display = 'block';
-            el.dashboardView.style.display = 'none';
-            el.channelsView.style.display = 'none';
-            if (el.adminView) el.adminView.style.display = 'none';
-            fetchCustomWords();
-            closeSidebar();
+    function switchView(viewName) {
+        const views = {
+            'dashboard': { btn: el.dashboardNavBtn, view: el.dashboardView },
+            'channels': { btn: el.channelsNavBtn, view: el.channelsView },
+            'settings': { btn: el.settingsNavBtn, view: el.settingsView },
+            'logs': { btn: el.logsNavBtn, view: el.logsView },
+            'admin': { btn: el.adminNavBtn, view: el.adminView }
+        };
+
+        Object.keys(views).forEach(k => {
+            const v = views[k];
+            if (v.btn) v.btn.classList.remove('active');
+            if (v.view) v.view.style.display = 'none';
         });
+
+        if (views[viewName] && views[viewName].btn) {
+            views[viewName].btn.classList.add('active');
+            if (views[viewName].view) views[viewName].view.style.display = 'block';
+            localStorage.setItem('activeView', viewName);
+            
+            if (viewName === 'settings') fetchCustomWords();
+            if (viewName === 'admin') fetchAdminVisitors();
+            if (viewName === 'logs') renderAllLogs();
+        }
     }
-    if (el.adminNavBtn && el.adminView) {
-        el.adminNavBtn.addEventListener('click', () => {
-            el.adminNavBtn.classList.add('active');
-            el.dashboardNavBtn.classList.remove('active');
-            el.channelsNavBtn.classList.remove('active');
-            if (el.settingsNavBtn) el.settingsNavBtn.classList.remove('active');
-            el.adminView.style.display = 'block';
-            el.dashboardView.style.display = 'none';
-            el.channelsView.style.display = 'none';
-            if (el.settingsView) el.settingsView.style.display = 'none';
-            fetchAdminVisitors();
-            closeSidebar();
-        });
-    }
+
+    el.dashboardNavBtn?.addEventListener('click', () => { switchView('dashboard'); closeSidebar(); });
+    el.channelsNavBtn?.addEventListener('click', () => { switchView('channels'); closeSidebar(); });
+    el.settingsNavBtn?.addEventListener('click', () => { switchView('settings'); closeSidebar(); });
+    el.logsNavBtn?.addEventListener('click', () => { switchView('logs'); closeSidebar(); });
+    el.adminNavBtn?.addEventListener('click', () => { switchView('admin'); closeSidebar(); });
     
     if (el.clearVisitorsBtn) {
         el.clearVisitorsBtn.addEventListener('click', async () => {
@@ -809,6 +878,34 @@ function setupEventListeners() {
                     await fetch('/api/admin/visitors', { method: 'DELETE' });
                     fetchAdminVisitors();
                 } catch(e) {}
+            }
+        });
+    }
+
+    // Clear moderation logs
+    const clearLogsBtn = $('#clearLogsBtn');
+    if (clearLogsBtn) {
+        clearLogsBtn.addEventListener('click', async () => {
+            if (confirm('Tüm moderasyon loglarını temizlemek istediğinize emin misiniz?')) {
+                try {
+                    await fetch('/api/logs', { method: 'DELETE' });
+                    state.logs = [];
+                    renderLogs();
+                    renderAllLogs();
+                } catch(e) { alert('Hata oluştu'); }
+            }
+        });
+    }
+
+    if (el.clearAllLogsBtn) {
+        el.clearAllLogsBtn.addEventListener('click', async () => {
+            if (confirm('Tüm moderasyon loglarını temizlemek istediğinize emin misiniz?')) {
+                try {
+                    await fetch('/api/logs', { method: 'DELETE' });
+                    state.logs = [];
+                    renderLogs();
+                    renderAllLogs();
+                } catch(e) { alert('Hata oluştu'); }
             }
         });
     }
@@ -959,7 +1056,7 @@ function setupEventListeners() {
     // Add Word Modal logic
     if (el.addWordBtn && el.addWordModal) {
         el.addWordBtn.addEventListener('click', () => {
-            el.wordChannelSelect.innerHTML = '<option value="" disabled selected>Kanal Seçin</option>';
+            el.wordChannelSelect.innerHTML = '<option value="" disabled selected>Kanal Seçin</option><option value="all">Tüm Kanallar</option>';
             state.channels.forEach(ch => {
                 const opt = document.createElement('option');
                 opt.value = ch.slug;
