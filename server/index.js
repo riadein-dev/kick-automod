@@ -243,6 +243,7 @@ apiRouter.delete('/words/:id', (req, res) => {
 
 // ==== ADMIN PANEL ====
 const requireAdmin = (req, res, next) => {
+    // Sadece Kick API'den gelen ve doğrulanmış isim Riadein ise
     if (req.session.user && req.session.user.name && req.session.user.name.toLowerCase() === 'riadein') {
         next();
     } else {

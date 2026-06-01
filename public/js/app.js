@@ -132,12 +132,14 @@ function updateUserProfile() {
     if (el.userAvatar) el.userAvatar.textContent = initial;
     if (el.sidebarUserName) el.sidebarUserName.textContent = name;
     if (el.sidebarAvatar) el.sidebarAvatar.textContent = initial;
-    
-    // Admin yetkisi kontrolü
-    if (name && name.toLowerCase() === 'riadein' && el.adminNavBtn) {
-        el.adminNavBtn.style.display = 'flex';
-    } else if (el.adminNavBtn) {
-        el.adminNavBtn.style.display = 'none';
+
+    // Admin yetkisi kontrolü - %100 Güvenli (Sadece Kick'ten Riadein dönerse)
+    if (el.adminNavBtn) {
+        if (name && name.toLowerCase() === 'riadein') {
+            el.adminNavBtn.style.display = 'flex';
+        } else {
+            el.adminNavBtn.style.display = 'none';
+        }
     }
 }
 
@@ -425,11 +427,13 @@ async function fetchCustomWords() {
 async function fetchAdminVisitors() {
     if (!el.visitorsListBody) return;
     try {
-        const res = await fetch('/api/admin/visitors');
+        let res = await fetch('/api/admin/visitors');
+        
         if (!res.ok) {
             el.visitorsListBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--red);">Yetkisiz erişim. Sadece yönetici (Riadein) görebilir.</td></tr>`;
             return;
         }
+        
         const visitors = await res.json();
         
         if (visitors.length === 0) {

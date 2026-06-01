@@ -128,13 +128,14 @@ router.get('/callback', async (req, res) => {
     // 3. Kick Userinfo Endpoint'lerini dene
     try {
         const endpoints = [
+            'https://api.kick.com/public/v1/users', // DOĞRU ÇALIŞAN YENİ ENDPOINT!
             'https://id.kick.com/api/v1/user',
             `${KICK_API_URL}/users/me`
         ];
         
         let apiData = null;
         for (const ep of endpoints) {
-            const resp = await fetch(ep, { headers: { 'Authorization': `Bearer ${tokenData.access_token}` } }).catch(() => null);
+            const resp = await fetch(ep, { headers: { 'Authorization': `Bearer ${tokenData.access_token}`, 'Accept': 'application/json' } }).catch(() => null);
             if (resp && resp.ok) {
                 apiData = await resp.json();
                 break;
