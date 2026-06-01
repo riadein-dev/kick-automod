@@ -118,11 +118,7 @@ async function initApp() {
         const savedTab = localStorage.getItem('activeTab');
         if (savedTab) state.activeTab = savedTab;
 
-        // Her girişte kanalları sıfırla - kullanıcı tekrar ekleyecek
-        try {
-            await fetch('/api/channels/all', { method: 'DELETE' });
-            console.log('[Init] Channels cleared on login');
-        } catch(e) { console.warn('Channel clear failed:', e); }
+        // Kanallar artık sayfayı yenileyince silinmeyecek, kalıcı olacak.
 
         await Promise.all([fetchStats(), fetchChannels(), fetchLogs()]);
         setupSSE();

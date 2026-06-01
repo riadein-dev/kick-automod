@@ -179,14 +179,15 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
       } else if (action === 'ban') {
         await kickClient.banUser(broadcasterUserId, log.userId, log.reason);
       } else if (action === 'unban') {
+        console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.user?.id}`);
         await kickClient.unbanUser(broadcasterUserId, log.userId);
       }
       
-      console.log(`[ModAction] ✅ ${action} applied successfully on user ${log.userId}`);
+      console.log(`[ModAction] ✅ ${action} applied successfully on user ${log.userId} by caller ${req.session.user?.id}`);
     } catch (err) {
-      console.error('Failed to apply moderation action:', err);
+      console.error(`[ModAction] ❌ Failed to apply moderation action '${action}' for caller ${req.session.user?.id}:`, err);
       store.updateModerationLog(id, { status: 'error', error: err.message });
-      return res.status(500).json({ error: 'Failed to apply action to Kick API', details: err.message });
+      return res.status(500).json({ error: `Kick API Hatası: ${err.message}`, details: err.message });
     }
   }
 
@@ -235,13 +236,22 @@ apiRouter.post('/channels', async (req, res) => {
     let finalChatroomId = chatroomId;
     let finalUserId = userId;
 
-    if (!finalChatroomId) {
-        const channelData = await kickClient.getChannel(slug);
-        if (!channelData || !channelData.chatroom) {
-            return res.status(404).json({ error: 'Channel or chatroom not found' });
+    if (!finalChatroomId || !finalUserId) {
+        // First, check if the user is adding their own channel
+        if (req.session.user && req.session.user.slug && slug === req.session.user.slug.toLowerCase()) {
+             if (!finalUserId) finalUserId = req.session.user.id;
         }
-        finalChatroomId = channelData.chatroom.id;
-        finalUserId = channelData.user_id || null;
+        
+        // If still missing something, try Kick API
+        if (!finalChatroomId || !finalUserId) {
+            const channelData = await kickClient.getChannel(slug);
+            if (channelData) {
+                if (!finalChatroomId && channelData.chatroom) finalChatroomId = channelData.chatroom.id;
+                if (!finalUserId) finalUserId = channelData.user_id || null;
+            } else if (!finalChatroomId) {
+                return res.status(404).json({ error: 'Channel or chatroom not found. Please use Advanced Options.' });
+            }
+        }
     }
 
     // Tag channel with the user who added it

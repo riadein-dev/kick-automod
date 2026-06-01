@@ -291,6 +291,12 @@ class Store {
       const oldStatus = log.status;
       Object.assign(log, updates);
       
+      // Temporary debug: Dump to disk if error
+      if (updates.status === 'error') {
+          const fs = require('fs');
+          fs.writeFileSync('C:\\Users\\ardak\\Desktop\\kick-automod\\debug-error.log', JSON.stringify(log, null, 2));
+      }
+
       // Update stats
       if (oldStatus === 'pending' && updates.status !== 'pending') this.stats.pending--;
       if (updates.status === 'applied' && oldStatus !== 'applied') this.stats.applied++;

@@ -35,6 +35,20 @@ class WebSocketManager {
         this.connected = true;
         console.log('[WebSocket] Connected to Kick Pusher');
         store.broadcast('wsStatus', { connected: true });
+        
+        // Re-subscribe to all channels from DB
+        const channels = store.getChannels();
+        const uniqueChannels = [];
+        channels.forEach(c => {
+            if (!uniqueChannels.find(u => u.chatroomId === c.chatroomId)) {
+                uniqueChannels.push(c);
+            }
+        });
+        
+        uniqueChannels.forEach(c => {
+            const chatroomId = String(c.id || c.chatroomId);
+            this.subscribeToChannel(chatroomId, c.slug, c.broadcasterUserId, c.addedBy);
+        });
       });
 
       this.pusher.connection.bind('disconnected', () => {
