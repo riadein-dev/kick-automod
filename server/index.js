@@ -109,10 +109,15 @@ apiRouter.use((req, res, next) => {
 
 // Dashboard stats
 apiRouter.get('/stats', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const rules = JSON.parse(JSON.stringify(store.getAutomodRules()));
+  // Filter custom words to only include this user's words
+  rules.rules.bannedWords.words = rules.rules.bannedWords.words.filter(w => w.addedBy === sessionUserId);
+
   res.json({
-    stats: store.getStats(),
+    stats: store.getUserStats(sessionUserId),
     wsStatus: wsManager.getStatus(),
-    automodRules: store.getAutomodRules()
+    automodRules: rules
   });
 });
 

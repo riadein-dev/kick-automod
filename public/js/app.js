@@ -1041,23 +1041,35 @@ function setupEventListeners() {
     el.channelWordInput?.addEventListener('keydown', e => { if (e.key === 'Enter') addChannelWord(); });
     window.addEventListener('click', e => { if (e.target === el.channelEditModal) closeChannelEditModalFn(); });
 
+    const advancedToggle = document.getElementById('advancedChannelOptions');
+    const advancedSection = document.getElementById('advancedChannelSection');
+    
+    if (advancedToggle) {
+        advancedToggle.addEventListener('change', () => {
+            advancedSection.style.display = advancedToggle.checked ? 'block' : 'none';
+        });
+    }
+
     // Add channel
     el.confirmAddChannel?.addEventListener('click', async () => {
-        const slug = el.channelInput.value.trim();
+        const slug = el.channelInput.value.trim().toLowerCase();
         if (!slug) return;
-
-        el.confirmAddChannel.textContent = 'Kanal Bulunuyor...';
+        el.confirmAddChannel.textContent = 'Bağlanıyor...';
         el.confirmAddChannel.disabled = true;
 
         try {
-            let chatroomId = null, userId = null;
-            try {
-                const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`);
-                if (kickRes.ok) {
-                    const kickData = await kickRes.json();
-                    if (kickData?.chatroom?.id) { chatroomId = kickData.chatroom.id; userId = kickData.user_id; }
-                }
-            } catch (e) { console.warn('Frontend kick fetch failed:', e); }
+            let chatroomId = document.getElementById('chatroomIdInput')?.value || null;
+            let userId = document.getElementById('broadcasterIdInput')?.value || null;
+            
+            if (!chatroomId) {
+                try {
+                    const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`);
+                    if (kickRes.ok) {
+                        const kickData = await kickRes.json();
+                        if (kickData?.chatroom?.id) { chatroomId = kickData.chatroom.id; userId = kickData.user_id; }
+                    }
+                } catch (e) { console.warn('Frontend kick fetch failed:', e); }
+            }
 
             el.confirmAddChannel.textContent = 'Bağlanıyor...';
 

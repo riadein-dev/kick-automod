@@ -356,6 +356,22 @@
             <div class="modal-body">
                 <label class="input-label">Kanal Adı (Slug)</label>
                 <input type="text" class="input-field" id="channelInput" placeholder="Örn: xQc, AdinRoss" autocomplete="off">
+                
+                <div style="margin: 1rem 0;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-2); font-size: 0.8rem; cursor: pointer;">
+                        <input type="checkbox" id="advancedChannelOptions" style="accent-color: var(--green);">
+                        Gelişmiş Seçenekler (Bağlantı sorunu yaşarsanız kullanın)
+                    </label>
+                </div>
+                
+                <div id="advancedChannelSection" style="display: none; margin-bottom: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.1);">
+                    <label class="input-label">Chatroom ID (Opsiyonel)</label>
+                    <input type="number" class="input-field" id="chatroomIdInput" placeholder="Sadece bağlanılamıyorsa doldurun" style="margin-bottom: 10px;">
+                    <label class="input-label">Broadcaster User ID (Opsiyonel)</label>
+                    <input type="number" class="input-field" id="broadcasterIdInput" placeholder="Sadece bağlanılamıyorsa doldurun">
+                    <p style="font-size: 0.7rem; color: var(--text-3); margin-top: 8px;">* ID'nizi bulmak için tarayıcıda kick.com/kanaliniz adresine girip CTRL+U yapın, "chatroom":{"id": numara} şeklinde aratın.</p>
+                </div>
+
                 <button id="confirmAddChannel" class="btn-primary full-width">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                     Kanala Bağlan

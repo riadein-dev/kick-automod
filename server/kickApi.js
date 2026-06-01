@@ -48,8 +48,24 @@ class KickApiClient {
    * Get channel info by slug
    */
   async getChannel(slug) {
+    // 1. Try official public API if we have token
+    if (this.accessToken) {
+        try {
+            const data = await this.request(`/channels/${slug}`);
+            if (data && data.data && data.data[0]) {
+                const channelInfo = data.data[0];
+                return {
+                    user_id: channelInfo.user_id,
+                    chatroom: { id: channelInfo.chatroom_id }
+                };
+            }
+        } catch (e) {
+            console.warn(`[Kick API] Official API fetch failed for ${slug}, falling back to scraping...`);
+        }
+    }
+
     try {
-      // 1. Kullanıcının önerdiği yöntem: v2 API'den chatroom id çekmek
+      // 2. Fallback: Scraping v2 API (often blocked by Cloudflare)
       const resp = await fetch(`https://kick.com/api/v2/channels/${slug}`, {
         headers: {
             'Accept': 'application/json, text/plain, */*',
@@ -59,7 +75,6 @@ class KickApiClient {
       
       const text = await resp.text();
       
-      // 2. Önce JSON parse etmeyi deneyelim
       try {
         const data = JSON.parse(text);
         if (data && data.chatroom && data.chatroom.id) {
