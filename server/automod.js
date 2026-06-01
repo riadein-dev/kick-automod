@@ -85,11 +85,11 @@ class AutoModEngine {
         const rules = store.getAutomodRules(userId);
         if (!rules || !rules.enabled) continue;
         
-        const violations = [];
+        let violations = [];
 
         if (rules.rules.bannedWords.enabled) {
-          const result = this.checkBannedWords(message, rules.rules.bannedWords);
-          if (result) violations.push(result);
+          const results = this.checkBannedWords(message, rules.rules.bannedWords);
+          if (results && results.length > 0) violations.push(...results);
         }
 
         if (rules.rules.spamDetection.enabled) {
@@ -104,58 +104,50 @@ class AutoModEngine {
 
         if (violations.length === 0) continue;
 
-        let primaryViolation;
-        const bannedWordViolation = violations.find(v => v.ruleName === 'bannedWords');
-        
-        if (bannedWordViolation) {
-          primaryViolation = bannedWordViolation;
-        } else {
-          const severity = { 'ban': 3, 'timeout': 2, 'delete': 1, 'warn': 0 };
-          violations.sort((a, b) => (severity[b.action] || 0) - (severity[a.action] || 0));
-          primaryViolation = violations[0];
-        }
-
-        let isAuto = true;
-        if (primaryViolation.ruleName === 'spamDetection') {
-            isAuto = (rules.mode === 'auto');
-        }
-        
-        const finalStatus = (isAuto && primaryViolation.action !== 'warn') ? 'applied' : 'pending';
-
-        const shouldLog = ['ban', 'timeout'].includes(primaryViolation.action) || 
-                          ['spamDetection', 'bannedWords'].includes(primaryViolation.ruleName);
-
-        if (!shouldLog) {
-          if (isAuto && primaryViolation.action === 'delete') {
-            const client = this._getClient(userId);
-            if (client) {
-               client.deleteMessage(message.id || message.message_id).catch(err => {
-                 console.error(`[AutoMod] Sessiz silme başarısız:`, err.message);
-               });
+        // Her ihlali (violation) birbirinden bagimsiz olarak işle
+        for (const violation of violations) {
+            let isAuto = true;
+            if (violation.ruleName === 'spamDetection') {
+                isAuto = (rules.mode === 'auto');
             }
-          }
-          continue;
-        }
+            
+            const finalStatus = (isAuto && violation.action !== 'warn') ? 'applied' : 'pending';
 
-        const logEntry = store.addModerationLog({
-          ownerId: userId, // YENİ: Hangi kullanıcının kurallarına göre işlem yapıldığını kaydet
-          userId: message.sender?.id || message.user_id,
-          username: message.sender?.username || message.username || 'Unknown',
-          channel: message.channel || message.chatroom_slug || 'Unknown',
-          chatroomId: message.chatroom_id,
-          messageId: message.id || message.message_id,
-          messageContent: message.content || message.message,
-          reason: primaryViolation.reason,
-          ruleName: primaryViolation.ruleName,
-          type: 'auto',
-          action: primaryViolation.action,
-          duration: primaryViolation.duration || 0,
-          status: finalStatus,
-          allViolations: violations.map(v => v.reason)
-        });
+            const shouldLog = ['ban', 'timeout'].includes(violation.action) || 
+                              ['spamDetection', 'bannedWords'].includes(violation.ruleName);
 
-        if (isAuto && primaryViolation.action !== 'warn') {
-          await this.applyAction(logEntry, userId);
+            if (!shouldLog) {
+              if (isAuto && violation.action === 'delete') {
+                const client = this._getClient(userId);
+                if (client) {
+                   client.deleteMessage(message.id || message.message_id).catch(err => {
+                     console.error(`[AutoMod] Sessiz silme başarısız:`, err.message);
+                   });
+                }
+              }
+              continue;
+            }
+
+            const logEntry = store.addModerationLog({
+              ownerId: userId,
+              userId: message.sender?.id || message.user_id,
+              username: message.sender?.username || message.username || 'Unknown',
+              channel: message.channel || message.chatroom_slug || 'Unknown',
+              chatroomId: message.chatroom_id,
+              messageId: message.id || message.message_id,
+              messageContent: message.content || message.message,
+              reason: violation.reason,
+              ruleName: violation.ruleName,
+              type: 'auto',
+              action: violation.action,
+              duration: violation.duration || 0,
+              status: finalStatus,
+              allViolations: violations.map(v => v.reason)
+            });
+
+            if (isAuto && violation.action !== 'warn') {
+              await this.applyAction(logEntry, userId);
+            }
         }
     }
   }
@@ -245,6 +237,7 @@ class AutoModEngine {
   checkBannedWords(message, rule) {
     const content = (message.content || message.message || '').toLowerCase();
     const channelName = message.channel || message.chatroom_slug;
+    let foundViolations = [];
     
     for (const w of rule.words) {
       if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue; // Check channel match
@@ -261,12 +254,12 @@ class AutoModEngine {
       }
 
       if (matched) {
-        return {
+        foundViolations.push({
           ruleName: 'bannedWords',
           reason: `Yasaklı kelime tespit edildi: "${w.word}"`,
           action: w.action,
           duration: w.duration
-        };
+        });
       }
     }
 
@@ -275,17 +268,17 @@ class AutoModEngine {
       try {
         const regex = new RegExp(pattern, 'i');
         if (regex.test(content)) {
-          return {
+          foundViolations.push({
             ruleName: 'bannedWords',
             reason: `Yasaklı pattern tespit edildi: "${pattern}"`,
             action: rule.action,
             duration: rule.duration
-          };
+          });
         }
       } catch (e) { /* invalid regex, skip */ }
     }
 
-    return null;
+    return foundViolations;
   }
 
   checkSpam(message, rule) {
