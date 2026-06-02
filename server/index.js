@@ -4,9 +4,44 @@
 
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
-const path = require('path');
+
+// Override console to log to file
+const logStream = fs.createWriteStream(path.join(__dirname, '..', 'backend.log'), { flags: 'a' });
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+function formatArgs(args) {
+    return args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+}
+
+console.log = function(...args) {
+    const msg = `[LOG] ${new Date().toISOString()} - ${formatArgs(args)}\n`;
+    logStream.write(msg);
+    originalConsoleLog.apply(console, args);
+};
+console.error = function(...args) {
+    const msg = `[ERR] ${new Date().toISOString()} - ${formatArgs(args)}\n`;
+    logStream.write(msg);
+    originalConsoleError.apply(console, args);
+};
+console.warn = function(...args) {
+    const msg = `[WARN] ${new Date().toISOString()} - ${formatArgs(args)}\n`;
+    logStream.write(msg);
+    originalConsoleWarn.apply(console, args);
+};
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
 const auth = require('./auth');
 const store = require('./store');
 const { createKickClient } = require('./kickApi');

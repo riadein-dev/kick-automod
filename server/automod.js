@@ -281,21 +281,28 @@ class AutoModEngine {
       if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue; // Check channel match
       
       // Trim the target word to prevent accidental leading/trailing spaces
-      const targetWord = w.word.toLowerCase().trim();
+      let targetWord = w.word.toLowerCase().trim();
       if (!targetWord) continue;
 
       let matched = false;
       
       if (w.exactMatch) {
+        // Escape special regex characters in the target word
+        const escapedWord = targetWord.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+        
         // Use unicode-aware boundaries to perfectly match non-letters/numbers
-        // This handles emojis, all punctuation, non-breaking spaces, brackets, etc.
         try {
-            const regex = new RegExp(`(?:^|[^\\p{L}\\p{N}])(${targetWord})(?:$|[^\\p{L}\\p{N}])`, 'iu');
+            const regex = new RegExp(`(?:^|[^\\\\p{L}\\\\p{N}])(${escapedWord})(?:$|[^\\\\p{L}\\\\p{N}])`, 'iu');
             matched = regex.test(content);
         } catch (e) {
-            // Fallback for older environments that don't support unicode properties
-            const fallbackRegex = new RegExp(`(?:^|\\s|[.,!?;:'"\\(\\)\[\\]\\{\\}<>])(${targetWord})(?:$|\\s|[.,!?;:'"\\(\\)\[\\]\\{\\}<>])`, 'i');
-            matched = fallbackRegex.test(content);
+            try {
+              // Fallback for older environments
+              const fallbackRegex = new RegExp(`(?:^|\\\\s|[.,!?;:'"\\\\(\\\\)\[\\\\]\\\\{\\\\}<>])(${escapedWord})(?:$|\\\\s|[.,!?;:'"\\\\(\\\\)\[\\\\]\\\\{\\\\}<>])`, 'i');
+              matched = fallbackRegex.test(content);
+            } catch(e2) {
+              // Ignore invalid regex errors
+              require('fs').appendFileSync('error.log', `Regex error: ${e2.message} for word ${w.word}\\n`);
+            }
         }
       } else {
         matched = content.includes(targetWord);
