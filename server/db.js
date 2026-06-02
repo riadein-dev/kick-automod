@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 // Schemas
 const channelSchema = new mongoose.Schema({
-    slug: { type: String, required: true, unique: true },
+    slug: { type: String, required: true },
     chatroomId: { type: String, required: true },
     userId: { type: String, default: '' },
     addedBy: { type: String, default: '' }

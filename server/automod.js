@@ -72,9 +72,9 @@ class AutoModEngine {
         return null;
     }
     
-    // Auto-refresh if token is expired or about to expire (within 60 seconds)
-    if (user.tokenExpiry && Date.now() > user.tokenExpiry - 60000) {
-        console.log(`[AutoMod] Token expired/expiring for user ${userId}, refreshing...`);
+    // Auto-refresh if token is expired, about to expire, or if we don't know the expiry but have a refresh token
+    if ((user.tokenExpiry && Date.now() > user.tokenExpiry - 60000) || (!user.tokenExpiry && user.refreshToken)) {
+        console.log(`[AutoMod] Token expired/missing expiry for user ${userId}, refreshing...`);
         const refreshed = await this._refreshToken(user);
         if (!refreshed) {
             console.warn(`[AutoMod] Token refresh failed, using existing token for userId=${userId}`);
@@ -108,12 +108,18 @@ class AutoModEngine {
       c.slug === (message.channel || message.chatroom_slug)
     );
     
-    if (activeChannels.length === 0) return null;
+    if (activeChannels.length === 0) {
+      console.log(`[AutoMod] DEBUG: No active channels for chatroomId=${logChatroomId} slug=${message.channel}`);
+      return null;
+    }
     
     // Process for each user who added the channel
     for (const channel of activeChannels) {
         const userId = channel.addedBy;
-        if (!userId) continue;
+        if (!userId) {
+          console.log(`[AutoMod] DEBUG: Channel ${channel.slug} has no addedBy, skipping`);
+          continue;
+        }
         
         const broadcasterUserId = channel.broadcasterUserId || channel.userId;
         if (broadcasterUserId && String(senderId) === String(broadcasterUserId)) {
@@ -121,13 +127,19 @@ class AutoModEngine {
         }
         
         const rules = store.getAutomodRules(userId);
-        if (!rules || !rules.enabled) continue;
+        if (!rules || !rules.enabled) {
+          console.log(`[AutoMod] DEBUG: Rules disabled for user ${userId}, enabled=${rules?.enabled}`);
+          continue;
+        }
         
         let violations = [];
 
         if (rules.rules.bannedWords.enabled) {
+          console.log(`[AutoMod] DEBUG: Checking banned words for user ${userId}, words count: ${rules.rules.bannedWords.words.length}, content: "${(message.content||'').substring(0,50)}"`);
           const results = this.checkBannedWords(message, rules.rules.bannedWords);
           if (results && results.length > 0) violations.push(...results);
+        } else {
+          console.log(`[AutoMod] DEBUG: bannedWords DISABLED for user ${userId}`);
         }
 
         if (rules.rules.spamDetection.enabled) {
@@ -278,37 +290,44 @@ class AutoModEngine {
     let foundViolations = [];
     
     for (const w of rule.words) {
-      if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue; // Check channel match
+      if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue;
       
-      // Trim the target word to prevent accidental leading/trailing spaces
       let targetWord = w.word.toLowerCase().trim();
       if (!targetWord) continue;
 
       let matched = false;
       
       if (w.exactMatch) {
-        // Escape special regex characters in the target word
-        const escapedWord = targetWord.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+        // Escape special regex characters
+        const escaped = targetWord.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         
-        // Use unicode-aware boundaries to perfectly match non-letters/numbers
-        try {
-            const regex = new RegExp(`(?:^|[^\\\\p{L}\\\\p{N}])(${escapedWord})(?:$|[^\\\\p{L}\\\\p{N}])`, 'iu');
-            matched = regex.test(content);
-        } catch (e) {
-            try {
-              // Fallback for older environments
-              const fallbackRegex = new RegExp(`(?:^|\\\\s|[.,!?;:'"\\\\(\\\\)\[\\\\]\\\\{\\\\}<>])(${escapedWord})(?:$|\\\\s|[.,!?;:'"\\\\(\\\\)\[\\\\]\\\\{\\\\}<>])`, 'i');
-              matched = fallbackRegex.test(content);
-            } catch(e2) {
-              // Ignore invalid regex errors
-              require('fs').appendFileSync('error.log', `Regex error: ${e2.message} for word ${w.word}\\n`);
-            }
+        // Simple boundary check: target word must not be surrounded by letters/numbers
+        // Check start boundary
+        const idx = content.indexOf(escaped.toLowerCase !== undefined ? targetWord : targetWord);
+        if (idx !== -1) {
+          const before = idx > 0 ? content[idx - 1] : ' ';
+          const after = idx + targetWord.length < content.length ? content[idx + targetWord.length] : ' ';
+          const isWordChar = (ch) => /[a-zA-Z0-9\u00C0-\u024F\u0400-\u04FF\u00e7\u011f\u0131\u00f6\u015f\u00fc\u00c7\u011e\u0130\u00d6\u015e\u00dc]/.test(ch);
+          if (!isWordChar(before) && !isWordChar(after)) {
+            matched = true;
+          }
+        }
+        // If indexOf didn't match (e.g. complex patterns), also try regex as backup
+        if (!matched) {
+          try {
+            const re = new RegExp('(?:^|[^a-zA-Z0-9\\u00C0-\\u024F\\u0400-\\u04FF])(' + escaped + ')(?:$|[^a-zA-Z0-9\\u00C0-\\u024F\\u0400-\\u04FF])', 'i');
+            matched = re.test(content);
+          } catch(e) {
+            // If even this fails, do simple includes
+            matched = content.includes(targetWord);
+          }
         }
       } else {
         matched = content.includes(targetWord);
       }
 
       if (matched) {
+        console.log(`[AutoMod] BANNED WORD MATCH: "${w.word}" in "${content.substring(0, 80)}" channel=${channelName}`);
         foundViolations.push({
           ruleName: 'bannedWords',
           reason: `Yasaklı kelime tespit edildi: "${w.word}"`,

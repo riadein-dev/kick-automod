@@ -97,6 +97,7 @@ class WebSocketManager {
 
       // Chat message event
       channel.bind('App\\Events\\ChatMessageEvent', (data) => {
+        console.log(`[WebSocket] Message Event Received in ${channelSlug}: ${data.content}`);
         this.handleChatMessage(data, channelSlug, chatroomId);
       });
 
