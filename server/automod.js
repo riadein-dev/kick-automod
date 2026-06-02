@@ -280,13 +280,23 @@ class AutoModEngine {
     for (const w of rule.words) {
       if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue; // Check channel match
       
-      const targetWord = w.word.toLowerCase();
+      // Trim the target word to prevent accidental leading/trailing spaces
+      const targetWord = w.word.toLowerCase().trim();
+      if (!targetWord) continue;
+
       let matched = false;
       
       if (w.exactMatch) {
-        // match word boundaries
-        const regex = new RegExp(`(?:^|\\s|[.,!?;:])(${targetWord})(?:$|\\s|[.,!?;:])`, 'i');
-        matched = regex.test(content);
+        // Use unicode-aware boundaries to perfectly match non-letters/numbers
+        // This handles emojis, all punctuation, non-breaking spaces, brackets, etc.
+        try {
+            const regex = new RegExp(`(?:^|[^\\p{L}\\p{N}])(${targetWord})(?:$|[^\\p{L}\\p{N}])`, 'iu');
+            matched = regex.test(content);
+        } catch (e) {
+            // Fallback for older environments that don't support unicode properties
+            const fallbackRegex = new RegExp(`(?:^|\\s|[.,!?;:'"\\(\\)\[\\]\\{\\}<>])(${targetWord})(?:$|\\s|[.,!?;:'"\\(\\)\[\\]\\{\\}<>])`, 'i');
+            matched = fallbackRegex.test(content);
+        }
       } else {
         matched = content.includes(targetWord);
       }
