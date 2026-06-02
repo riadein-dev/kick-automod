@@ -1,0 +1,12 @@
+[LOG] 2026-06-02T15:07:44.497Z - [MongoDB] Veritabanına başarıyla bağlanıldı.
+[LOG] 2026-06-02T15:07:45.007Z - [Store] Veritabanından veriler başarıyla yüklendi.
+[LOG] 2026-06-02T15:07:45.016Z - Kick AutoMod server running on http://localhost:3000
+[LOG] 2026-06-02T15:07:45.016Z - Make sure to set KICK_CLIENT_ID and KICK_CLIENT_SECRET in .env
+[LOG] 2026-06-02T15:07:45.855Z - [WebSocket] Connected to Kick Pusher
+[ERR] 2026-06-02T15:07:45.905Z - {"errorLabelSet":{},"errorResponse":{"index":0,"code":11000,"errmsg":"E11000 duplicate key error collection: test.channels index: slug_1 dup key: { slug: \"ilker4444\" }","keyPattern":{"slug":1},"keyValue":{"slug":"ilker4444"}},"index":0,"code":11000,"keyPattern":{"slug":1},"keyValue":{"slug":"ilker4444"}}
+[LOG] 2026-06-02T15:07:46.015Z - [WebSocket] Subscribed to ilker4444 (chatroom: 24751395)
+[LOG] 2026-06-02T15:07:46.015Z - [WebSocket] Subscribed to riadein (chatroom: 25316906)
+[LOG] 2026-06-02T15:07:46.016Z - [WebSocket] Subscribed to eray (chatroom: 10181332)
+[LOG] 2026-06-02T15:07:46.016Z - [WebSocket] Subscribed to ahmetturku (chatroom: 29869434)
+[LOG] 2026-06-02T15:07:46.016Z - [WebSocket] Subscribed to minik (chatroom: 24752062)
+[LOG] 2026-06-02T15:07:47.386Z - [WebSocket] User banned in minik: {"id":"660fe37c-481f-4da6-a342-01511970bcfe","user":{"id":81520140,"username":"Janjan011","slug":"janjan011"},"banned_by":{"id":0,"username":"lmmami06","slug":"lmmami06"},"permanent":false,"duration":5,"expires_at":"2026-06-02T15:12:48+00:00"}
