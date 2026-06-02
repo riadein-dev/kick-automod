@@ -176,21 +176,24 @@ class WebSocketManager {
    * Handle incoming chat message
    */
   async handleChatMessage(data, channelSlug, chatroomId) {
+    if (!data) return;
     store.incrementMessages();
+    const rawData = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log(`[WebSocket] RAW MSG: ${JSON.stringify(rawData)}`);
 
-    const message = {
-      id: data.id,
-      message_id: data.id,
-      content: data.content,
-      message: data.content,
-      chatroom_id: chatroomId,
-      chatroom_slug: channelSlug,
-      channel: channelSlug,
-      sender: data.sender || {},
-      user_id: data.sender?.id,
-      username: data.sender?.username,
-      timestamp: data.created_at || new Date().toISOString()
-    };
+      const message = {
+        id: rawData.id,
+        message_id: rawData.id,
+        content: rawData.content,
+        message: rawData.content,
+        chatroom_id: chatroomId,
+        chatroom_slug: channelSlug,
+        channel: channelSlug,
+        sender: rawData.sender || {},
+        user_id: rawData.sender?.id,
+        username: rawData.sender?.username,
+        timestamp: rawData.created_at || new Date().toISOString()
+      };
 
     // Broadcast to frontend
     store.broadcast('chatMessage', {

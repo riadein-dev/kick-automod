@@ -1,12 +1,12 @@
 {
-  "id": "mod_1780415573896_mx3pqw",
+  "id": "mod_1780417278770_fvb25m",
   "ownerId": "ilker4444",
-  "userId": 29408452,
-  "username": "obugrametin",
+  "userId": 66941002,
+  "username": "Kayra12kaktus",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "2478dd50-4c3c-42ac-920b-d3dc3011b1f4",
-  "messageContent": "kelepçe takan polisler bile ona hayrandı @minik",
+  "messageId": "d626556a-a80b-40cb-a9d7-126720782e61",
+  "messageContent": "bu seviye ne chat",
   "reason": "Spam tespit edildi: 3x aynı mesaj (60sn içinde)",
   "ruleName": "spamDetection",
   "type": "auto",
@@ -16,6 +16,6 @@
   "allViolations": [
     "Spam tespit edildi: 3x aynı mesaj (60sn içinde)"
   ],
-  "createdAt": "2026-06-02T15:52:53.896Z",
+  "createdAt": "2026-06-02T16:21:18.770Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }
