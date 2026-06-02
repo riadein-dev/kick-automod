@@ -113,6 +113,8 @@ class AutoModEngine {
       return null;
     }
     
+    console.log(`[AutoMod] DEBUG: Found ${activeChannels.length} active channels for ${logChatroomId}. Users: ${activeChannels.map(c => c.addedBy).join(', ')}`);
+    
     // Process for each user who added the channel
     for (const channel of activeChannels) {
         const userId = channel.addedBy;
