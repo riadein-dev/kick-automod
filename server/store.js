@@ -391,6 +391,10 @@ class Store {
     return this.userMessageHistory.get(userId) || [];
   }
 
+  clearUserMessageHistory(userId) {
+    this.userMessageHistory.delete(userId);
+  }
+
   // AutoMod Rules
   getAutomodRules(userId) {
     if (!this.userRules.has(userId)) {

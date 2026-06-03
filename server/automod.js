@@ -375,10 +375,9 @@ class AutoModEngine {
     
     const history = store.addUserMessage(userId, content);
 
-    // Check for repeated messages
+    // Sadece üst üste aynı mesaj kontrolü (consecutive)
     const limit = rule.maxRepeats || 3;
 
-    // Üst üste (consecutive) 'limit' veya daha fazla aynı mesaj var mı?
     if (history.length >= limit) {
       let consecutiveCount = 0;
       for (let i = history.length - 1; i >= 0; i--) {
@@ -390,6 +389,8 @@ class AutoModEngine {
       }
       
       if (consecutiveCount >= limit) {
+        // Spam algılandı, kullanıcının geçmişini temizle ki sonraki mesajlar yanlış algılanmasın
+        store.clearUserMessageHistory(userId);
         return {
           ruleName: 'spamDetection',
           reason: `Spam tespit edildi: ${consecutiveCount}x aynı mesaj üst üste`,
@@ -397,19 +398,6 @@ class AutoModEngine {
           duration: rule.duration
         };
       }
-    }
-
-    // Check for message flood
-    const oneMinuteAgo = Date.now() - 60000;
-    const recentCount = history.filter(h => h.timestamp > oneMinuteAgo).length;
-    
-    if (recentCount >= rule.maxMessagesPerMinute) {
-      return {
-        ruleName: 'spamDetection',
-        reason: `Mesaj taşması: ${recentCount} mesaj/dakika (limit: ${rule.maxMessagesPerMinute})`,
-        action: rule.action,
-        duration: rule.duration
-      };
     }
 
     return null;
