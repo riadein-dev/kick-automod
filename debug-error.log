@@ -1,12 +1,12 @@
 {
-  "id": "mod_1780513153478_efmdgn",
+  "id": "mod_1780513225963_n4shmx",
   "ownerId": "ilker4444",
-  "userId": 108971738,
-  "username": "Barca1406",
+  "userId": 26542480,
+  "username": "AngutSempanze",
   "channel": "ahmetturku",
   "chatroomId": "29869434",
-  "messageId": "5971c1cc-2b43-4b6c-9e95-1183a850d641",
-  "messageContent": "mahmut.ygt1",
+  "messageId": "a4ca321d-07d9-45dc-bb4c-c2718272bc8d",
+  "messageContent": "[emote:37230:POLICE]ig: omerfkdag @AhmetTurku",
   "reason": "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj",
   "ruleName": "spamDetection",
   "type": "auto",
@@ -16,6 +16,6 @@
   "allViolations": [
     "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj"
   ],
-  "createdAt": "2026-06-03T18:59:13.478Z",
+  "createdAt": "2026-06-03T19:00:25.963Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }
