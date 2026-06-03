@@ -64,9 +64,7 @@ const el = {
     wordDurationGroup: $('#wordDurationGroup'),
     wordDurationInput: $('#wordDurationInput'),
     confirmAddWord: $('#confirmAddWord'),
-    spamTimeWindowInput: $('#spamTimeWindowInput'),
     spamMaxRepeatsInput: $('#spamMaxRepeatsInput'),
-    spamTimeWindowVal: $('#spamTimeWindowVal'),
     spamMaxRepeatsVal: $('#spamMaxRepeatsVal'),
     saveSpamSettingsBtn: $('#saveSpamSettingsBtn'),
     wordsListBody: $('#wordsListBody'),
@@ -524,10 +522,8 @@ async function fetchStats() {
         }
 
         // Sync Spam Detection Sliders
-        if (el.spamTimeWindowInput && el.spamMaxRepeatsInput && state.automodRules?.rules?.spamDetection) {
+        if (el.spamMaxRepeatsInput && state.automodRules?.rules?.spamDetection) {
             const spamRules = state.automodRules.rules.spamDetection;
-            el.spamTimeWindowInput.value = spamRules.timeWindow || 10;
-            el.spamTimeWindowVal.textContent = (spamRules.timeWindow || 10) + 'sn';
             el.spamMaxRepeatsInput.value = spamRules.maxRepeats || 3;
             el.spamMaxRepeatsVal.textContent = spamRules.maxRepeats || 3;
         }
@@ -840,8 +836,6 @@ function setupSoundControl() {
         toggleBtn.classList.toggle('muted', enabled);
         onIcon.style.display = enabled ? 'none' : 'block';
         offIcon.style.display = enabled ? 'block' : 'none';
-        // Toggle slider panel
-        sliderWrap.classList.toggle('open');
         if (!enabled) SoundEngine.playClick(); // test sound
     });
 
@@ -1125,11 +1119,6 @@ function setupEventListeners() {
     });
     
     // Spam Slider Updates
-    if (el.spamTimeWindowInput && el.spamTimeWindowVal) {
-        el.spamTimeWindowInput.addEventListener('input', (e) => {
-            el.spamTimeWindowVal.textContent = e.target.value + 'sn';
-        });
-    }
     if (el.spamMaxRepeatsInput && el.spamMaxRepeatsVal) {
         el.spamMaxRepeatsInput.addEventListener('input', (e) => {
             el.spamMaxRepeatsVal.textContent = e.target.value;
@@ -1139,13 +1128,12 @@ function setupEventListeners() {
     // Save Spam Settings
     if (el.saveSpamSettingsBtn) {
         el.saveSpamSettingsBtn.addEventListener('click', async () => {
-            const timeWindow = parseInt(el.spamTimeWindowInput.value);
             const maxRepeats = parseInt(el.spamMaxRepeatsInput.value);
             try {
                 const res = await fetch('/api/rules/spamDetection', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ timeWindow, maxRepeats })
+                    body: JSON.stringify({ rules: { maxRepeats } })
                 });
                 if (res.ok) {
                     const originalText = el.saveSpamSettingsBtn.innerHTML;

@@ -376,21 +376,27 @@ class AutoModEngine {
     const history = store.addUserMessage(userId, content);
 
     // Check for repeated messages
-    // Artık kullanıcı panelden bu ayarları (timeWindow, maxRepeats) dinamik olarak değiştirebilir.
-    // Varsayılan olarak timeWindow: 10, maxRepeats: 3 kullanıyoruz (eğer veritabanında eski ayar varsa veya yoksa düzeltiyoruz)
-    const activeTimeWindow = rule.timeWindow || 10; 
     const limit = rule.maxRepeats || 3;
 
-    const recentMessages = history.filter(h => h.timestamp > Date.now() - (activeTimeWindow * 1000));
-    const duplicates = recentMessages.filter(h => h.message === content);
-    
-    if (duplicates.length >= limit) {
-      return {
-        ruleName: 'spamDetection',
-        reason: `Spam tespit edildi: ${duplicates.length}x aynı mesaj (${activeTimeWindow}sn içinde)`,
-        action: rule.action,
-        duration: rule.duration
-      };
+    // Üst üste (consecutive) 'limit' veya daha fazla aynı mesaj var mı?
+    if (history.length >= limit) {
+      let consecutiveCount = 0;
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].message === content) {
+          consecutiveCount++;
+        } else {
+          break;
+        }
+      }
+      
+      if (consecutiveCount >= limit) {
+        return {
+          ruleName: 'spamDetection',
+          reason: `Spam tespit edildi: ${consecutiveCount}x aynı mesaj üst üste`,
+          action: rule.action,
+          duration: rule.duration
+        };
+      }
     }
 
     // Check for message flood

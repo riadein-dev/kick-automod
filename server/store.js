@@ -381,9 +381,8 @@ class Store {
     }
     const history = this.userMessageHistory.get(userId);
     history.push({ message, timestamp: Date.now() });
-    // Keep only last 30 seconds of history
-    const cutoff = Date.now() - 30000;
-    const filtered = history.filter(h => h.timestamp > cutoff);
+    // Zaman sınırı olmadan son 200 mesajı tut
+    const filtered = history.slice(-200);
     this.userMessageHistory.set(userId, filtered);
     return filtered;
   }

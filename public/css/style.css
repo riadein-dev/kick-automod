@@ -938,7 +938,7 @@ input { font-family: inherit; outline: none; }
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     animation: slideDown 0.2s var(--ease-out);
 }
-.sound-slider-wrap.open {
+.sound-control:hover .sound-slider-wrap {
     display: flex;
 }
 @keyframes slideDown {
