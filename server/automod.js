@@ -158,6 +158,9 @@ class AutoModEngine {
 
         // Her ihlali (violation) birbirinden bagimsiz olarak ishle
         for (const violation of violations) {
+            // Whitelist aksiyonlu kelimeler: algıla ama loga düşürme
+            if (violation.action === 'whitelist') continue;
+
             let isAuto = true;
             if (violation.ruleName === 'spamDetection') {
                 isAuto = (rules.mode === 'auto');
@@ -380,6 +383,7 @@ class AutoModEngine {
 
     if (history.length >= limit) {
       let consecutiveCount = 0;
+      
       for (let i = history.length - 1; i >= 0; i--) {
         if (history[i].message === content) {
           consecutiveCount++;
@@ -389,8 +393,6 @@ class AutoModEngine {
       }
       
       if (consecutiveCount >= limit) {
-        // Spam algılandı, kullanıcının geçmişini temizle ki sonraki mesajlar yanlış algılanmasın
-        store.clearUserMessageHistory(userId);
         return {
           ruleName: 'spamDetection',
           reason: `Spam tespit edildi: ${consecutiveCount}x aynı mesaj üst üste`,

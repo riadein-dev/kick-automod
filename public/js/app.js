@@ -406,17 +406,18 @@ function renderLogs() {
                 actionsHtml += `<div style="color:var(--text-3); font-size:0.75rem; text-align: center; margin-top: 8px;">Mevcut Durum: ${log.status === 'applied' ? 'Uygulandı' : log.status} (${log.action || ''})</div>`;
             }
 
-            // We duplicate the message 3 times to simulate the UI from the screenshot
-            const repeatsHtml = `
-                <div class="spam-msg-box">${msgContent}</div>
-                <div class="spam-msg-box">${msgContent}</div>
-                <div class="spam-msg-box">${msgContent}</div>
-            `;
+            let spamCount = 3;
+            if (log.reason) {
+                const match = log.reason.match(/(\d+)x ayn/);
+                if (match) spamCount = parseInt(match[1]);
+            }
+
+            const repeatsHtml = Array(spamCount).fill(`<div class="spam-msg-box">${msgContent}</div>`).join('');
 
             card.innerHTML = `
                 <div class="spam-card-header">
                     <span class="spam-username">${log.username}</span>
-                    <span class="spam-badge">3. aynı mesaj</span>
+                    <span class="spam-badge">${spamCount}. aynı mesaj</span>
                 </div>
                 <div class="spam-main-msg">${msgContent}</div>
                 <div class="spam-repeats">
@@ -637,6 +638,7 @@ function renderWords() {
         if (w.action === 'ban') actionBadge = '<span style="color:var(--red); font-weight:700; font-size:0.75rem; background:rgba(239,68,68,0.1); padding:4px 8px; border-radius:4px;">BAN</span>';
         else if (w.action === 'timeout') actionBadge = '<span style="color:var(--orange); font-weight:700; font-size:0.75rem; background:rgba(245,158,11,0.1); padding:4px 8px; border-radius:4px;">TIMEOUT</span>';
         else if (w.action === 'warn') actionBadge = '<span style="color:var(--blue); font-weight:700; font-size:0.75rem; background:rgba(59,130,246,0.1); padding:4px 8px; border-radius:4px;">UYARI</span>';
+        else if (w.action === 'whitelist') actionBadge = '<span style="color:var(--green); font-weight:700; font-size:0.75rem; background:rgba(83,252,24,0.1); padding:4px 8px; border-radius:4px;">WHITELIST</span>';
 
         const durationStr = w.action === 'timeout' ? `${w.duration}dk` : (w.action === 'ban' ? 'Sınırsız' : '-');
         const wordHtml = w.exactMatch ? `${w.word} <span style="background:var(--green); color:#000; padding: 2px 6px; border-radius:4px; font-size:0.65rem; white-space:nowrap;">Tam Cümle</span>` : w.word;

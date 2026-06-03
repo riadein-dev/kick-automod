@@ -1,21 +1,21 @@
 {
-  "id": "mod_1780504697670_d59vsq",
+  "id": "mod_1780511759500_y2vfua",
   "ownerId": "ilker4444",
-  "userId": 26049655,
-  "username": "ilker4444",
-  "channel": "minik",
-  "chatroomId": "24752062",
-  "messageId": "2f32fd8f-5757-4fa7-9d16-0bdaeda7cd57",
-  "messageContent": "NOLCAK",
-  "reason": "Mesaj taşması: 25 mesaj/dakika (limit: 20)",
+  "userId": 28173475,
+  "username": "qw1N_0",
+  "channel": "ahmetturku",
+  "chatroomId": "29869434",
+  "messageId": "3690563a-0240-4a12-8baf-8696fca0a32f",
+  "messageContent": "SA",
+  "reason": "Spam tespit edildi: 3x aynı mesaj üst üste",
   "ruleName": "spamDetection",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
   "allViolations": [
-    "Mesaj taşması: 25 mesaj/dakika (limit: 20)"
+    "Spam tespit edildi: 3x aynı mesaj üst üste"
   ],
-  "createdAt": "2026-06-03T16:38:17.670Z",
+  "createdAt": "2026-06-03T18:35:59.500Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }
