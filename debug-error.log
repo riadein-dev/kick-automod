@@ -1,21 +1,21 @@
 {
-  "id": "mod_1780511759500_y2vfua",
+  "id": "mod_1780512925570_275adh",
   "ownerId": "ilker4444",
-  "userId": 28173475,
-  "username": "qw1N_0",
+  "userId": 51564622,
+  "username": "lleyN",
   "channel": "ahmetturku",
   "chatroomId": "29869434",
-  "messageId": "3690563a-0240-4a12-8baf-8696fca0a32f",
-  "messageContent": "SA",
-  "reason": "Spam tespit edildi: 3x aynı mesaj üst üste",
+  "messageId": "5ad69655-72d0-428a-aed3-5a289ece4d69",
+  "messageContent": "emrileyn",
+  "reason": "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj",
   "ruleName": "spamDetection",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
   "allViolations": [
-    "Spam tespit edildi: 3x aynı mesaj üst üste"
+    "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj"
   ],
-  "createdAt": "2026-06-03T18:35:59.500Z",
+  "createdAt": "2026-06-03T18:55:25.570Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }

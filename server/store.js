@@ -375,12 +375,18 @@ class Store {
   }
 
   // User Message History (for spam detection)
-  addUserMessage(userId, message) {
+  addUserMessage(userId, messageContent, messageId) {
     if (!this.userMessageHistory.has(userId)) {
       this.userMessageHistory.set(userId, []);
     }
     const history = this.userMessageHistory.get(userId);
-    history.push({ message, timestamp: Date.now() });
+    
+    // Prevent duplicating the exact same message event (e.g. if multiple moderators monitor the same channel)
+    if (messageId && history.length > 0 && history[history.length - 1].id === messageId) {
+        return history;
+    }
+    
+    history.push({ id: messageId, message: messageContent, timestamp: Date.now() });
     // Zaman sınırı olmadan son 200 mesajı tut
     const filtered = history.slice(-200);
     this.userMessageHistory.set(userId, filtered);

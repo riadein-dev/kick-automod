@@ -184,6 +184,20 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
 
   const log = store.updateModerationLog(id, updates);
 
+  // Eğer bir spam log'u "Yok Say" (rejected) yapıldıysa, aynı kullanıcının diğer pending spam log'larını da reject et
+  if (existingLog.ruleName === 'spamDetection' && status === 'rejected') {
+      const allLogs = store.getModerationLogs();
+      const otherLogs = allLogs.filter(l => 
+          l.ruleName === 'spamDetection' && 
+          l.userId === existingLog.userId && 
+          l.status === 'pending' &&
+          l.id !== id
+      );
+      for (const ol of otherLogs) {
+          store.updateModerationLog(ol.id, { status: 'rejected' });
+      }
+  }
+
   // If approved and action requested, execute it via Kick API
   if ((status === 'applied' || status === 'unbanned') && action && req.session.accessToken) {
     try {

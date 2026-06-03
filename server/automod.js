@@ -362,9 +362,14 @@ class AutoModEngine {
 
   checkSpam(message, rule) {
     const userId = message.sender?.id || message.user_id;
-    if (!userId) return null;
-
     const content = message.content || message.message || '';
+    const messageId = message.id || message.message_id;
+
+    if (!userId || !content) {
+      return null;
+    }
+    
+    const history = store.addUserMessage(userId, content, messageId);
     
     // If emoteSpam is disabled, do not flag pure-emote messages as spam
     const globalRules = store.getAutomodRules();
@@ -376,26 +381,24 @@ class AutoModEngine {
       }
     }
     
-    const history = store.addUserMessage(userId, content);
-
     // Sadece üst üste aynı mesaj kontrolü (consecutive)
     const limit = rule.maxRepeats || 3;
+    const windowSize = 5;
 
     if (history.length >= limit) {
-      let consecutiveCount = 0;
+      const recentMessages = history.slice(-windowSize);
+      let count = 0;
       
-      for (let i = history.length - 1; i >= 0; i--) {
-        if (history[i].message === content) {
-          consecutiveCount++;
-        } else {
-          break;
+      for (const msg of recentMessages) {
+        if (msg.message === content) {
+          count++;
         }
       }
       
-      if (consecutiveCount >= limit) {
+      if (count >= limit) {
         return {
           ruleName: 'spamDetection',
-          reason: `Spam tespit edildi: ${consecutiveCount}x aynı mesaj üst üste`,
+          reason: `Spam tespit edildi: Son ${windowSize} mesajda ${count}x aynı mesaj`,
           action: rule.action,
           duration: rule.duration
         };
