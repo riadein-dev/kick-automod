@@ -1,21 +1,21 @@
 {
-  "id": "mod_1780513134565_866tdf",
+  "id": "mod_1780513153478_efmdgn",
   "ownerId": "ilker4444",
-  "userId": 41894353,
-  "username": "ErenTurku",
+  "userId": 108971738,
+  "username": "Barca1406",
   "channel": "ahmetturku",
   "chatroomId": "29869434",
-  "messageId": "ffa37a58-a18f-4579-9e3d-15140d3a4ab0",
-  "messageContent": "erayw2026 @AHMETTURKU MASTERPAND",
-  "reason": "Spam tespit edildi: Son 5 mesajda 4x aynı mesaj",
+  "messageId": "5971c1cc-2b43-4b6c-9e95-1183a850d641",
+  "messageContent": "mahmut.ygt1",
+  "reason": "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj",
   "ruleName": "spamDetection",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
   "allViolations": [
-    "Spam tespit edildi: Son 5 mesajda 4x aynı mesaj"
+    "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj"
   ],
-  "createdAt": "2026-06-03T18:58:54.565Z",
+  "createdAt": "2026-06-03T18:59:13.478Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }
