@@ -389,7 +389,8 @@ function renderLogs() {
             card.setAttribute('data-log-id', log.id);
             
             // In Spam panel, reason contains the message content logic usually, or we can use log.messageContent if available
-            const msgContent = log.messageContent || log.allViolations?.[0] || log.reason;
+            const rawMsg = log.messageContent || log.allViolations?.[0] || log.reason || '';
+            const msgContent = parseKickEmotes(rawMsg);
 
             // Spam panelinde butonlar her zaman görünsün, işlem yapılmış olsa bile ezebilmek için.
             let actionsHtml = `
@@ -476,9 +477,10 @@ function renderLogs() {
         else if (log.action === 'delete') actionDetail = 'Mesaj Silindi';
         else actionDetail = log.action || '-';
         
-        let msgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
+        let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
         // Truncate long messages
-        if (msgHtml.length > 50) msgHtml = msgHtml.substring(0, 50) + '...';
+        if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
+        let msgHtml = parseKickEmotes(rawMsgHtml);
 
         tr.innerHTML = `
             <td><strong>${log.username}</strong></td>
@@ -742,8 +744,9 @@ function renderAllLogs() {
         else if (log.action === 'warn') actionDetail = 'Uyarı (İşlem Yok)';
         else actionDetail = log.action || '-';
         
-        let msgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
-        if (msgHtml.length > 50) msgHtml = msgHtml.substring(0, 50) + '...';
+        let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
+        if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
+        let msgHtml = parseKickEmotes(rawMsgHtml);
 
         const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
@@ -1402,6 +1405,25 @@ function setupEventListeners() {
             }
         });
     }
+}
+
+// Helper to parse Kick emotes safely
+function parseKickEmotes(content) {
+    if (!content) return '-';
+    // XSS Escape
+    let safeText = content.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag] || tag));
+    
+    // Parse Emotes
+    const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
+    return safeText.replace(emoteRegex, (match, id, name) => {
+        return `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${name}" title="${name}" class="kick-emote" />`;
+    });
 }
 
 // ===== Boot =====

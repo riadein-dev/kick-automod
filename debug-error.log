@@ -1,21 +1,21 @@
 {
-  "id": "mod_1780513225963_n4shmx",
-  "ownerId": "ilker4444",
-  "userId": 26542480,
-  "username": "AngutSempanze",
-  "channel": "ahmetturku",
-  "chatroomId": "29869434",
-  "messageId": "a4ca321d-07d9-45dc-bb4c-c2718272bc8d",
-  "messageContent": "[emote:37230:POLICE]ig: omerfkdag @AhmetTurku",
-  "reason": "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj",
-  "ruleName": "spamDetection",
+  "id": "mod_1780610176960_gjqoo8",
+  "ownerId": "Riadein",
+  "userId": 80600572,
+  "username": "emr7728",
+  "channel": "minik",
+  "chatroomId": "24752062",
+  "messageId": "bcfbe746-b2aa-4210-9c4d-95283c61b55d",
+  "messageContent": "[emote:1730753:emojiAngry]",
+  "reason": "Yasaklı kelime tespit edildi: \"emojiAngry\"",
+  "ruleName": "bannedWords",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
   "allViolations": [
-    "Spam tespit edildi: Son 5 mesajda 3x aynı mesaj"
+    "Yasaklı kelime tespit edildi: \"emojiAngry\""
   ],
-  "createdAt": "2026-06-03T19:00:25.963Z",
+  "createdAt": "2026-06-04T21:56:16.960Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }

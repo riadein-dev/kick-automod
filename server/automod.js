@@ -10,6 +10,7 @@ class AutoModEngine {
   constructor() {
     // Singleton state removed for SaaS architecture.
     // Each action fetches the required user token from store/db.
+    this.executedActions = new Set();
   }
 
   // Backwards compatibility for middleware
@@ -144,8 +145,8 @@ class AutoModEngine {
           console.log(`[AutoMod] DEBUG: bannedWords DISABLED for user ${userId}`);
         }
 
-        if (rules.rules.spamDetection.enabled) {
-          const result = this.checkSpam(message, rules.rules.spamDetection);
+        if (rules.rules.spamDetection?.enabled) {
+          const result = this.checkSpam(message, rules.rules.spamDetection, rules.rules.emoteSpam?.enabled);
           if (result) violations.push(result);
         }
 
@@ -156,10 +157,17 @@ class AutoModEngine {
 
         if (violations.length === 0) continue;
 
+        // Eger mesajda "whitelist" aksiyonlu bir kelime gectiyse, o mesajdaki tum DİĞER KELİME ihlallerini yoksay!
+        // Boylece icinde yasakli kelime gecen ama aslında masum olan kelimeler (örn: yasaklı "am", masum "ama") ban yemez.
+        const hasWhitelist = violations.some(v => v.action === 'whitelist');
+        if (hasWhitelist) {
+            console.log(`[AutoMod] Message bypassed bannedWords via whitelist: "${(message.content||'').substring(0,50)}"`);
+            violations = violations.filter(v => v.ruleName !== 'bannedWords');
+            if (violations.length === 0) continue;
+        }
+
         // Her ihlali (violation) birbirinden bagimsiz olarak ishle
         for (const violation of violations) {
-            // Whitelist aksiyonlu kelimeler: algıla ama loga düşürme
-            if (violation.action === 'whitelist') continue;
 
             let isAuto = true;
             if (violation.ruleName === 'spamDetection') {
@@ -212,6 +220,17 @@ class AutoModEngine {
    */
   async applyAction(logEntry, userId) {
     const ownerId = userId || logEntry.ownerId;
+    
+    if (this.executedActions.has(logEntry.messageId)) {
+        console.log(`[AutoMod] Skipping duplicate action for message ${logEntry.messageId}`);
+        store.updateModerationLog(logEntry.id, { status: 'applied', appliedAt: new Date().toISOString() });
+        return;
+    }
+    this.executedActions.add(logEntry.messageId);
+    if (this.executedActions.size > 1000) {
+        this.executedActions.clear();
+    }
+
     const client = await this._getClient(ownerId);
     if (!client) {
       console.warn(`[AutoMod] No Kick client available for user ${ownerId} - token missing`);
@@ -360,7 +379,7 @@ class AutoModEngine {
     return foundViolations;
   }
 
-  checkSpam(message, rule) {
+  checkSpam(message, rule, isEmoteSpamEnabled = true) {
     const userId = message.sender?.id || message.user_id;
     const content = message.content || message.message || '';
     const messageId = message.id || message.message_id;
@@ -372,8 +391,7 @@ class AutoModEngine {
     const history = store.addUserMessage(userId, content, messageId);
     
     // If emoteSpam is disabled, do not flag pure-emote messages as spam
-    const globalRules = store.getAutomodRules();
-    if (!globalRules.rules.emoteSpam.enabled) {
+    if (!isEmoteSpamEnabled) {
       const emoteRegex = /:[a-zA-Z0-9_]+:|\[emote:[^\]]+\]/g;
       const purelyEmotes = content.replace(emoteRegex, '').trim() === '';
       if (purelyEmotes && content.trim() !== '') {

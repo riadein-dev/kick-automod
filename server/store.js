@@ -80,9 +80,9 @@ class Store {
          const rules = this._getDefaultRules();
          rules.mode = dbRule.mode;
          rules.enabled = dbRule.enabled;
-         rules.rules.bannedWords.enabled = dbRule.bannedWordsEnabled;
-         rules.rules.spamDetection.enabled = dbRule.spamDetectionEnabled;
-         rules.rules.emoteSpam.enabled = dbRule.emoteSpamEnabled;
+         rules.rules.bannedWords.enabled = dbRule.bannedWordsEnabled ?? rules.rules.bannedWords.enabled;
+         rules.rules.spamDetection.enabled = dbRule.spamDetectionEnabled ?? rules.rules.spamDetection.enabled;
+         rules.rules.emoteSpam.enabled = dbRule.emoteSpamEnabled ?? rules.rules.emoteSpam.enabled;
          
          // Attach words for this user
          rules.rules.bannedWords.words = dbWords.filter(w => w.addedBy === dbRule.userId).map(w => ({
