@@ -146,7 +146,7 @@ class AutoModEngine {
         }
 
         if (rules.rules.spamDetection?.enabled) {
-          const result = this.checkSpam(message, rules.rules.spamDetection, rules.rules.emoteSpam?.enabled);
+          const result = this.checkSpam(message, rules.rules.spamDetection, rules.rules.emoteSpam);
           if (result) violations.push(result);
         }
 
@@ -379,7 +379,7 @@ class AutoModEngine {
     return foundViolations;
   }
 
-  checkSpam(message, rule, isEmoteSpamEnabled = true) {
+  checkSpam(message, spamRule, emoteSpamRule) {
     const userId = message.sender?.id || message.user_id;
     const content = message.content || message.message || '';
     const messageId = message.id || message.message_id;
@@ -390,17 +390,21 @@ class AutoModEngine {
     
     const history = store.addUserMessage(userId, content, messageId);
     
+    const isEmoteSpamEnabled = emoteSpamRule?.enabled ?? true;
+    const emoteRegex = /:[a-zA-Z0-9_]+:|\[emote:[^\]]+\]/g;
+    const purelyEmotes = content.replace(emoteRegex, '').trim() === '';
+
     // If emoteSpam is disabled, do not flag pure-emote messages as spam
-    if (!isEmoteSpamEnabled) {
-      const emoteRegex = /:[a-zA-Z0-9_]+:|\[emote:[^\]]+\]/g;
-      const purelyEmotes = content.replace(emoteRegex, '').trim() === '';
-      if (purelyEmotes && content.trim() !== '') {
-        return null;
-      }
+    if (!isEmoteSpamEnabled && purelyEmotes && content.trim() !== '') {
+      return null;
     }
     
     // Sadece üst üste aynı mesaj kontrolü (consecutive)
-    const limit = rule.maxRepeats || 3;
+    let limit = spamRule.maxRepeats || 3;
+    if (purelyEmotes && content.trim() !== '') {
+      limit = emoteSpamRule?.maxRepeats || 3;
+    }
+    
     const windowSize = 5;
 
     if (history.length >= limit) {
@@ -412,13 +416,14 @@ class AutoModEngine {
           count++;
         }
       }
-      
+
       if (count >= limit) {
         return {
-          ruleName: 'spamDetection',
-          reason: `Spam tespit edildi: Son ${windowSize} mesajda ${count}x aynı mesaj`,
-          action: rule.action,
-          duration: rule.duration
+          ruleName: purelyEmotes ? 'emoteSpam' : 'spamDetection',
+          action: purelyEmotes ? (emoteSpamRule?.action || 'delete') : (spamRule.action || 'timeout'),
+          duration: purelyEmotes ? (emoteSpamRule?.duration || 0) : (spamRule.duration || 5),
+          reason: purelyEmotes ? `Emote Spam (${count}x aynı mesaj)` : `Spam (${count}x aynı mesaj)`,
+          messageContent: content
         };
       }
     }

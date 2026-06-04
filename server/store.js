@@ -47,7 +47,8 @@ class Store {
         emoteSpam: {
           enabled: true,
           name: 'Emote Spam',
-          maxEmotes: 15,
+          maxRepeats: 3,
+          maxEmotes: 15, // Legacy logic or purely for checkEmoteSpam if needed
           action: 'delete',
           duration: 0
         }
@@ -83,6 +84,9 @@ class Store {
          rules.rules.bannedWords.enabled = dbRule.bannedWordsEnabled ?? rules.rules.bannedWords.enabled;
          rules.rules.spamDetection.enabled = dbRule.spamDetectionEnabled ?? rules.rules.spamDetection.enabled;
          rules.rules.emoteSpam.enabled = dbRule.emoteSpamEnabled ?? rules.rules.emoteSpam.enabled;
+         
+         rules.rules.spamDetection.maxRepeats = dbRule.spamMaxRepeats ?? rules.rules.spamDetection.maxRepeats;
+         rules.rules.emoteSpam.maxRepeats = dbRule.emoteMaxRepeats ?? rules.rules.emoteSpam.maxRepeats;
          
          // Attach words for this user
          rules.rules.bannedWords.words = dbWords.filter(w => w.addedBy === dbRule.userId).map(w => ({
@@ -135,6 +139,8 @@ class Store {
       bannedWordsEnabled: rules.rules.bannedWords.enabled,
       spamDetectionEnabled: rules.rules.spamDetection.enabled,
       emoteSpamEnabled: rules.rules.emoteSpam.enabled,
+      spamMaxRepeats: rules.rules.spamDetection.maxRepeats,
+      emoteMaxRepeats: rules.rules.emoteSpam.maxRepeats,
       addedBy: userId
     }, { upsert: true }).catch(console.error);
   }

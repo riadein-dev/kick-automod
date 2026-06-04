@@ -531,6 +531,14 @@ async function fetchStats() {
             el.spamMaxRepeatsVal.textContent = spamRules.maxRepeats || 3;
         }
 
+        const emoteSpamLimitInput = document.getElementById('emoteSpamLimitInput');
+        const emoteSpamLimitVal = document.getElementById('emoteSpamLimitVal');
+        if (emoteSpamLimitInput && state.automodRules?.rules?.emoteSpam) {
+            const emoteRules = state.automodRules.rules.emoteSpam;
+            emoteSpamLimitInput.value = emoteRules.maxRepeats || 3;
+            if (emoteSpamLimitVal) emoteSpamLimitVal.textContent = emoteRules.maxRepeats || 3;
+        }
+
         // Sync Emote Spam Toggle
         const emoteSpamToggle = document.getElementById('emoteSpamToggle');
         if (emoteSpamToggle && state.automodRules && state.automodRules.rules && state.automodRules.rules.emoteSpam) {
@@ -1130,17 +1138,32 @@ function setupEventListeners() {
         });
     }
 
+    const emoteSpamLimitInput = document.getElementById('emoteSpamLimitInput');
+    const emoteSpamLimitVal = document.getElementById('emoteSpamLimitVal');
+    if (emoteSpamLimitInput && emoteSpamLimitVal) {
+        emoteSpamLimitInput.addEventListener('input', (e) => {
+            emoteSpamLimitVal.textContent = e.target.value;
+        });
+    }
+
     // Save Spam Settings
     if (el.saveSpamSettingsBtn) {
         el.saveSpamSettingsBtn.addEventListener('click', async () => {
             const maxRepeats = parseInt(el.spamMaxRepeatsInput.value);
+            const emoteLimitEl = document.getElementById('emoteSpamLimitInput');
+            const emoteMaxRepeats = emoteLimitEl ? parseInt(emoteLimitEl.value) : 3;
             try {
                 const res = await fetch('/api/rules/spamDetection', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rules: { maxRepeats } })
                 });
-                if (res.ok) {
+                const res2 = await fetch('/api/rules/emoteSpam', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rules: { maxRepeats: emoteMaxRepeats } })
+                });
+                if (res.ok && res2.ok) {
                     const originalText = el.saveSpamSettingsBtn.innerHTML;
                     el.saveSpamSettingsBtn.innerHTML = '<i class="fa fa-check"></i> Kaydedildi';
                     el.saveSpamSettingsBtn.style.background = 'var(--green)';

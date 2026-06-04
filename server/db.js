@@ -25,7 +25,9 @@ const automodRuleSchema = new mongoose.Schema({
     bannedWordsEnabled: { type: Boolean, default: true },
     spamDetectionEnabled: { type: Boolean, default: true },
     linkBlockingEnabled: { type: Boolean, default: true },
-    emoteSpamEnabled: { type: Boolean, default: true }
+    emoteSpamEnabled: { type: Boolean, default: true },
+    spamMaxRepeats: { type: Number, default: 3 },
+    emoteMaxRepeats: { type: Number, default: 3 }
 });
 
 const visitorSchema = new mongoose.Schema({
