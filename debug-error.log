@@ -1,21 +1,21 @@
 {
-  "id": "mod_1780612044307_0wa73x",
+  "id": "mod_1780612140352_z9kgl7",
   "ownerId": "Riadein",
-  "userId": 28860928,
-  "username": "Kolonya99",
+  "userId": 71070920,
+  "username": "2keyyloops",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "e590c21c-2567-43a9-9454-9f354633a086",
-  "messageContent": "[emote:37226:KEKW]",
-  "reason": "Emote Spam (4x aynı mesaj)",
-  "ruleName": "emoteSpam",
+  "messageId": "c08c9f56-95da-429d-9344-32c60f536a56",
+  "messageContent": "sonra low rp",
+  "reason": "Yasaklı kelime tespit edildi: \"low rp\"",
+  "ruleName": "bannedWords",
   "type": "auto",
-  "action": "delete",
-  "duration": 0,
+  "action": "timeout",
+  "duration": 5,
   "status": "error",
   "allViolations": [
-    "Emote Spam (4x aynı mesaj)"
+    "Yasaklı kelime tespit edildi: \"low rp\""
   ],
-  "createdAt": "2026-06-04T22:27:24.307Z",
-  "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
+  "createdAt": "2026-06-04T22:29:00.352Z",
+  "error": "Kick API error 400: {\"data\":{},\"message\":\"Invalid request\"}\n"
 }

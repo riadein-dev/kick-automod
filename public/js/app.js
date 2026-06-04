@@ -1157,12 +1157,12 @@ function setupEventListeners() {
                 const res = await fetch('/api/rules/spamDetection', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rules: { maxRepeats } })
+                    body: JSON.stringify({ maxRepeats })
                 });
                 const res2 = await fetch('/api/rules/emoteSpam', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rules: { maxRepeats: emoteMaxRepeats } })
+                    body: JSON.stringify({ maxRepeats: emoteMaxRepeats })
                 });
                 if (res.ok && res2.ok) {
                     const originalText = el.saveSpamSettingsBtn.innerHTML;
