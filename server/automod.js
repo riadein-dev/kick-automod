@@ -177,7 +177,7 @@ class AutoModEngine {
             const finalStatus = (isAuto && violation.action !== 'warn') ? 'applied' : 'pending';
 
             const shouldLog = ['ban', 'timeout'].includes(violation.action) || 
-                              ['spamDetection', 'bannedWords'].includes(violation.ruleName);
+                              ['spamDetection', 'bannedWords', 'emoteSpam'].includes(violation.ruleName);
 
             if (!shouldLog) {
               if (isAuto && violation.action === 'delete') {

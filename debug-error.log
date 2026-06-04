@@ -1,21 +1,21 @@
 {
-  "id": "mod_1780610176960_gjqoo8",
+  "id": "mod_1780611737338_d60wqc",
   "ownerId": "Riadein",
-  "userId": 80600572,
-  "username": "emr7728",
+  "userId": 89617918,
+  "username": "SerhatXxx7",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "bcfbe746-b2aa-4210-9c4d-95283c61b55d",
-  "messageContent": "[emote:1730753:emojiAngry]",
-  "reason": "Yasaklı kelime tespit edildi: \"emojiAngry\"",
-  "ruleName": "bannedWords",
+  "messageId": "f8c05681-3952-49aa-9413-6559ff9c660b",
+  "messageContent": "[emote:37226:KEKW]",
+  "reason": "Emote Spam (5x aynı mesaj)",
+  "ruleName": "emoteSpam",
   "type": "auto",
-  "action": "timeout",
-  "duration": 5,
+  "action": "delete",
+  "duration": 0,
   "status": "error",
   "allViolations": [
-    "Yasaklı kelime tespit edildi: \"emojiAngry\""
+    "Emote Spam (5x aynı mesaj)"
   ],
-  "createdAt": "2026-06-04T21:56:16.960Z",
+  "createdAt": "2026-06-04T22:22:17.338Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }

@@ -996,3 +996,7 @@ input { font-family: inherit; outline: none; }
 @media (max-width: 768px) {
     .sound-control { display: none; }
 }
+
+/* Kick Emotes */
+.kick-emote { height: 1.2em; max-height: 22px; vertical-align: text-bottom; display: inline-block; border-radius: 2px; }
+

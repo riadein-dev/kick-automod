@@ -364,10 +364,11 @@ function renderLogs() {
         : state.logs.filter(l => l.channel === state.activeTab);
 
     // Spam panel shows only pending spam detections
-    const spamLogs = filtered.filter(l => l.ruleName === 'spamDetection' && l.status === 'pending' && !l.hiddenUI);
+    const isSpam = (rule) => rule === 'spamDetection' || rule === 'emoteSpam';
+    const spamLogs = filtered.filter(l => isSpam(l.ruleName) && l.status === 'pending' && !l.hiddenUI);
     
     // Mod Queue shows everything else (including applied/rejected spam detections, and all other rules)
-    const otherLogs = filtered.filter(l => l.ruleName !== 'spamDetection' || l.status !== 'pending' || l.hiddenUI);
+    const otherLogs = filtered.filter(l => !isSpam(l.ruleName) || l.status !== 'pending' || l.hiddenUI);
 
     // --- Render Spam Panel ---
     if (spamLogs.length === 0) {
@@ -787,7 +788,7 @@ async function handleAction(logId, status, actionType, duration = null) {
                 log.action = actionType;
                 
                 // If it's a spam panel action, apply dissolve animation before re-rendering
-                if (log.ruleName === 'spamDetection') {
+                if (log.ruleName === 'spamDetection' || log.ruleName === 'emoteSpam') {
                     const card = document.querySelector(`.spam-card[data-log-id="${logId}"]`);
                     if (card) {
                         card.classList.add('dissolve');
@@ -1174,8 +1175,10 @@ function setupEventListeners() {
                         el.saveSpamSettingsBtn.style.color = 'var(--text-1)';
                     }, 2000);
                     if (state.automodRules?.rules?.spamDetection) {
-                        state.automodRules.rules.spamDetection.timeWindow = timeWindow;
                         state.automodRules.rules.spamDetection.maxRepeats = maxRepeats;
+                    }
+                    if (state.automodRules?.rules?.emoteSpam) {
+                        state.automodRules.rules.emoteSpam.maxRepeats = emoteMaxRepeats;
                     }
                 } else {
                     alert('Ayarlar kaydedilemedi.');
