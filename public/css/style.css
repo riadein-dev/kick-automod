@@ -242,6 +242,7 @@ input, select { font-family: inherit; outline: none; }
 
 .spam-panel-wrapper { width: 0; opacity: 0; overflow: hidden; transition: width 0.6s var(--ease-spring), opacity 0.4s; }
 .spam-panel-wrapper.open { width: 35%; opacity: 1; overflow: visible; }
+.spam-panel-wrapper .panel { min-width: 450px; width: 100%; }
 
 .panel {
     background: rgba(15, 15, 20, 0.5); backdrop-filter: blur(48px); -webkit-backdrop-filter: blur(48px);
@@ -253,14 +254,15 @@ input, select { font-family: inherit; outline: none; }
 .panel-header h2 { font-size: 1.4rem; font-weight: 800; color: #fff; }
 
 /* SPAM PANEL FADE-IN FIX: Staggered entrance for all direct children of panel */
-.spam-panel-wrapper.open .panel > * {
-    opacity: 0; transform: translateY(20px);
-    animation: fadeSlideUp 0.6s var(--ease-spring) forwards;
+.spam-panel-wrapper .panel > * {
+    opacity: 0; transform: translateY(30px);
+    transition: all 0.5s var(--ease-spring);
 }
-.spam-panel-wrapper.open .panel > *:nth-child(1) { animation-delay: 0.1s; }
-.spam-panel-wrapper.open .panel > *:nth-child(2) { animation-delay: 0.2s; }
-.spam-panel-wrapper.open .panel > *:nth-child(3) { animation-delay: 0.3s; }
-.spam-panel-wrapper.open .panel > *:nth-child(4) { animation-delay: 0.4s; }
+.spam-panel-wrapper.open .panel > * { opacity: 1; transform: translateY(0); }
+.spam-panel-wrapper.open .panel > *:nth-child(1) { transition-delay: 0.3s; }
+.spam-panel-wrapper.open .panel > *:nth-child(2) { transition-delay: 0.4s; }
+.spam-panel-wrapper.open .panel > *:nth-child(3) { transition-delay: 0.5s; }
+.spam-panel-wrapper.open .panel > *:nth-child(4) { transition-delay: 0.6s; }
 
 /* SPAM PANEL SPECIFICS */
 .spam-panel { background: rgba(5, 5, 8, 0.7) !important; border-color: rgba(255, 153, 0, 0.2); }
