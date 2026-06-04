@@ -280,14 +280,14 @@ input, select { font-family: inherit; outline: none; }
 .spam-main-msg { color: #fff; font-weight: 600; font-size: 1.1rem; margin: 1rem 0; line-height: 1.6; }
 .spam-msg-box { background: rgba(0,0,0,0.5); color: var(--text-2); padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 6px; }
 .spam-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1rem; }
-.spam-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: #fff; padding: 15px 1rem 11px; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; flex: 1; text-align: center; transition: all 0.3s; display: inline-flex; justify-content: center; align-items: center; line-height: 1; }
+.spam-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: #fff; padding: 0 1rem; height: 44px; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; flex: 1; text-align: center; transition: all 0.3s; display: inline-flex; justify-content: center; align-items: center; line-height: 1; }
 .spam-action-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--border-bright); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
 /* SLIDE TOGGLES */
 .slide-toggle { position: relative; display: flex; background: rgba(0,0,0,0.6); border: 1px solid var(--border); border-radius: var(--radius-full); padding: 4px; min-width: 240px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.5); }
 .slide-toggle-bg { position: absolute; top: 4px; left: 4px; bottom: 4px; width: calc(50% - 4px); border-radius: var(--radius-full); background: var(--blue); box-shadow: 0 0 20px var(--blue-glow); transition: transform 0.5s var(--ease-spring), background 0.3s; z-index: 1; }
 .slide-toggle.right .slide-toggle-bg { transform: translateX(100%); background: var(--text-3); box-shadow: none; }
-.slide-toggle-btn { flex: 1 1 50%; width: 50%; position: relative; z-index: 2; background: transparent; border: none; padding: 14px 16px 10px; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-2); transition: color 0.3s; display: flex; align-items: center; justify-content: center; line-height: 1; text-align: center; }
+.slide-toggle-btn { flex: 1 1 50%; width: 50%; position: relative; z-index: 2; background: transparent; border: none; padding: 0; height: 36px; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-2); transition: color 0.3s; display: flex; align-items: center; justify-content: center; line-height: 1; text-align: center; }
 .slide-toggle-btn.active { color: #000; }
 .slide-toggle.right .slide-toggle-btn.active { color: #fff; }
 
@@ -304,7 +304,7 @@ input, select { font-family: inherit; outline: none; }
 
 /* Table Action Buttons */
 .action-btns { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
-.action-btn { min-width: 50px; height: auto; border-radius: var(--radius-md); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-2); padding: 15px 16px 11px; font-size: 0.9rem; font-weight: 800; transition: all 0.4s var(--ease-spring); line-height: 1; }
+.action-btn { min-width: 50px; height: 44px; border-radius: var(--radius-md); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-2); padding: 0 16px; font-size: 0.9rem; font-weight: 800; transition: all 0.4s var(--ease-spring); line-height: 1; }
 .action-btn:hover { transform: translateY(-3px); color: #fff; border-color: var(--border-bright); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 .action-btn.approve:hover { background: var(--green); color: #000; border-color: var(--green); box-shadow: 0 5px 20px var(--green-glow); }
 .action-btn.reject:hover { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 0 5px 20px var(--red-glow); }
@@ -312,9 +312,9 @@ input, select { font-family: inherit; outline: none; }
 /* PRIMARY BUTTONS (Glow & Perfectly Centered Text) */
 .btn-primary {
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-    padding: 17px 32px 11px; border-radius: var(--radius-full);
+    padding: 0 32px; height: 52px; border-radius: var(--radius-full);
     background: var(--blue); color: #000; border: none;
-    font-size: 1rem; font-weight: 800; font-family: 'Outfit'; letter-spacing: 0.05em;
+    font-size: 1.05rem; font-weight: 800; font-family: 'Inter', sans-serif; letter-spacing: 0.05em;
     box-shadow: 0 5px 20px var(--blue-glow);
     transition: all 0.4s var(--ease-spring);
     position: relative; overflow: hidden; line-height: 1;
