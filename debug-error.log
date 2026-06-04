@@ -1,21 +1,21 @@
 {
-  "id": "mod_1780611828974_juo510",
+  "id": "mod_1780612044307_0wa73x",
   "ownerId": "Riadein",
-  "userId": 26063407,
-  "username": "sadlq",
+  "userId": 28860928,
+  "username": "Kolonya99",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "6b92b85d-4e24-4a26-8b16-7c9ad6f42511",
+  "messageId": "e590c21c-2567-43a9-9454-9f354633a086",
   "messageContent": "[emote:37226:KEKW]",
-  "reason": "Emote Spam (3x aynı mesaj)",
+  "reason": "Emote Spam (4x aynı mesaj)",
   "ruleName": "emoteSpam",
   "type": "auto",
   "action": "delete",
   "duration": 0,
   "status": "error",
   "allViolations": [
-    "Emote Spam (3x aynı mesaj)"
+    "Emote Spam (4x aynı mesaj)"
   ],
-  "createdAt": "2026-06-04T22:23:48.974Z",
+  "createdAt": "2026-06-04T22:27:24.307Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }

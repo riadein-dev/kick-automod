@@ -170,7 +170,7 @@ class AutoModEngine {
         for (const violation of violations) {
 
             let isAuto = true;
-            if (violation.ruleName === 'spamDetection') {
+            if (violation.ruleName === 'spamDetection' || violation.ruleName === 'emoteSpam') {
                 isAuto = (rules.mode === 'auto');
             }
             
@@ -420,8 +420,8 @@ class AutoModEngine {
       if (count >= limit) {
         return {
           ruleName: purelyEmotes ? 'emoteSpam' : 'spamDetection',
-          action: purelyEmotes ? (emoteSpamRule?.action || 'delete') : (spamRule.action || 'timeout'),
-          duration: purelyEmotes ? (emoteSpamRule?.duration || 0) : (spamRule.duration || 5),
+          action: purelyEmotes ? (emoteSpamRule?.action && emoteSpamRule.action !== 'delete' ? emoteSpamRule.action : 'timeout') : (spamRule.action || 'timeout'),
+          duration: purelyEmotes ? (emoteSpamRule?.duration || 5) : (spamRule.duration || 5),
           reason: purelyEmotes ? `Emote Spam (${count}x aynı mesaj)` : `Spam (${count}x aynı mesaj)`,
           messageContent: content
         };

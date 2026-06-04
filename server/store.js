@@ -49,8 +49,8 @@ class Store {
           name: 'Emote Spam',
           maxRepeats: 3,
           maxEmotes: 15, // Legacy logic or purely for checkEmoteSpam if needed
-          action: 'delete',
-          duration: 0
+          action: 'timeout',
+          duration: 5
         }
       }
     };
