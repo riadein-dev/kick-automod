@@ -1751,6 +1751,17 @@ function parseKickEmotes(content, matchedWords = []) {
         '"': '&quot;'
     }[tag] || tag));
     
+    // Extract emotes into placeholders
+    const emoteMap = new Map();
+    let emoteCounter = 0;
+    const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
+    safeText = safeText.replace(emoteRegex, (match, id, name) => {
+        const placeholder = `__EMOTE_${emoteCounter}__`;
+        emoteMap.set(placeholder, `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${name}" title="${name}" class="kick-emote" />`);
+        emoteCounter++;
+        return placeholder;
+    });
+
     // Highlight matched words if any
     if (matchedWords && matchedWords.length > 0) {
         const sortedWords = [...matchedWords].sort((a, b) => b.length - a.length);
@@ -1762,11 +1773,12 @@ function parseKickEmotes(content, matchedWords = []) {
         });
     }
 
-    // Parse Emotes
-    const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
-    return safeText.replace(emoteRegex, (match, id, name) => {
-        return `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${name}" title="${name}" class="kick-emote" />`;
+    // Restore emotes
+    emoteMap.forEach((html, placeholder) => {
+        safeText = safeText.replace(placeholder, html);
     });
+
+    return safeText;
 }
 
 // ===== Chat Control Logic =====
