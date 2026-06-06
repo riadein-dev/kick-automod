@@ -266,8 +266,8 @@ class Store {
         }
         userSpecificData.stats = this.getUserStats(client.userId);
       } else if (event === 'chatMessage' && data.channel) {
-        // Only send chat message if it belongs to a channel added by this user
-        const hasChannel = this.channels.some(c => c.slug === data.channel && c.addedBy === client.userId);
+        // Only send chat message if it belongs to a channel added by this user (or an old channel without addedBy)
+        const hasChannel = this.channels.some(c => c.slug === data.channel && (!c.addedBy || c.addedBy === client.userId));
         if (!hasChannel) continue;
       }
 
