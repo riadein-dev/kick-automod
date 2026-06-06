@@ -394,7 +394,8 @@ class AutoModEngine {
     
     const isEmoteSpamEnabled = emoteSpamRule?.enabled ?? true;
     const emoteRegex = /:[a-zA-Z0-9_]+:|\[emote:[^\]]+\]/g;
-    const purelyEmotes = content.replace(emoteRegex, '').trim() === '';
+    const emojiRegex = /\p{Extended_Pictographic}/gu;
+    const purelyEmotes = content.replace(emoteRegex, '').replace(emojiRegex, '').trim() === '';
 
     // If emoteSpam is disabled, do not flag pure-emote messages as spam
     if (!isEmoteSpamEnabled && purelyEmotes && content.trim() !== '') {
@@ -412,9 +413,11 @@ class AutoModEngine {
     if (history.length >= limit) {
       const recentMessages = history.slice(-windowSize);
       let count = 0;
+      const now = Date.now();
+      const timeWindow = 30000; // 30 saniye içinde
       
       for (const msg of recentMessages) {
-        if (msg.message === content) {
+        if (msg.message === content && (now - msg.timestamp) < timeWindow) {
           count++;
         }
       }
