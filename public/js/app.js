@@ -1875,11 +1875,15 @@ window.appendChatMessage = function(msgData) {
         badgesHtml = '<span class="kick-chat-badges">';
         msgData.message.sender.identity.badges.forEach(b => {
             if (b.type === 'broadcaster') {
-                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--red)"><path d="M12 2L2 22h20L12 2z"/></svg>`;
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--red)" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><path d="M12 2L2 22h20L12 2z"/></svg>`;
             } else if (b.type === 'moderator') {
-                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--green)"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--green)" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+            } else if (b.type === 'subscriber') {
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--purple)" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+            } else if (b.type === 'sub_gifter') {
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--orange)" stroke="currentColor" stroke-width="2" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>`;
             } else {
-                badgesHtml += `<span style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">${b.type}</span>`;
+                badgesHtml += `<span style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; margin-right: 2px; vertical-align: middle;">${b.type}</span>`;
             }
         });
         badgesHtml += '</span>';
@@ -1890,22 +1894,43 @@ window.appendChatMessage = function(msgData) {
     const rawContent = msgData.message.content || '';
     const parsedContent = parseKickEmotes(rawContent);
 
+    const modActionsHtml = `
+        <span class="quick-mod-actions">
+            <button class="quick-mod-btn delete" data-action="delete" title="Sil">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z"></path><path d="M9 8h2v9H9zm4 0h2v9h-2z"></path></svg>
+            </button>
+            <button class="quick-mod-btn timeout" data-action="timeout" title="Zaman Aşımı">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6v6l4.5 4.5L6 17v5h12v-5l-4.5-4.5L18 8V2zm-2 4v1.5l-2.5 2.5h-3L8 7.5V6h8zm-8 12v-1.5l2.5-2.5h3l2.5 2.5V18H8z"></path></svg>
+            </button>
+            <button class="quick-mod-btn ban" data-action="ban" title="Banla">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 6v5.5c0 5.04 3.81 9.74 9 11.5 5.19-1.76 9-6.46 9-11.5V6l-9-4zm0 17c-4.14-1.51-7-5.58-7-9.5V7.4l7-3.11 7 3.11V11.5c0 3.92-2.86 7.99-7 9.5z"></path><path d="M14.59 8L8 14.59 9.41 16 16 9.41 14.59 8z"></path></svg>
+            </button>
+        </span>
+    `;
+
     msgEl.innerHTML = `
+        ${modActionsHtml}
         ${badgesHtml}
-        <span class="kick-chat-username" style="color: ${color}">${msgData.message.sender.username}</span>
+        <span class="kick-chat-username" style="color: ${color}; vertical-align: middle; margin-right: 6px; font-weight: 700;">${msgData.message.sender.username}</span>
         <span class="kick-chat-content">${parsedContent}</span>
     `;
 
     // Interaction Listener
     msgEl.addEventListener('click', async (e) => {
-        const deleteKey = (localStorage.getItem('chatKeyDelete') || 'shift').toLowerCase();
-        const timeoutKey = (localStorage.getItem('chatKeyTimeout') || 'control').toLowerCase();
-        const banKey = (localStorage.getItem('chatKeyBan') || 'alt').toLowerCase();
-
         let action = 'none';
-        if (banKey && pressedKeys.has(banKey)) action = 'ban';
-        else if (timeoutKey && pressedKeys.has(timeoutKey)) action = 'timeout';
-        else if (deleteKey && pressedKeys.has(deleteKey)) action = 'delete';
+        const btn = e.target.closest('.quick-mod-btn');
+        
+        if (btn) {
+            action = btn.getAttribute('data-action');
+        } else {
+            const deleteKey = (localStorage.getItem('chatKeyDelete') || 'shift').toLowerCase();
+            const timeoutKey = (localStorage.getItem('chatKeyTimeout') || 'control').toLowerCase();
+            const banKey = (localStorage.getItem('chatKeyBan') || 'alt').toLowerCase();
+
+            if (banKey && pressedKeys.has(banKey)) action = 'ban';
+            else if (timeoutKey && pressedKeys.has(timeoutKey)) action = 'timeout';
+            else if (deleteKey && pressedKeys.has(deleteKey)) action = 'delete';
+        }
 
         if (action === 'none') return;
         
@@ -1938,10 +1963,14 @@ window.appendChatMessage = function(msgData) {
         }
     });
 
+    const isScrolledToBottom = Math.abs((el.chatContainer.scrollHeight - el.chatContainer.clientHeight) - el.chatContainer.scrollTop) < 50;
+
     el.chatControlMessages.appendChild(msgEl);
     
     // Auto-scroll
-    el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+    if (isScrolledToBottom || el.chatControlMessages.children.length === 1) {
+        el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+    }
 
     // Prune DOM (Max 150 messages)
     while (el.chatControlMessages.children.length > 150) {
