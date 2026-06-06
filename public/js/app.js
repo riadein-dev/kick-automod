@@ -872,7 +872,6 @@ async function fetchAdminVisitors() {
                 }
             });
         });
-        });
     } catch (e) {
         console.error('Visitors fetch failed:', e);
     }

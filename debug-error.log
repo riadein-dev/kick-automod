@@ -1,22 +1,21 @@
 {
-  "id": "mod_1780764382911_olbagf",
+  "id": "mod_1780764753747_zr2g6l",
   "ownerId": "ilker4444",
-  "userId": 104919767,
-  "username": "Emirmemi5334",
+  "userId": 73981050,
+  "username": "ardademrtony",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "d5a48c57-7b81-4e87-adb3-64254b415fd7",
+  "messageId": "e10c4693-dd5d-40d2-adce-25ad3f2fe88a",
   "messageContent": "[emote:37226:KEKW]",
-  "reason": "Emote Spam (3x aynı mesaj)",
+  "reason": "Emote Spam (5x aynı mesaj)",
   "ruleName": "emoteSpam",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
-  "matchedWords": [],
   "allViolations": [
-    "Emote Spam (3x aynı mesaj)"
+    "Emote Spam (5x aynı mesaj)"
   ],
-  "createdAt": "2026-06-06T16:46:22.911Z",
+  "createdAt": "2026-06-06T16:52:33.747Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }
