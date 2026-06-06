@@ -11,6 +11,38 @@ const state = {
     activeTab: 'all'
 };
 
+// ===== API Fetch Wrapper (CSRF Koruması) =====
+let csrfToken = null;
+async function apiFetch(url, options = {}) {
+    // Sadece Kick API hariç bizim kendi API'lerimizde CSRF uygula
+    if (!url.startsWith('http') && (options.method && options.method !== 'GET')) {
+        if (!csrfToken) {
+            try {
+                const res = await fetch('/api/csrf-token');
+                const data = await res.json();
+                csrfToken = data.csrfToken;
+            } catch (e) { console.error('CSRF token alınamadı:', e); }
+        }
+        options.headers = {
+            ...options.headers,
+            'CSRF-Token': csrfToken
+        };
+        // Content-Type otomatik JSON değilse, ama body string ise JSON yapalım
+        if (options.body && typeof options.body === 'string' && !options.headers['Content-Type']) {
+            options.headers['Content-Type'] = 'application/json';
+        }
+    }
+    const response = await fetch(url, options);
+    // CSRF hatası alırsak tokeni sıfırla
+    if (response.status === 403) {
+        const errorData = await response.clone().json().catch(() => ({}));
+        if (errorData.error && errorData.error.includes('CSRF')) {
+            csrfToken = null;
+        }
+    }
+    return response;
+}
+
 // ===== DOM =====
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -18,6 +50,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 const el = {
     // Header
     menuBtn: $('#menuBtn'),
+    systemToggleBtn: $('#systemToggleBtn'),
     userName: $('#userName'),
     userAvatar: $('#userAvatar'),
     logoutBtn: $('#logoutBtn'),
@@ -85,6 +118,27 @@ const el = {
     // Views
     dashboardView: $('#dashboardView'),
     channelsView: $('#channelsView'),
+    chatControlView: $('#chatControlView'),
+    
+    // Chat Control specific
+    chatControlNavBtn: $('#chatControlNavBtn'),
+    chatControlTabs: $('#chatControlTabs'),
+    chatSettingsBtn: $('#chatSettingsBtn'),
+    chatContainer: $('#chatContainer'),
+    chatControlMessages: $('#chatControlMessages'),
+    chatSettingsModal: $('#chatSettingsModal'),
+    closeChatSettingsModal: $('#closeChatSettingsModal'),
+    cancelChatSettingsBtn: $('#cancelChatSettingsBtn'),
+    saveChatSettingsBtn: $('#saveChatSettingsBtn'),
+    chatDefaultTimeout: $('#chatDefaultTimeout'),
+    chatKeyDelete: $('#chatKeyDelete'),
+    chatKeyTimeout: $('#chatKeyTimeout'),
+    chatKeyBan: $('#chatKeyBan'),
+    chatSpamQueueBody: $('#chatSpamQueueBody'),
+    chatEmptySpamRow: $('#chatEmptySpamRow'),
+    chatModQueueBody: $('#chatModQueueBody'),
+    chatEmptyModRow: $('#chatEmptyModRow'),
+    
     // Queue
     modQueueBody: $('#modQueueBody'),
     emptyQueueRow: $('#emptyQueueRow'),
@@ -119,7 +173,7 @@ const el = {
 // ===== Init =====
 async function initApp() {
     try {
-        const authRes = await fetch('/auth/me');
+        const authRes = await apiFetch('/auth/me');
         const authData = await authRes.json();
         if (!authData.authenticated) { window.location.href = '/'; return; }
 
@@ -148,9 +202,75 @@ async function initApp() {
                 else if (savedView === 'admin' && el.adminNavBtn && el.adminNavBtn.style.display !== 'none') el.adminNavBtn.click();
             }, 50);
         }
+        
+        checkOnboarding();
+        setupChatControlLogic();
     } catch (err) {
         console.error('Init error:', err);
     }
+}
+
+// ===== Onboarding Logic =====
+function checkOnboarding() {
+    const modal = document.getElementById('onboardingModal');
+    if (!modal) return;
+    
+    if (localStorage.getItem('onboardingCompleted') === 'true') {
+        modal.style.display = 'none';
+        return;
+    }
+    
+    modal.style.display = 'flex';
+    modal.style.transition = 'opacity 0.3s ease';
+    
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.onboarding-slide');
+    const dots = document.querySelectorAll('.onboarding-dots .dot');
+    const prevBtn = document.getElementById('onboardingPrevBtn');
+    const nextBtn = document.getElementById('onboardingNextBtn');
+    const finishBtn = document.getElementById('onboardingFinishBtn');
+    
+    function showSlide(index) {
+        slides.forEach((s, i) => {
+            s.style.display = i === index ? 'block' : 'none';
+            s.classList.toggle('active', i === index);
+        });
+        dots.forEach((d, i) => {
+            d.classList.toggle('active', i === index);
+            d.style.background = i === index ? 'var(--green)' : 'var(--border-bright)';
+        });
+        
+        prevBtn.style.display = index === 0 ? 'none' : 'block';
+        if (index === slides.length - 1) {
+            nextBtn.style.display = 'none';
+            finishBtn.style.display = 'block';
+        } else {
+            nextBtn.style.display = 'block';
+            finishBtn.style.display = 'none';
+        }
+    }
+    
+    nextBtn.addEventListener('click', () => {
+        if (currentSlide < slides.length - 1) {
+            currentSlide++;
+            showSlide(currentSlide);
+        }
+    });
+    
+    prevBtn.addEventListener('click', () => {
+        if (currentSlide > 0) {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+    });
+    
+    finishBtn.addEventListener('click', () => {
+        localStorage.setItem('onboardingCompleted', 'true');
+        modal.style.opacity = '0';
+        setTimeout(() => modal.style.display = 'none', 300);
+    });
+    
+    showSlide(0);
 }
 
 // ===== Profile & Channels =====
@@ -210,7 +330,7 @@ function renderChannelTabs() {
         // Prevent adding multiple listeners
         const newFirstTab = firstTab.cloneNode(true);
         newFirstTab.addEventListener('click', () => {
-            $$('.channel-tab').forEach(b => b.classList.remove('active'));
+            $$('#channelTabs .channel-tab').forEach(b => b.classList.remove('active'));
             newFirstTab.classList.add('active');
             state.activeTab = 'all';
             localStorage.setItem('activeTab', 'all');
@@ -219,6 +339,23 @@ function renderChannelTabs() {
         });
         el.channelTabs.appendChild(newFirstTab);
     }
+    
+    // Chat Control Tabs initial 'all' tab setup
+    if (el.chatControlTabs) {
+        const ccFirstTab = el.chatControlTabs.querySelector('.channel-tab[data-channel="all"]');
+        el.chatControlTabs.innerHTML = '';
+        if (ccFirstTab) {
+            ccFirstTab.className = `channel-tab${state.chatControlActiveTab === 'all' ? ' active' : ''}`;
+            const newCCFirstTab = ccFirstTab.cloneNode(true);
+            newCCFirstTab.addEventListener('click', () => {
+                $$('#chatControlTabs .channel-tab').forEach(b => b.classList.remove('active'));
+                newCCFirstTab.classList.add('active');
+                state.chatControlActiveTab = 'all';
+                if (el.chatControlMessages) el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
+            });
+            el.chatControlTabs.appendChild(newCCFirstTab);
+        }
+    }
 
     state.channels.forEach(ch => {
         const btn = document.createElement('button');
@@ -226,7 +363,7 @@ function renderChannelTabs() {
         btn.dataset.channel = ch.slug;
         btn.textContent = ch.slug;
         btn.addEventListener('click', () => {
-            $$('.channel-tab').forEach(b => b.classList.remove('active'));
+            $$('#channelTabs .channel-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             state.activeTab = ch.slug;
             localStorage.setItem('activeTab', ch.slug);
@@ -234,6 +371,21 @@ function renderChannelTabs() {
             renderLogs();
         });
         el.channelTabs.appendChild(btn);
+        
+        // Setup Chat Control channel tabs
+        if (el.chatControlTabs) {
+            const ccBtn = document.createElement('button');
+            ccBtn.className = `channel-tab${state.chatControlActiveTab === ch.slug ? ' active' : ''}`;
+            ccBtn.dataset.channel = ch.slug;
+            ccBtn.textContent = ch.slug;
+            ccBtn.addEventListener('click', () => {
+                $$('#chatControlTabs .channel-tab').forEach(b => b.classList.remove('active'));
+                ccBtn.classList.add('active');
+                state.chatControlActiveTab = ch.slug;
+                if (el.chatControlMessages) el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
+            });
+            el.chatControlTabs.appendChild(ccBtn);
+        }
     });
 
     renderChannelsList();
@@ -274,7 +426,7 @@ function renderChannelsList() {
         row.querySelector('.ch-action-btn.delete').addEventListener('click', async () => {
             if (confirm(`${ch.slug} kanalını kaldırmak istediğinize emin misiniz?`)) {
                 try {
-                    await fetch(`/api/channels/${ch.id}`, { method: 'DELETE' });
+                    await apiFetch(`/api/channels/${ch.id}`, { method: 'DELETE' });
                     fetchChannels();
                 } catch (e) { alert('Hata oluştu'); }
             }
@@ -312,7 +464,7 @@ function closeChannelEditModalFn() {
 async function loadChannelWords(slug) {
     if (!el.channelWordsBody) return;
     try {
-        const res = await fetch('/api/settings');
+        const res = await apiFetch('/api/settings');
         if (!res.ok) return;
         const data = await res.json();
         const words = (data.rules?.bannedWords?.words || []).filter(w => w.channel === slug);
@@ -331,7 +483,7 @@ async function loadChannelWords(slug) {
             btn.addEventListener('click', async () => {
                 const wordId = btn.dataset.wordId;
                 try {
-                    await fetch(`/api/words/${wordId}`, { method: 'DELETE' });
+                    await apiFetch(`/api/words/${wordId}`, { method: 'DELETE' });
                     loadChannelWords(slug);
                     fetchWords();
                 } catch(e) { alert('Hata'); }
@@ -346,7 +498,7 @@ async function addChannelWord() {
     if (!word) return;
     const action = el.channelWordAction ? el.channelWordAction.value : 'ban';
     try {
-        await fetch('/api/words', {
+        await apiFetch('/api/words', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ word, channel: editingChannel, action, exactMatch: false, duration: action === 'timeout' ? 5 : 0 })
@@ -391,7 +543,7 @@ function renderLogs() {
             
             // In Spam panel, reason contains the message content logic usually, or we can use log.messageContent if available
             const rawMsg = log.messageContent || log.allViolations?.[0] || log.reason || '';
-            const msgContent = parseKickEmotes(rawMsg);
+            const msgContent = parseKickEmotes(rawMsg, log.matchedWords);
 
             // Spam panelinde butonlar her zaman görünsün, işlem yapılmış olsa bile ezebilmek için.
             let actionsHtml = `
@@ -481,7 +633,7 @@ function renderLogs() {
         let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
         // Truncate long messages
         if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
-        let msgHtml = parseKickEmotes(rawMsgHtml);
+        let msgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
 
         tr.innerHTML = `
             <td><strong>${log.username}</strong></td>
@@ -493,16 +645,54 @@ function renderLogs() {
 
         el.modQueueBody.appendChild(tr);
     });
+
+    // Mod Queue ve Chat Kontrol Sağ Tarafı Eşzamanlama
+    if (el.chatSpamQueueBody && el.spamQueueBody) {
+        const spamClone = el.spamQueueBody.cloneNode(true);
+        el.chatSpamQueueBody.innerHTML = '';
+        if (spamLogs.length === 0) {
+            el.chatSpamQueueBody.appendChild(el.chatEmptySpamRow.cloneNode(true));
+            el.chatSpamQueueBody.querySelector('#chatEmptySpamRow').style.display = 'block';
+        } else {
+            Array.from(spamClone.children).forEach(child => el.chatSpamQueueBody.appendChild(child));
+        }
+    }
+    
+    if (el.chatModQueueBody) {
+        el.chatModQueueBody.innerHTML = '';
+        if (otherLogs.length === 0) {
+            el.chatModQueueBody.appendChild(el.chatEmptyModRow.cloneNode(true));
+            el.chatModQueueBody.querySelector('#chatEmptyModRow').style.display = 'block';
+        } else {
+            otherLogs.forEach(log => {
+                const card = document.createElement('div');
+                card.style.padding = '10px';
+                card.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                card.style.fontSize = '0.85rem';
+                
+                let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span style="font-weight:bold;color:var(--text-2);">${log.username}</span>
+                        <span style="color:${log.status==='applied'?'var(--green)':'var(--orange)'}">${log.action||log.status}</span>
+                    </div>
+                    <div style="color:#fff;word-break:break-all;">${rawMsgHtml}</div>
+                `;
+                el.chatModQueueBody.appendChild(card);
+            });
+        }
+    }
 }
 
 // ===== API =====
 async function fetchStats() {
     try {
-        const res = await fetch('/api/stats');
+        const res = await apiFetch('/api/stats');
         const data = await res.json();
         state.stats = data.stats;
         state.automodRules = data.automodRules; // Update state with rules
         updateStatsUI();
+        updateSystemToggleUI();
         const chip = el.wsStatusDot?.closest('.status-chip');
         if (data.wsStatus?.connected) {
             chip?.classList.add('connected');
@@ -557,9 +747,31 @@ async function fetchStats() {
     } catch (err) { console.error('Stats error:', err); }
 }
 
+function updateSystemToggleUI() {
+    if (!el.systemToggleBtn) return;
+    const isEnabled = state.automodRules && state.automodRules.enabled !== false;
+    if (isEnabled) {
+        el.systemToggleBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            <span>Sistemi Durdur</span>
+        `;
+        el.systemToggleBtn.style.background = 'rgba(255, 0, 85, 0.1)';
+        el.systemToggleBtn.style.borderColor = 'rgba(255, 0, 85, 0.3)';
+        el.systemToggleBtn.style.color = 'var(--red)';
+    } else {
+        el.systemToggleBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>Sistemi Başlat</span>
+        `;
+        el.systemToggleBtn.style.background = 'rgba(0, 255, 136, 0.1)';
+        el.systemToggleBtn.style.borderColor = 'rgba(0, 255, 136, 0.3)';
+        el.systemToggleBtn.style.color = 'var(--green)';
+    }
+}
+
 async function fetchChannels() {
     try {
-        const res = await fetch('/api/channels');
+        const res = await apiFetch('/api/channels');
         state.channels = await res.json();
         renderChannelTabs();
     } catch (err) { console.error('Channels error:', err); }
@@ -576,7 +788,7 @@ async function fetchCustomWords() {
 async function fetchAdminVisitors() {
     if (!el.visitorsListBody) return;
     try {
-        let res = await fetch('/api/admin/visitors');
+        let res = await apiFetch('/api/admin/visitors');
         
         if (!res.ok) {
             el.visitorsListBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--red);">Yetkisiz erişim. Sadece yönetici (Riadein) görebilir.</td></tr>`;
@@ -676,7 +888,7 @@ function renderWords() {
             const id = e.currentTarget.dataset.id;
             if(confirm('Kelimeyi silmek istediğinize emin misiniz?')) {
                 try {
-                    await fetch(`/api/words/${id}`, { method: 'DELETE' });
+                    await apiFetch(`/api/words/${id}`, { method: 'DELETE' });
                     await fetchStats(); // re-fetches rules
                     fetchCustomWords(); // re-renders words list
                 } catch(err) { alert('Silinemedi'); }
@@ -716,7 +928,7 @@ function renderWords() {
 
 async function fetchLogs() {
     try {
-        const res = await fetch('/api/moderation');
+        const res = await apiFetch('/api/moderation');
         state.logs = await res.json();
         renderLogs();
         renderAllLogs();
@@ -755,7 +967,7 @@ function renderAllLogs() {
         
         let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
         if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
-        let msgHtml = parseKickEmotes(rawMsgHtml);
+        let msgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
 
         const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
@@ -776,7 +988,7 @@ async function handleAction(logId, status, actionType, duration = null) {
         const body = { status, action: actionType };
         if (duration) body.duration = duration;
 
-        const res = await fetch(`/api/moderation/${logId}`, {
+        const res = await apiFetch(`/api/moderation/${logId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -862,6 +1074,26 @@ function setupSoundControl() {
     slider.addEventListener('change', () => {
         SoundEngine.playClick(); // preview
     });
+    
+    // Granular toggles
+    const hoverToggle = document.getElementById('hoverSoundToggle');
+    const notifToggle = document.getElementById('notificationSoundToggle');
+    
+    if (hoverToggle) {
+        hoverToggle.checked = SoundEngine.isHoverEnabled();
+        hoverToggle.addEventListener('change', (e) => {
+            SoundEngine.setHoverEnabled(e.target.checked);
+            if (e.target.checked) SoundEngine.playClick();
+        });
+    }
+    
+    if (notifToggle) {
+        notifToggle.checked = SoundEngine.isNotificationEnabled();
+        notifToggle.addEventListener('change', (e) => {
+            SoundEngine.setNotificationEnabled(e.target.checked);
+            if (e.target.checked) SoundEngine.playNotification();
+        });
+    }
 
     // Close slider when clicking outside
     document.addEventListener('click', (e) => {
@@ -909,7 +1141,7 @@ function setupSSE() {
     src.addEventListener('channelUpdate', async e => {
         // SSE broadcasts ALL channels, but we only want our own - re-fetch from API
         try {
-            const res = await fetch('/api/channels');
+            const res = await apiFetch('/api/channels');
             if (res.ok) {
                 state.channels = await res.json();
                 renderChannelTabs();
@@ -953,6 +1185,12 @@ function setupSSE() {
             el.wsStatusText.textContent = 'Bağlantı Koptu';
         }
     });
+    src.addEventListener('chatMessage', e => {
+        const d = JSON.parse(e.data);
+        if (typeof appendChatMessage === 'function') {
+            appendChatMessage(d);
+        }
+    });
 }
 
 // ===== Events =====
@@ -974,6 +1212,7 @@ function setupEventListeners() {
     function switchView(viewName) {
         const views = {
             'dashboard': { btn: el.dashboardNavBtn, view: el.dashboardView },
+            'chatControl': { btn: el.chatControlNavBtn, view: el.chatControlView },
             'channels': { btn: el.channelsNavBtn, view: el.channelsView },
             'settings': { btn: el.settingsNavBtn, view: el.settingsView },
             'logs': { btn: el.logsNavBtn, view: el.logsView },
@@ -998,6 +1237,7 @@ function setupEventListeners() {
     }
 
     el.dashboardNavBtn?.addEventListener('click', () => { switchView('dashboard'); closeSidebar(); });
+    el.chatControlNavBtn?.addEventListener('click', () => { switchView('chatControl'); closeSidebar(); });
     el.channelsNavBtn?.addEventListener('click', () => { switchView('channels'); closeSidebar(); });
     el.settingsNavBtn?.addEventListener('click', () => { switchView('settings'); closeSidebar(); });
     el.logsNavBtn?.addEventListener('click', () => { switchView('logs'); closeSidebar(); });
@@ -1007,7 +1247,7 @@ function setupEventListeners() {
         el.clearVisitorsBtn.addEventListener('click', async () => {
             if (confirm('Tüm ziyaretçi kayıtlarını silmek istediğinize emin misiniz?')) {
                 try {
-                    await fetch('/api/admin/visitors', { method: 'DELETE' });
+                    await apiFetch('/api/admin/visitors', { method: 'DELETE' });
                     fetchAdminVisitors();
                 } catch(e) {}
             }
@@ -1020,7 +1260,7 @@ function setupEventListeners() {
         clearLogsBtn.addEventListener('click', async () => {
             if (confirm('Tüm moderasyon loglarını temizlemek istediğinize emin misiniz?')) {
                 try {
-                    await fetch('/api/logs', { method: 'DELETE' });
+                    await apiFetch('/api/logs', { method: 'DELETE' });
                     state.logs = [];
                     renderLogs();
                     renderAllLogs();
@@ -1033,7 +1273,7 @@ function setupEventListeners() {
         el.clearAllLogsBtn.addEventListener('click', async () => {
             if (confirm('Tüm moderasyon loglarını temizlemek istediğinize emin misiniz?')) {
                 try {
-                    await fetch('/api/logs', { method: 'DELETE' });
+                    await apiFetch('/api/logs', { method: 'DELETE' });
                     state.logs = [];
                     renderLogs();
                     renderAllLogs();
@@ -1044,9 +1284,40 @@ function setupEventListeners() {
 
     // Logout
     el.logoutBtn?.addEventListener('click', async () => {
-        await fetch('/auth/logout', { method: 'POST' });
+        await apiFetch('/auth/logout', { method: 'POST' });
         window.location.href = '/';
     });
+
+    // System Toggle
+    if (el.systemToggleBtn) {
+        el.systemToggleBtn.addEventListener('click', async () => {
+            const isEnabled = state.automodRules && state.automodRules.enabled !== false;
+            const newEnabled = !isEnabled;
+            
+            try {
+                // Set loading state
+                el.systemToggleBtn.style.opacity = '0.5';
+                el.systemToggleBtn.style.pointerEvents = 'none';
+                
+                await apiFetch('/api/rules', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: newEnabled })
+                });
+                
+                if (state.automodRules) {
+                    state.automodRules.enabled = newEnabled;
+                }
+                updateSystemToggleUI();
+            } catch (err) {
+                console.error('System toggle error:', err);
+                alert('Sistem durumu değiştirilemedi!');
+            } finally {
+                el.systemToggleBtn.style.opacity = '1';
+                el.systemToggleBtn.style.pointerEvents = 'auto';
+            }
+        });
+    }
 
     // Channel tabs - first tab
     el.channelTabs?.querySelector('.channel-tab[data-channel="all"]')?.addEventListener('click', () => {
@@ -1105,7 +1376,7 @@ function setupEventListeners() {
 
             el.confirmAddChannel.textContent = 'Bağlanıyor...';
 
-            const res = await fetch('/api/channels', {
+            const res = await apiFetch('/api/channels', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ slug, chatroomId, userId })
@@ -1154,12 +1425,12 @@ function setupEventListeners() {
             const emoteLimitEl = document.getElementById('emoteSpamLimitInput');
             const emoteMaxRepeats = emoteLimitEl ? parseInt(emoteLimitEl.value) : 3;
             try {
-                const res = await fetch('/api/rules/spamDetection', {
+                const res = await apiFetch('/api/rules/spamDetection', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ maxRepeats })
                 });
-                const res2 = await fetch('/api/rules/emoteSpam', {
+                const res2 = await apiFetch('/api/rules/emoteSpam', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ maxRepeats: emoteMaxRepeats })
@@ -1209,7 +1480,7 @@ function setupEventListeners() {
                 
                 // Update server
                 try {
-                    await fetch('/api/rules', {
+                    await apiFetch('/api/rules', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ mode })
@@ -1241,7 +1512,7 @@ function setupEventListeners() {
                 
                 // Update server
                 try {
-                    await fetch('/api/rules/emoteSpam', {
+                    await apiFetch('/api/rules/emoteSpam', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ enabled: isEmoteEnabled })
@@ -1258,7 +1529,7 @@ function setupEventListeners() {
     if (el.shareWordsBtn && el.shareWordsModal) {
         el.shareWordsBtn.addEventListener('click', async () => {
             try {
-                const res = await fetch('/api/words/share', { method: 'POST' });
+                const res = await apiFetch('/api/words/share', { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
                     el.shareCodeDisplay.textContent = data.shareCode;
@@ -1340,7 +1611,7 @@ function setupEventListeners() {
             }
 
             try {
-                const res = await fetch('/api/words/import', {
+                const res = await apiFetch('/api/words/import', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ shareCode: code })
@@ -1406,11 +1677,11 @@ function setupEventListeners() {
                 
                 const editId = el.confirmAddWord.dataset.editId;
                 if (editId) {
-                    await fetch(`/api/words/${editId}`, { method: 'DELETE' });
+                    await apiFetch(`/api/words/${editId}`, { method: 'DELETE' });
                 }
 
                 const payload = { channel, word, action, exactMatch, duration: parseInt(duration, 10) };
-                const res = await fetch('/api/words', {
+                const res = await apiFetch('/api/words', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1434,7 +1705,7 @@ function setupEventListeners() {
 }
 
 // Helper to parse Kick emotes safely
-function parseKickEmotes(content) {
+function parseKickEmotes(content, matchedWords = []) {
     if (!content) return '-';
     // XSS Escape
     let safeText = content.replace(/[&<>'"]/g, tag => ({
@@ -1445,12 +1716,188 @@ function parseKickEmotes(content) {
         '"': '&quot;'
     }[tag] || tag));
     
+    // Highlight matched words if any
+    if (matchedWords && matchedWords.length > 0) {
+        const sortedWords = [...matchedWords].sort((a, b) => b.length - a.length);
+        sortedWords.forEach(word => {
+            if (!word) return;
+            const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(`(${escapedWord})`, 'gi');
+            safeText = safeText.replace(regex, '<span style="color: #FF9900; font-weight: bold; background: rgba(255, 153, 0, 0.15); padding: 0 4px; border-radius: 4px;">$1</span>');
+        });
+    }
+
     // Parse Emotes
     const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
     return safeText.replace(emoteRegex, (match, id, name) => {
         return `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${name}" title="${name}" class="kick-emote" />`;
     });
 }
+
+// ===== Chat Control Logic =====
+const pressedKeys = new Set();
+window.addEventListener('keydown', e => pressedKeys.add(e.key.toLowerCase()));
+window.addEventListener('keyup', e => pressedKeys.delete(e.key.toLowerCase()));
+window.addEventListener('blur', () => pressedKeys.clear());
+
+function setupChatControlLogic() {
+    // Load Settings
+    const loadChatSettings = () => {
+        if (el.chatDefaultTimeout) el.chatDefaultTimeout.value = localStorage.getItem('chatDefaultTimeout') || 5;
+        if (el.chatKeyDelete) el.chatKeyDelete.value = localStorage.getItem('chatKeyDelete') || 'shift';
+        if (el.chatKeyTimeout) el.chatKeyTimeout.value = localStorage.getItem('chatKeyTimeout') || 'control';
+        if (el.chatKeyBan) el.chatKeyBan.value = localStorage.getItem('chatKeyBan') || 'alt';
+    };
+    loadChatSettings();
+
+    // Keybind capture logic
+    document.querySelectorAll('.keybind-input').forEach(input => {
+        input.addEventListener('keydown', e => {
+            e.preventDefault();
+            if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'Delete') {
+                input.value = '';
+                return;
+            }
+            input.value = e.key; 
+        });
+    });
+
+    document.querySelectorAll('.clear-key-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const targetInput = document.getElementById(targetId);
+            if (targetInput) targetInput.value = '';
+        });
+    });
+
+    // Modal Events
+    if (el.chatSettingsBtn) el.chatSettingsBtn.addEventListener('click', () => {
+        loadChatSettings();
+        if (el.chatSettingsModal) el.chatSettingsModal.classList.add('open');
+    });
+
+    const closeChatSettings = () => { if (el.chatSettingsModal) el.chatSettingsModal.classList.remove('open'); };
+    if (el.closeChatSettingsModal) el.closeChatSettingsModal.addEventListener('click', closeChatSettings);
+    if (el.cancelChatSettingsBtn) el.cancelChatSettingsBtn.addEventListener('click', closeChatSettings);
+
+    if (el.saveChatSettingsBtn) el.saveChatSettingsBtn.addEventListener('click', () => {
+        if (el.chatDefaultTimeout) localStorage.setItem('chatDefaultTimeout', el.chatDefaultTimeout.value);
+        if (el.chatKeyDelete) localStorage.setItem('chatKeyDelete', el.chatKeyDelete.value);
+        if (el.chatKeyTimeout) localStorage.setItem('chatKeyTimeout', el.chatKeyTimeout.value);
+        if (el.chatKeyBan) localStorage.setItem('chatKeyBan', el.chatKeyBan.value);
+        closeChatSettings();
+    });
+
+    // Chat Tab Switching
+    if (el.chatControlTabs) {
+        el.chatControlTabs.addEventListener('click', (e) => {
+            const btn = e.target.closest('.channel-tab');
+            if (!btn) return;
+            const channel = btn.getAttribute('data-channel');
+            state.chatControlActiveTab = channel;
+            
+            el.chatControlTabs.querySelectorAll('.channel-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            if (el.chatControlMessages) el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
+            renderLogs(); // Update the right panels for this tab
+        });
+    }
+}
+state.chatControlActiveTab = 'all';
+
+window.appendChatMessage = function(msgData) {
+    if (!el.chatControlMessages) return;
+    
+    // Filter by active tab
+    if (state.chatControlActiveTab !== 'all' && state.chatControlActiveTab !== msgData.channel) return;
+
+    // Remove welcome message
+    const welcome = el.chatControlMessages.querySelector('.chat-welcome');
+    if (welcome) welcome.remove();
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'kick-chat-msg';
+    
+    // Build badges
+    let badgesHtml = '';
+    if (msgData.message.sender && msgData.message.sender.identity && msgData.message.sender.identity.badges) {
+        badgesHtml = '<span class="kick-chat-badges">';
+        msgData.message.sender.identity.badges.forEach(b => {
+            if (b.type === 'broadcaster') {
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--red)"><path d="M12 2L2 22h20L12 2z"/></svg>`;
+            } else if (b.type === 'moderator') {
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--green)"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+            } else {
+                badgesHtml += `<span style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">${b.type}</span>`;
+            }
+        });
+        badgesHtml += '</span>';
+    }
+
+    let color = (msgData.message.sender && msgData.message.sender.identity && msgData.message.sender.identity.color) || '#53fc18';
+
+    const rawContent = msgData.message.content || '';
+    const parsedContent = parseKickEmotes(rawContent);
+
+    msgEl.innerHTML = `
+        ${badgesHtml}
+        <span class="kick-chat-username" style="color: ${color}">${msgData.message.sender.username}</span>
+        <span class="kick-chat-content">${parsedContent}</span>
+    `;
+
+    // Interaction Listener
+    msgEl.addEventListener('click', async (e) => {
+        const deleteKey = (localStorage.getItem('chatKeyDelete') || 'shift').toLowerCase();
+        const timeoutKey = (localStorage.getItem('chatKeyTimeout') || 'control').toLowerCase();
+        const banKey = (localStorage.getItem('chatKeyBan') || 'alt').toLowerCase();
+
+        let action = 'none';
+        if (banKey && pressedKeys.has(banKey)) action = 'ban';
+        else if (timeoutKey && pressedKeys.has(timeoutKey)) action = 'timeout';
+        else if (deleteKey && pressedKeys.has(deleteKey)) action = 'delete';
+
+        if (action === 'none') return;
+        
+        e.preventDefault();
+        
+        const duration = localStorage.getItem('chatDefaultTimeout') || 5;
+        msgEl.classList.add('action-feedback');
+        
+        try {
+            await apiFetch('/api/action', {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: action,
+                    userId: msgData.message.sender.id,
+                    messageId: msgData.message.id,
+                    duration: duration,
+                    channelSlug: msgData.channel,
+                    reason: 'Moderatör tarafından Chat Kontrol üzerinden',
+                    username: msgData.message.sender.username,
+                    messageContent: rawContent
+                })
+            });
+            setTimeout(() => {
+                if (action === 'delete') msgEl.style.display = 'none';
+                else msgEl.style.opacity = '0.5';
+            }, 500);
+        } catch (err) {
+            msgEl.classList.remove('action-feedback');
+            alert('İşlem başarısız oldu.');
+        }
+    });
+
+    el.chatControlMessages.appendChild(msgEl);
+    
+    // Auto-scroll
+    el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+
+    // Prune DOM (Max 150 messages)
+    while (el.chatControlMessages.children.length > 150) {
+        el.chatControlMessages.removeChild(el.chatControlMessages.firstChild);
+    }
+};
 
 // ===== Boot =====
 document.addEventListener('DOMContentLoaded', initApp);

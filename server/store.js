@@ -25,7 +25,7 @@ class Store {
   _getDefaultRules() {
     return {
       enabled: true,
-      mode: 'auto', // 'auto' or 'manual'
+      mode: 'manual', // Default to manual
       rules: {
         bannedWords: {
           enabled: true,
@@ -45,10 +45,10 @@ class Store {
           duration: 5
         },
         emoteSpam: {
-          enabled: true,
+          enabled: false, // Default to disabled
           name: 'Emote Spam',
           maxRepeats: 3,
-          maxEmotes: 15, // Legacy logic or purely for checkEmoteSpam if needed
+          maxEmotes: 15,
           action: 'timeout',
           duration: 5
         }
@@ -229,6 +229,10 @@ class Store {
            continue; // skip sending this log to this user
         }
         userSpecificData.stats = this.getUserStats(client.userId);
+      } else if (event === 'chatMessage' && data.channel) {
+        // Only send chat message if it belongs to a channel added by this user
+        const hasChannel = this.channels.some(c => c.slug === data.channel && c.addedBy === client.userId);
+        if (!hasChannel) continue;
       }
 
       const payload = `event: ${event}\ndata: ${JSON.stringify(userSpecificData)}\n\n`;

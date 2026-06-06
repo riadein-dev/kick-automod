@@ -26,6 +26,10 @@
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>
                 <span>Dashboard</span>
             </button>
+            <button class="sidebar-link" id="chatControlNavBtn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span>Chat Kontrol</span>
+            </button>
             <button class="sidebar-link" id="channelsNavBtn">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                 <span>Kanallar</span>
@@ -66,6 +70,14 @@
                 <p>Moderasyon kontrol merkezi</p>
             </div>
         </div>
+        
+        <div class="header-center" style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center;">
+            <button id="systemToggleBtn" class="btn-primary" style="background: rgba(255, 0, 85, 0.1); border-color: rgba(255, 0, 85, 0.3); color: var(--red); height: 44px; min-width: 180px; transition: all 0.3s ease;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                <span>Sistemi Durdur</span>
+            </button>
+        </div>
+
         <div class="header-right">
             <!-- Ses Kontrolü -->
             <div class="sound-control" id="soundControl">
@@ -73,9 +85,23 @@
                     <svg id="soundOnIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                     <svg id="soundOffIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                 </button>
-                <div class="sound-slider-wrap" id="soundSliderWrap">
-                    <input type="range" min="0" max="100" class="sound-slider" id="soundSlider">
-                    <span class="sound-slider-label" id="soundSliderLabel">50%</span>
+                <div class="sound-slider-wrap" id="soundSliderWrap" style="padding: 1rem; width: 220px; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 0.85rem; color: var(--text-2); font-weight: 500;">Ana Ses Seviyesi</span>
+                        <span class="sound-slider-label" id="soundSliderLabel" style="font-size: 0.85rem; font-weight: bold; margin-left: 0;">50%</span>
+                    </div>
+                    <input type="range" min="0" max="100" class="sound-slider" id="soundSlider" style="margin-top: 0; width: 100%;">
+                    
+                    <div style="height: 1px; background: var(--border); margin: 0.25rem 0;"></div>
+                    
+                    <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+                        <span title="Tıklama, menü açılışı, buton üzerine gelme sesleri">Arayüz Sesleri</span>
+                        <input type="checkbox" id="hoverSoundToggle" checked style="accent-color: var(--green); width: 16px; height: 16px; cursor: pointer;">
+                    </label>
+                    <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; color: var(--text-2); cursor: pointer;">
+                        <span title="Yeni moderasyon kaydı geldiğinde çalan ses">Bildirim Sesi</span>
+                        <input type="checkbox" id="notificationSoundToggle" checked style="accent-color: var(--green); width: 16px; height: 16px; cursor: pointer;">
+                    </label>
                 </div>
             </div>
             <div class="live-badge">
@@ -271,6 +297,45 @@
                     </div>
                 </div>
                 
+            </div>
+        </div>
+
+        <!-- Chat Kontrol View -->
+        <div id="chatControlView" style="display: none; height: 100%;">
+            <div class="chat-control-layout">
+                <!-- Sol Kolon: Chat -->
+                <div class="chat-col">
+                    <div class="chat-tabs-container">
+                        <div class="channel-tabs" id="chatControlTabs" style="margin-bottom: 0;">
+                            <button class="channel-tab active" data-channel="all">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                Tüm Kanallar
+                            </button>
+                        </div>
+                        <button class="btn-secondary" id="chatSettingsBtn" title="Chat Ayarları" style="padding: 0.5rem;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="chat-container" id="chatContainer">
+                        <!-- Messages appended here -->
+                        <div class="chat-welcome">Chat bağlandı. İzleniyor...</div>
+                    </div>
+                </div>
+                <!-- Sağ Kolon: Moderasyon Kartları -->
+                <div class="chat-right-col" id="chatRightCol">
+                    <div class="panel chat-right-panel" id="chatRightSpamPanel">
+                        <div class="panel-header"><h2>Spam Algılamaları</h2></div>
+                        <div class="queue-list chat-queue-list" id="chatSpamQueueBody">
+                            <div class="empty-state" id="chatEmptySpamRow">Henüz kayıt yok.</div>
+                        </div>
+                    </div>
+                    <div class="panel chat-right-panel" id="chatRightModPanel">
+                        <div class="panel-header"><h2>Genel Loglar</h2></div>
+                        <div class="queue-list chat-queue-list" id="chatModQueueBody">
+                            <div class="empty-state" id="chatEmptyModRow">Henüz kayıt yok.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -525,6 +590,102 @@
                 <button id="confirmImportWords" class="btn-primary full-width" style="margin-top: 1.5rem; background: var(--green); color: #000; border-color: var(--green); box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);">
                     <i class="fa fa-download"></i> İçe Aktar
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Settings Modal -->
+    <div class="modal" id="chatSettingsModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Chat Moderasyon Ayarları</h2>
+                <button class="icon-btn" id="closeChatSettingsModal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Varsayılan Timeout Süresi (Dakika)</label>
+                    <input type="number" id="chatDefaultTimeout" value="5" min="1" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Mesaja Tıklama Aksiyonları (Tuş + Tık)</label>
+                    <div style="font-size:0.85rem; color:var(--text-2); margin-bottom: 1rem;">Kutucuğa tıklayıp atamak istediğiniz tuşa basın. Tuşa basılı tutarak mesaja tıkladığınızda işlem gerçekleşir.</div>
+                    
+                    <div style="display:flex; align-items:center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <span style="display:inline-block; width: 80px; font-weight:bold;">Mesajı Sil:</span>
+                        <input type="text" id="chatKeyDelete" class="form-control keybind-input" readonly placeholder="Tuş ata (örn: Shift)" style="flex:1; cursor: pointer; text-align: center; font-weight: bold;">
+                        <button class="btn-secondary clear-key-btn" data-target="chatKeyDelete" style="padding: 0 10px; height: 100%;">Sil</button>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <span style="display:inline-block; width: 80px; font-weight:bold;">Timeout At:</span>
+                        <input type="text" id="chatKeyTimeout" class="form-control keybind-input" readonly placeholder="Tuş ata (örn: Control)" style="flex:1; cursor: pointer; text-align: center; font-weight: bold;">
+                        <button class="btn-secondary clear-key-btn" data-target="chatKeyTimeout" style="padding: 0 10px; height: 100%;">Sil</button>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <span style="display:inline-block; width: 80px; font-weight:bold;">Banla:</span>
+                        <input type="text" id="chatKeyBan" class="form-control keybind-input" readonly placeholder="Tuş ata (örn: Alt)" style="flex:1; cursor: pointer; text-align: center; font-weight: bold;">
+                        <button class="btn-secondary clear-key-btn" data-target="chatKeyBan" style="padding: 0 10px; height: 100%;">Sil</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelChatSettingsBtn">İptal</button>
+                <button class="btn-primary" id="saveChatSettingsBtn">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboardingModal" class="modal-overlay" style="z-index: 10000; backdrop-filter: blur(20px); background: rgba(0,0,0,0.85);">
+        <div class="modal-box" style="max-width: 600px; padding: 2rem; background: var(--bg-elevated); border: 1px solid var(--border-bright);">
+            <div class="onboarding-slides">
+                <!-- Slide 1 -->
+                <div class="onboarding-slide active" data-slide="0">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--green)" stroke-width="2" style="margin-bottom: 1rem;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <h2 style="font-size: 2rem; color: var(--text-1); margin-bottom: 0.5rem;">Kick AutoMod'a Hoş Geldin!</h2>
+                        <p style="color: var(--text-2); font-size: 1.1rem; line-height: 1.6;">Yayınlarını otomatik olarak denetleyen, spam ve zararlı içerikleri temizleyen akıllı moderasyon sistemine giriş yaptın.</p>
+                    </div>
+                </div>
+                <!-- Slide 2 -->
+                <div class="onboarding-slide" data-slide="1" style="display: none;">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--orange)" stroke-width="2" style="margin-bottom: 1rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                        <h2 style="font-size: 1.8rem; color: var(--text-1); margin-bottom: 0.5rem;">Spam Paneli (Manuel Mod)</h2>
+                        <p style="color: var(--text-2); font-size: 1.1rem; line-height: 1.6;">Sistemin varsayılan olarak <strong>MANUEL</strong> modda başlar. Şüpheli bir mesaj geldiğinde sağ alt köşede bir pencere açılır. İlgili mesaja vereceğin cezayı sen seçersin.</p>
+                    </div>
+                </div>
+                <!-- Slide 3 -->
+                <div class="onboarding-slide" data-slide="2" style="display: none;">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--purple)" stroke-width="2" style="margin-bottom: 1rem;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <h2 style="font-size: 1.8rem; color: var(--text-1); margin-bottom: 0.5rem;">Tüm Kanallarını Ekle</h2>
+                        <p style="color: var(--text-2); font-size: 1.1rem; line-height: 1.6;">Sol menüden "Kanallar" sekmesine giderek moderatörü olduğun tüm yayıncıları tek tıkla sisteme dahil edebilirsin. Sistem arkada sessizce çalışır.</p>
+                    </div>
+                </div>
+                <!-- Slide 4 -->
+                <div class="onboarding-slide" data-slide="3" style="display: none;">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--blue)" stroke-width="2" style="margin-bottom: 1rem;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        <h2 style="font-size: 1.8rem; color: var(--text-1); margin-bottom: 0.5rem;">Sistemi Özelleştir</h2>
+                        <p style="color: var(--text-2); font-size: 1.1rem; line-height: 1.6;">Ayarlar kısmından kelime filtrelerini ayarlayabilir, Emoji Spam'ini açabilir (başlangıçta kapalıdır) veya sistemi Tam Otomatik Moda geçirebilirsin.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+                <div class="onboarding-dots" style="display: flex; gap: 8px;">
+                    <span class="dot active" style="width: 10px; height: 10px; border-radius: 50%; background: var(--green); transition: 0.3s;"></span>
+                    <span class="dot" style="width: 10px; height: 10px; border-radius: 50%; background: var(--border-bright); transition: 0.3s;"></span>
+                    <span class="dot" style="width: 10px; height: 10px; border-radius: 50%; background: var(--border-bright); transition: 0.3s;"></span>
+                    <span class="dot" style="width: 10px; height: 10px; border-radius: 50%; background: var(--border-bright); transition: 0.3s;"></span>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button id="onboardingPrevBtn" class="btn-primary" style="background: transparent; border-color: var(--border-bright); color: var(--text-2); display: none;">Geri</button>
+                    <button id="onboardingNextBtn" class="btn-primary">İleri</button>
+                    <button id="onboardingFinishBtn" class="btn-primary" style="display: none; background: var(--green); color: #000; border-color: var(--green); box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);">Başla!</button>
+                </div>
             </div>
         </div>
     </div>

@@ -202,7 +202,9 @@ class WebSocketManager {
         id: message.id,
         content: message.content,
         username: message.username,
-        timestamp: message.timestamp
+        user_id: message.user_id,
+        timestamp: message.timestamp,
+        sender: message.sender
       }
     });
 

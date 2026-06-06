@@ -205,6 +205,7 @@ class AutoModEngine {
               action: violation.action,
               duration: violation.duration || 0,
               status: finalStatus,
+              matchedWords: violations.map(v => v.matchedWord).filter(Boolean),
               allViolations: violations.map(v => v.reason)
             });
 
@@ -355,6 +356,7 @@ class AutoModEngine {
         foundViolations.push({
           ruleName: 'bannedWords',
           reason: `Yasaklı kelime tespit edildi: "${w.word}"`,
+          matchedWord: w.word,
           action: w.action,
           duration: w.duration
         });

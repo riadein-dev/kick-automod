@@ -6,11 +6,17 @@
 const SoundEngine = (() => {
   let ctx = null;
   let _enabled = true;
+  let _hoverEnabled = true;
+  let _notificationEnabled = true;
   let _volume = 0.5;
 
   const savedEnabled = localStorage.getItem('soundEnabled');
+  const savedHover = localStorage.getItem('soundHoverEnabled');
+  const savedNotification = localStorage.getItem('soundNotificationEnabled');
   const savedVolume = localStorage.getItem('soundVolume');
   if (savedEnabled !== null) _enabled = savedEnabled === 'true';
+  if (savedHover !== null) _hoverEnabled = savedHover === 'true';
+  if (savedNotification !== null) _notificationEnabled = savedNotification === 'true';
   if (savedVolume !== null) _volume = parseFloat(savedVolume);
 
   function getCtx() {
@@ -23,7 +29,7 @@ const SoundEngine = (() => {
    * Tok, kalın hover sesi - mekanik klavye "thock" hissi
    */
   function playHover() {
-    if (!_enabled || _volume <= 0) return;
+    if (!_enabled || !_hoverEnabled || _volume <= 0) return;
     try {
       const c = getCtx();
       const t = c.currentTime;
@@ -75,7 +81,7 @@ const SoundEngine = (() => {
    * Tıklama sesi - daha belirgin tok darbe
    */
   function playClick() {
-    if (!_enabled || _volume <= 0) return;
+    if (!_enabled || !_hoverEnabled || _volume <= 0) return;
     try {
       const c = getCtx();
       const t = c.currentTime;
@@ -127,7 +133,7 @@ const SoundEngine = (() => {
    * Bildirim sesi - ince, yumuşak çift nota (rahatsız etmeyen)
    */
   function playNotification() {
-    if (!_enabled || _volume <= 0) return;
+    if (!_enabled || !_notificationEnabled || _volume <= 0) return;
     try {
       const c = getCtx();
       const t = c.currentTime;
@@ -162,8 +168,21 @@ const SoundEngine = (() => {
 
   function setEnabled(v) { _enabled = !!v; localStorage.setItem('soundEnabled', _enabled); }
   function isEnabled() { return _enabled; }
+  
+  function setHoverEnabled(v) { _hoverEnabled = !!v; localStorage.setItem('soundHoverEnabled', _hoverEnabled); }
+  function isHoverEnabled() { return _hoverEnabled; }
+  
+  function setNotificationEnabled(v) { _notificationEnabled = !!v; localStorage.setItem('soundNotificationEnabled', _notificationEnabled); }
+  function isNotificationEnabled() { return _notificationEnabled; }
+
   function setVolume(v) { _volume = Math.max(0, Math.min(1, v)); localStorage.setItem('soundVolume', _volume); }
   function getVolume() { return _volume; }
 
-  return { playHover, playClick, playNotification, setEnabled, isEnabled, setVolume, getVolume };
+  return { 
+    playHover, playClick, playNotification, 
+    setEnabled, isEnabled, 
+    setHoverEnabled, isHoverEnabled,
+    setNotificationEnabled, isNotificationEnabled,
+    setVolume, getVolume 
+  };
 })();

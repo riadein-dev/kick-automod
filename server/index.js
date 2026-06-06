@@ -54,6 +54,8 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const csurf = require('csurf');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +63,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // --- GÜVENLİK KATMANI (SECURITY MIDDLEWARE) ---
 // 1. HTTP Başlıklarını Koru
@@ -94,6 +97,9 @@ app.use(xss());
 
 // 5. HTTP Parametre Kirliliğini engelle
 app.use(hpp());
+
+// 6. CSRF Koruması
+const csrfProtection = csurf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production' } });
 // ----------------------------------------------
 
 // Session
@@ -127,7 +133,16 @@ app.use('/auth', auth.router);
 
 // API Routes (Require Authentication)
 const apiRouter = express.Router();
+
+// Apply CSRF to all API routes except SSE stream
+// SSE stream uses GET and we don't strictly need CSRF there, but we apply it to everything mutating
 apiRouter.use(auth.requireAuth);
+apiRouter.use(csrfProtection);
+
+// Endpoint for frontend to fetch CSRF token
+apiRouter.get('/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
 
 // Middleware to ensure automod has access token for API calls
 apiRouter.use((req, res, next) => {
@@ -237,6 +252,66 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
   }
 
   res.json(log);
+});
+
+// Direct manual action (from Chat Kontrol)
+apiRouter.post('/action', async (req, res) => {
+  const { action, userId, messageId, duration, channelSlug, reason, username, messageContent } = req.body;
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  
+  if (!req.session.accessToken) {
+      return res.status(401).json({ error: 'Unauthorized: No access token' });
+  }
+
+  try {
+      const kickClient = createKickClient(req.session.accessToken);
+      const channels = store.getChannels();
+      const channel = channels.find(c => c.slug === channelSlug && c.addedBy === sessionUserId);
+      const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+
+      if (!broadcasterUserId && action !== 'delete') {
+          throw new Error("Broadcaster User ID not found for this channel or you don't have access to this channel.");
+      }
+
+      if (action === 'delete') {
+          if (messageId) {
+             await kickClient.deleteMessage(messageId);
+          } else {
+             throw new Error("Message ID required for delete action");
+          }
+      } else if (action === 'timeout') {
+          await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon');
+          if (messageId) {
+             await kickClient.deleteMessage(messageId).catch(() => {});
+          }
+      } else if (action === 'ban') {
+          await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon');
+          if (messageId) {
+             await kickClient.deleteMessage(messageId).catch(() => {});
+          }
+      }
+
+      // Record this manual action to moderation logs so it shows in the UI
+      store.addModerationLog({
+          channel: channelSlug,
+          userId: userId,
+          messageId: messageId,
+          username: username || 'Bilinmiyor',
+          messageContent: messageContent || 'Manuel işlem uygulandı',
+          ruleName: 'manualAction',
+          reason: reason || 'Chat üzerinden manuel işlem',
+          type: 'manual',
+          action: action,
+          duration: duration || 0,
+          status: 'applied',
+          ownerId: sessionUserId
+      });
+
+      res.json({ success: true });
+  } catch (err) {
+      console.error(`[ManualAction] Error:`, err);
+      res.status(500).json({ error: err.message });
+  }
 });
 
 // Channels management
@@ -550,6 +625,11 @@ app.use((req, res) => {
 
 // Global Error Handler (Sistemin çökmesini engeller)
 app.use((err, req, res, next) => {
+    if (err.code === 'EBADCSRFTOKEN') {
+        // CSRF Token Hatası
+        console.warn('Geçersiz CSRF Token Yakalandı:', req.ip);
+        return res.status(403).json({ error: 'Geçersiz güvenlik sertifikası (CSRF). Lütfen sayfayı yenileyin.' });
+    }
     console.error('Kritik Sunucu Hatası Yakalandı:', err);
     res.status(500).json({ error: 'Sunucuda beklenmeyen bir hata oluştu ancak sistem güvenle çalışmaya devam ediyor.' });
 });
