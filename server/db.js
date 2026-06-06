@@ -44,7 +44,8 @@ const visitorSchema = new mongoose.Schema({
     lastLogin: { type: Date, default: Date.now },
     loginCount: { type: Number, default: 1 },
     accessToken: { type: String }, // NEW: Store access token for background moderation
-    rawData: { type: Object }
+    rawData: { type: Object },
+    isBanned: { type: Boolean, default: false }
 });
 
 const wordPresetSchema = new mongoose.Schema({

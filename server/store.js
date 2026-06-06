@@ -178,7 +178,43 @@ class Store {
   }
 
   getVisitors() {
-      return this.visitors;
+    return this.visitors;
+  }
+  
+  async banVisitor(userId) {
+      const visitor = this.visitors.find(v => v.id === userId || v.kickId === userId);
+      if (visitor) {
+          visitor.isBanned = true;
+          // DB update
+          if (process.env.MONGODB_URI) {
+              const { Visitor } = require('./db');
+              await Visitor.updateOne({ id: visitor.id }, { isBanned: true });
+          }
+          return visitor;
+      }
+      return null;
+  }
+  
+  async unbanVisitor(userId) {
+      const visitor = this.visitors.find(v => v.id === userId || v.kickId === userId);
+      if (visitor) {
+          visitor.isBanned = false;
+          // DB update
+          if (process.env.MONGODB_URI) {
+              const { Visitor } = require('./db');
+              await Visitor.updateOne({ id: visitor.id }, { isBanned: false });
+          }
+          return visitor;
+      }
+      return null;
+  }
+  
+  isIpBanned(ip) {
+      return this.visitors.some(v => v.ip === ip && v.isBanned);
+  }
+  
+  isUserBanned(userId) {
+      return this.visitors.some(v => (v.id === userId || v.kickId === userId) && v.isBanned);
   }
   // ======================================
 

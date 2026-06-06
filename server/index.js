@@ -65,6 +65,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// IP/User Ban Check Middleware
+app.use((req, res, next) => {
+    // Check IP
+    const clientIp = req.ip || req.connection.remoteAddress;
+    if (store.isIpBanned(clientIp)) {
+        return res.status(403).send('Erişiminiz sistem yöneticisi tarafından engellendi.');
+    }
+    
+    // Check Session User
+    if (req.session && req.session.user && req.session.user.raw && req.session.user.raw.id) {
+        if (store.isUserBanned(req.session.user.raw.id)) {
+            req.session.destroy();
+            return res.status(403).send('Hesabınız sistemden uzaklaştırıldı.');
+        }
+    }
+    next();
+});
+
 // --- GÜVENLİK KATMANI (SECURITY MIDDLEWARE) ---
 // 1. HTTP Başlıklarını Koru
 app.use(helmet({
@@ -580,6 +598,29 @@ const requireAdmin = (req, res, next) => {
 
 apiRouter.get('/admin/visitors', requireAdmin, (req, res) => {
     res.json(store.getVisitors());
+});
+
+apiRouter.post('/admin/ban', requireAdmin, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'Kullanıcı kimliği belirtilmedi.' });
+    
+    const visitor = await store.banVisitor(userId);
+    if (!visitor) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    
+    // Disable automod system for this user immediately
+    store.updateAutomodRules(userId, { enabled: false });
+    
+    res.json({ success: true, message: 'Kullanıcı yasaklandı ve sistemi durduruldu.' });
+});
+
+apiRouter.post('/admin/unban', requireAdmin, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'Kullanıcı kimliği belirtilmedi.' });
+    
+    const visitor = await store.unbanVisitor(userId);
+    if (!visitor) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    
+    res.json({ success: true, message: 'Kullanıcının yasağı kaldırıldı.' });
 });
 
 apiRouter.delete('/admin/visitors', requireAdmin, async (req, res) => {

@@ -342,18 +342,9 @@ function renderChannelTabs() {
     
     // Chat Control Tabs initial 'all' tab setup
     if (el.chatControlTabs) {
-        const ccFirstTab = el.chatControlTabs.querySelector('.channel-tab[data-channel="all"]');
         el.chatControlTabs.innerHTML = '';
-        if (ccFirstTab) {
-            ccFirstTab.className = `channel-tab${state.chatControlActiveTab === 'all' ? ' active' : ''}`;
-            const newCCFirstTab = ccFirstTab.cloneNode(true);
-            newCCFirstTab.addEventListener('click', () => {
-                $$('#chatControlTabs .channel-tab').forEach(b => b.classList.remove('active'));
-                newCCFirstTab.classList.add('active');
-                state.chatControlActiveTab = 'all';
-                if (el.chatControlMessages) el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
-            });
-            el.chatControlTabs.appendChild(newCCFirstTab);
+        if ((!state.chatControlActiveTab || state.chatControlActiveTab === 'all') && state.channels.length > 0) {
+            state.chatControlActiveTab = state.channels[0].slug;
         }
     }
 
@@ -791,14 +782,14 @@ async function fetchAdminVisitors() {
         let res = await apiFetch('/api/admin/visitors');
         
         if (!res.ok) {
-            el.visitorsListBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--red);">Yetkisiz erişim. Sadece yönetici (Riadein) görebilir.</td></tr>`;
+            el.visitorsListBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--red);">Yetkisiz erişim. Sadece yönetici (Riadein) görebilir.</td></tr>`;
             return;
         }
         
         const visitors = await res.json();
         
         if (visitors.length === 0) {
-            el.visitorsListBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-3);">Henüz ziyaretçi kaydı yok.</td></tr>`;
+            el.visitorsListBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-3);">Henüz ziyaretçi kaydı yok.</td></tr>`;
             return;
         }
         
@@ -818,24 +809,69 @@ async function fetchAdminVisitors() {
             
             const uaString = v.userAgent ? v.userAgent.substring(0, 40) + '...' : '-';
             
+            const actionsHtml = v.isBanned ? 
+                `<button class="btn-primary unban-btn" data-id="${v.id}" style="background: rgba(83,252,24,0.1); color: var(--green); border: 1px solid var(--green); padding: 4px 8px; font-size: 0.75rem;">Yasağı Kaldır</button>` : 
+                `<button class="btn-primary ban-btn" data-id="${v.id}" style="background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid var(--red); padding: 4px 8px; font-size: 0.75rem;">Banla</button>`;
+
+            const trStyle = v.isBanned ? 'opacity: 0.6; background: rgba(239,68,68,0.05);' : '';
+            
             tr.innerHTML = `
-                <td>
+                <td style="${trStyle}">
                     <div style="display:flex; align-items:center; gap: 8px;">
                         ${v.profilePic ? `<img src="${v.profilePic}" style="width:24px; height:24px; border-radius:50%;">` : '<div style="width:24px; height:24px; border-radius:50%; background:var(--border);"></div>'}
-                        <strong>${v.username}</strong>
+                        <strong>${v.username} ${v.isBanned ? '<span style="color:var(--red); font-size:0.7rem;">(BANNED)</span>' : ''}</strong>
                     </div>
                 </td>
-                <td style="color:var(--text-2); font-family:monospace;">${v.kickId || '-'}</td>
-                <td style="color:var(--green); font-family:monospace;">${v.ip}</td>
-                <td>${extInfo || '-'}</td>
-                <td style="color:var(--text-2); font-size: 0.8rem;">
+                <td style="color:var(--text-2); font-family:monospace; ${trStyle}">${v.kickId || '-'}</td>
+                <td style="color:var(--green); font-family:monospace; ${trStyle}">${v.ip}</td>
+                <td style="${trStyle}">${extInfo || '-'}</td>
+                <td style="color:var(--text-2); font-size: 0.8rem; ${trStyle}">
                     <div>${firstDate}</div>
                     <div style="font-size:0.7rem; color:var(--text-3);">Kayıt: ${createdAtDate}</div>
                 </td>
-                <td><span style="padding: 2px 8px; border-radius: 12px; background:var(--bg-elevated); border:1px solid var(--border); font-size:0.8rem;">${v.loginCount} kez</span></td>
-                <td style="color:var(--text-3); font-size: 0.75rem;" title="${v.userAgent}">${uaString}</td>
+                <td style="${trStyle}"><span style="padding: 2px 8px; border-radius: 12px; background:var(--bg-elevated); border:1px solid var(--border); font-size:0.8rem;">${v.loginCount} kez</span></td>
+                <td style="color:var(--text-3); font-size: 0.75rem; ${trStyle}" title="${v.userAgent}">${uaString}</td>
+                <td>${actionsHtml}</td>
             `;
             el.visitorsListBody.appendChild(tr);
+        });
+        
+        // Event Listeners for Ban/Unban
+        document.querySelectorAll('.ban-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm('Bu kullanıcının siteye erişimini kalıcı olarak yasaklamak istediğinize emin misiniz?')) {
+                    const id = e.currentTarget.dataset.id;
+                    try {
+                        const res = await apiFetch('/api/admin/ban', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: id })
+                        });
+                        const data = await res.json();
+                        if (res.ok) fetchAdminVisitors();
+                        else alert(data.error || 'Hata oluştu');
+                    } catch(err) { alert('Hata oluştu'); }
+                }
+            });
+        });
+        
+        document.querySelectorAll('.unban-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm('Bu kullanıcının yasağını kaldırmak istediğinize emin misiniz?')) {
+                    const id = e.currentTarget.dataset.id;
+                    try {
+                        const res = await apiFetch('/api/admin/unban', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: id })
+                        });
+                        const data = await res.json();
+                        if (res.ok) fetchAdminVisitors();
+                        else alert(data.error || 'Hata oluştu');
+                    } catch(err) { alert('Hata oluştu'); }
+                }
+            });
+        });
         });
     } catch (e) {
         console.error('Visitors fetch failed:', e);
@@ -1804,13 +1840,13 @@ function setupChatControlLogic() {
         });
     }
 }
-state.chatControlActiveTab = 'all';
+state.chatControlActiveTab = null; // Will be set to the first channel in renderChannelTabs if available
 
 window.appendChatMessage = function(msgData) {
     if (!el.chatControlMessages) return;
     
     // Filter by active tab
-    if (state.chatControlActiveTab !== 'all' && state.chatControlActiveTab !== msgData.channel) return;
+    if (state.chatControlActiveTab !== msgData.channel) return;
 
     // Remove welcome message
     const welcome = el.chatControlMessages.querySelector('.chat-welcome');
