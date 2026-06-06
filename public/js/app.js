@@ -125,7 +125,7 @@ const el = {
     chatControlTabs: $('#chatControlTabs'),
     chatSettingsBtn: $('#chatSettingsBtn'),
     chatContainer: $('#chatContainer'),
-    chatControlMessages: $('#chatControlMessages'),
+    chatControlMessages: $('#chatContainer'),
     chatSettingsModal: $('#chatSettingsModal'),
     closeChatSettingsModal: $('#closeChatSettingsModal'),
     cancelChatSettingsBtn: $('#cancelChatSettingsBtn'),
@@ -312,12 +312,12 @@ function updateUserProfile() {
 
 // ===== Stats =====
 function updateStatsUI() {
-    el.statTotal.textContent = state.stats.totalModeration;
-    el.statPending.textContent = state.stats.pending;
-    el.statApplied.textContent = state.stats.applied;
-    el.statActiveChannels.textContent = state.stats.activeChannels;
-    el.activeChannelsText.textContent = `${state.stats.activeChannels} kanal`;
-    el.messagesReceivedText.textContent = `${state.stats.messagesReceived} mesaj`;
+    if (el.statTotal) el.statTotal.textContent = state.stats.totalModeration;
+    if (el.statPending) el.statPending.textContent = state.stats.pending;
+    if (el.statApplied) el.statApplied.textContent = state.stats.applied;
+    if (el.statActiveChannels) el.statActiveChannels.textContent = state.stats.activeChannels;
+    if (el.activeChannelsText) el.activeChannelsText.textContent = `${state.stats.activeChannels} kanal`;
+    if (el.messagesReceivedText) el.messagesReceivedText.textContent = `${state.stats.messagesReceived} mesaj`;
 }
 
 // ===== Channel Tabs =====
@@ -622,14 +622,15 @@ function renderLogs() {
         else actionDetail = log.action || '-';
         
         let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
-        // Truncate long messages
-        if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
-        let msgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
+        let fullMsgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
 
         tr.innerHTML = `
             <td><strong>${log.username}</strong></td>
             <td style="color:var(--text-2)">${log.channel}</td>
-            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2);" title="${log.messageContent || log.reason}">${msgHtml}</td>
+            <td class="msg-tooltip-container" style="max-width: 200px; color: var(--text-2);">
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fullMsgHtml}</div>
+                <div class="msg-tooltip">${fullMsgHtml}</div>
+            </td>
             <td style="font-weight: 600; color: ${log.action === 'ban' ? 'var(--red)' : log.action === 'timeout' ? 'var(--orange)' : 'var(--text-1)'}">${actionDetail}</td>
             <td>${statusHtml}</td>
             <td class="text-right">${actionsHtml}</td>`;
@@ -1001,15 +1002,17 @@ function renderAllLogs() {
         else actionDetail = log.action || '-';
         
         let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
-        if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
-        let msgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
+        let fullMsgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
 
         const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
         tr.innerHTML = `
             <td><strong>${log.username}</strong></td>
             <td style="color:var(--text-2)">${log.channel}</td>
-            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2);" title="${log.messageContent || log.reason}">${msgHtml}</td>
+            <td class="msg-tooltip-container" style="max-width: 200px; color: var(--text-2);">
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fullMsgHtml}</div>
+                <div class="msg-tooltip">${fullMsgHtml}</div>
+            </td>
             <td style="font-weight: 600; color: ${log.action === 'ban' ? 'var(--red)' : log.action === 'timeout' ? 'var(--orange)' : 'var(--text-1)'}">${actionDetail}</td>
             <td>${statusHtml}</td>
             <td style="color:var(--text-3); font-size:0.85rem;">${dateStr}</td>`;
