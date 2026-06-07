@@ -1,21 +1,28 @@
 {
-  "id": "mod_1780766036238_m6cbkf",
+  "id": "mod_1780843597829_qufhcl",
   "ownerId": "ilker4444",
-  "userId": 9747450,
-  "username": "AYARSIZ",
+  "userId": 36082496,
+  "username": "SiyahKangal",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "a096fe09-d0a4-4f26-8736-7eaba0de2e12",
-  "messageContent": "[emote:37226:KEKW]",
-  "reason": "Emote Spam (5x aynı mesaj)",
-  "ruleName": "emoteSpam",
+  "messageId": "968c2194-f21a-45db-a1ff-da02d17deff7",
+  "messageContent": "Yarram",
+  "reason": "Yasaklı kelime tespit edildi: \"yarram\"",
+  "ruleName": "bannedWords",
   "type": "auto",
   "action": "timeout",
-  "duration": 5,
+  "duration": 10,
   "status": "error",
-  "allViolations": [
-    "Emote Spam (5x aynı mesaj)"
+  "matchedWords": [
+    "yarram",
+    "yarram",
+    "yarram"
   ],
-  "createdAt": "2026-06-06T17:13:56.238Z",
+  "allViolations": [
+    "Yasaklı kelime tespit edildi: \"yarram\"",
+    "Yasaklı kelime tespit edildi: \"yarram\"",
+    "Yasaklı kelime tespit edildi: \"yarram\""
+  ],
+  "createdAt": "2026-06-07T14:46:37.829Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }

@@ -35,7 +35,26 @@ class KickApiClient {
       }
 
       const text = await response.text();
-      return text ? JSON.parse(text) : null;
+      let data = null;
+      if (text) {
+          try {
+              data = JSON.parse(text);
+          } catch(e) {
+              console.log('[KickAPI] Response is not JSON:', text);
+          }
+      }
+      
+      // Kick bazen 200 dondurup icinde hata mesaji veriyor
+      if (data) {
+          if (data.status && data.status.error) {
+              throw new Error(`Kick API Hata: ${data.status.message || 'Bilinmeyen Hata'}`);
+          }
+          if (data.message && typeof data.message === 'string' && data.message.toLowerCase().includes('factor authentication')) {
+              throw new Error(`Kick API 2FA Hatasi: ${data.message}`);
+          }
+      }
+      
+      return data;
     } catch (err) {
       console.error(`Kick API request failed [${endpoint}]:`, err.message);
       throw err;

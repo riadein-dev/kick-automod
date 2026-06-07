@@ -190,7 +190,11 @@ apiRouter.get('/stats', (req, res) => {
 // Moderation logs
 apiRouter.get('/moderation', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
-  const logs = store.getModerationLogs({ ...req.query, ownerId: sessionUserId });
+  const userChannels = store.getChannels().filter(c => c.addedBy === sessionUserId).map(c => c.slug);
+  
+  // Allow users to see logs for any channel they have added to their dashboard
+  const allLogs = store.getModerationLogs(req.query);
+  const logs = allLogs.filter(log => log.ownerId === sessionUserId || userChannels.includes(log.channel));
   res.json(logs);
 });
 

@@ -2131,6 +2131,10 @@ window.appendChatMessage = function(msgData) {
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.error || 'İşlem sunucu tarafından reddedildi.');
             }
+            
+            fetchLogs();
+            fetchStats();
+            
             setTimeout(() => {
                 if (action === 'delete') {
                     msgEl.style.display = 'none';
