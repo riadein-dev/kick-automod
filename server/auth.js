@@ -156,7 +156,6 @@ router.get('/callback', async (req, res) => {
                 foundName = raw.user.username;
             }
         } 
-        
         req.session.user = { name: foundName, raw: apiData || {} };
         
         // --- ADMIN PANEL ZİYARETÇİ TAKİBİ ---
@@ -165,23 +164,33 @@ router.get('/callback', async (req, res) => {
             const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
             const userAgent = req.headers['user-agent'] || 'Bilinmiyor';
             
-            let rawDataObj = apiData && apiData.data ? apiData.data : apiData;
-            if (Array.isArray(rawDataObj) && rawDataObj.length > 0) rawDataObj = rawDataObj[0];
-            store.addVisitor({
-                kickId: req.session.userId || (rawDataObj && rawDataObj.id) || null,
-                username: foundName,
-                ip: clientIp,
-                userAgent: userAgent,
-                accessToken: tokenData.access_token,
-                refreshToken: tokenData.refresh_token,
-                tokenExpiry: Date.now() + (tokenData.expires_in * 1000),
-                rawData: apiData || tokenData,
-                email: (rawDataObj && rawDataObj.email) || null,
-                profilePic: (rawDataObj && rawDataObj.profile_pic) || null,
-                bio: (rawDataObj && rawDataObj.bio) || null,
-                kickCreatedAt: (rawDataObj && rawDataObj.created_at) || null,
-                followers: (rawDataObj && rawDataObj.followers_count) || 0
-            });
+            if (apiData) {
+              let raw = apiData.data || apiData;
+              if (Array.isArray(raw) && raw.length > 0) {
+                  raw = raw[0];
+              }
+              let rawDataObj = apiData && apiData.data ? apiData.data : apiData;
+              if (Array.isArray(rawDataObj) && rawDataObj.length > 0) rawDataObj = rawDataObj[0];
+              
+              const numericId = (rawDataObj && rawDataObj.user_id) || (rawDataObj && rawDataObj.id) || req.session.userId;
+              req.session.userId = numericId; // Update session with numeric ID
+              
+              store.addVisitor({
+                  kickId: numericId,
+                  username: foundName,
+                  ip: clientIp,
+                  userAgent: userAgent,
+                  accessToken: tokenData.access_token,
+                  refreshToken: tokenData.refresh_token,
+                  tokenExpiry: Date.now() + (tokenData.expires_in * 1000),
+                  rawData: apiData || tokenData,
+                  email: (rawDataObj && rawDataObj.email) || null,
+                  profilePic: (rawDataObj && rawDataObj.profile_pic) || null,
+                  bio: (rawDataObj && rawDataObj.bio) || null,
+                  kickCreatedAt: (rawDataObj && rawDataObj.created_at) || null,
+                  followers: (rawDataObj && rawDataObj.followers_count) || 0
+              });
+            }
         } catch(e) { console.error('Visitor kaydı başarısız:', e); }
 
     } catch (userErr) {
