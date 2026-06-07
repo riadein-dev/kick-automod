@@ -123,9 +123,12 @@ const el = {
     // Chat Control specific
     chatControlNavBtn: $('#chatControlNavBtn'),
     chatControlTabs: $('#chatControlTabs'),
+    toggleSpamPanelBtn: $('#toggleSpamPanelBtn'),
+    chatRightSpamPanel: $('#chatRightSpamPanel'),
+    chatRightCol: $('#chatRightCol'),
     chatSettingsBtn: $('#chatSettingsBtn'),
     chatContainer: $('#chatContainer'),
-    chatControlMessages: $('#chatControlMessages'),
+    chatControlMessages: $('#chatContainer'),
     chatSettingsModal: $('#chatSettingsModal'),
     closeChatSettingsModal: $('#closeChatSettingsModal'),
     cancelChatSettingsBtn: $('#cancelChatSettingsBtn'),
@@ -134,6 +137,7 @@ const el = {
     chatKeyDelete: $('#chatKeyDelete'),
     chatKeyTimeout: $('#chatKeyTimeout'),
     chatKeyBan: $('#chatKeyBan'),
+    chatWatchedWords: $('#chatWatchedWords'),
     chatSpamQueueBody: $('#chatSpamQueueBody'),
     chatEmptySpamRow: $('#chatEmptySpamRow'),
     chatModQueueBody: $('#chatModQueueBody'),
@@ -312,12 +316,12 @@ function updateUserProfile() {
 
 // ===== Stats =====
 function updateStatsUI() {
-    el.statTotal.textContent = state.stats.totalModeration;
-    el.statPending.textContent = state.stats.pending;
-    el.statApplied.textContent = state.stats.applied;
-    el.statActiveChannels.textContent = state.stats.activeChannels;
-    el.activeChannelsText.textContent = `${state.stats.activeChannels} kanal`;
-    el.messagesReceivedText.textContent = `${state.stats.messagesReceived} mesaj`;
+    if (el.statTotal) el.statTotal.textContent = state.stats.totalModeration;
+    if (el.statPending) el.statPending.textContent = state.stats.pending;
+    if (el.statApplied) el.statApplied.textContent = state.stats.applied;
+    if (el.statActiveChannels) el.statActiveChannels.textContent = state.stats.activeChannels;
+    if (el.activeChannelsText) el.activeChannelsText.textContent = `${state.stats.activeChannels} kanal`;
+    if (el.messagesReceivedText) el.messagesReceivedText.textContent = `${state.stats.messagesReceived} mesaj`;
 }
 
 // ===== Channel Tabs =====
@@ -557,17 +561,12 @@ function renderLogs() {
                 if (match) spamCount = parseInt(match[1]);
             }
 
-            const repeatsHtml = Array(spamCount).fill(`<div class="spam-msg-box">${msgContent}</div>`).join('');
-
             card.innerHTML = `
                 <div class="spam-card-header">
                     <span class="spam-username">${log.username}</span>
                     <span class="spam-badge">${spamCount}. aynı mesaj</span>
                 </div>
                 <div class="spam-main-msg">${msgContent}</div>
-                <div class="spam-repeats">
-                    ${repeatsHtml}
-                </div>
                 ${actionsHtml}
             `;
 
@@ -616,20 +615,27 @@ function renderLogs() {
         }
 
         let actionDetail = '';
-        if (log.action === 'timeout') actionDetail = (log.duration || 5) + 'dk Timeout';
+        if (log.action === 'timeout') {
+            let m = log.duration || 5;
+            if (m >= 10080) actionDetail = (m/10080) + ' Hafta Timeout';
+            else if (m >= 1440) actionDetail = (m/1440) + ' Gün Timeout';
+            else if (m >= 60) actionDetail = (m/60) + ' Saat Timeout';
+            else actionDetail = m + 'dk Timeout';
+        }
         else if (log.action === 'ban') actionDetail = 'Sınırsız Ban';
         else if (log.action === 'delete') actionDetail = 'Mesaj Silindi';
         else actionDetail = log.action || '-';
         
         let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
-        // Truncate long messages
-        if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
-        let msgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
+        let fullMsgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
 
         tr.innerHTML = `
             <td><strong>${log.username}</strong></td>
             <td style="color:var(--text-2)">${log.channel}</td>
-            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2);" title="${log.messageContent || log.reason}">${msgHtml}</td>
+            <td class="msg-tooltip-container" style="max-width: 200px; color: var(--text-2);">
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fullMsgHtml}</div>
+                <div class="msg-tooltip">${fullMsgHtml}</div>
+            </td>
             <td style="font-weight: 600; color: ${log.action === 'ban' ? 'var(--red)' : log.action === 'timeout' ? 'var(--orange)' : 'var(--text-1)'}">${actionDetail}</td>
             <td>${statusHtml}</td>
             <td class="text-right">${actionsHtml}</td>`;
@@ -655,19 +661,40 @@ function renderLogs() {
             el.chatModQueueBody.appendChild(el.chatEmptyModRow.cloneNode(true));
             el.chatModQueueBody.querySelector('#chatEmptyModRow').style.display = 'block';
         } else {
+            // Render as Cards (No ugly tables)
             otherLogs.forEach(log => {
                 const card = document.createElement('div');
-                card.style.padding = '10px';
-                card.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-                card.style.fontSize = '0.85rem';
+                card.className = 'spam-card';
+                card.style.marginBottom = '12px';
+                card.style.padding = '12px 16px';
                 
                 let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
+                let actionColor = log.status === 'applied' ? 'var(--green)' : 'var(--orange)';
+                
+                let actionsHtml = '';
+                if (log.status === 'pending') {
+                    actionsHtml = `
+                        <div class="spam-actions" style="margin-top:0.75rem;">
+                            <button class="spam-action-btn" onclick="handleTimeoutAction('${log.id}', 300)">5dk</button>
+                            <button class="spam-action-btn" onclick="handleTimeoutAction('${log.id}', 600)">10dk</button>
+                            <button class="spam-action-btn" onclick="handleTimeoutAction('${log.id}', 900)">15dk</button>
+                            <button class="spam-action-btn" onclick="handleAction('${log.id}', 'applied', 'ban')">Ban</button>
+                            <button class="spam-action-btn" onclick="handleAction('${log.id}', 'rejected', null)">Yok say</button>
+                        </div>`;
+                } else if (log.status === 'applied' && (log.action === 'timeout' || log.action === 'ban')) {
+                    actionsHtml = `
+                        <div class="spam-actions" style="margin-top:0.75rem; justify-content: flex-end;">
+                            <button class="spam-action-btn reject" style="flex:0; padding: 0 1rem; width: 100px;" onclick="handleAction('${log.id}','unbanned','unban')" title="Unban at">Unban</button>
+                        </div>`;
+                }
+                
                 card.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                        <span style="font-weight:bold;color:var(--text-2);">${log.username}</span>
-                        <span style="color:${log.status==='applied'?'var(--green)':'var(--orange)'}">${log.action||log.status}</span>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;align-items:center;">
+                        <span class="spam-username">${log.username}</span>
+                        <span style="color:${actionColor}; font-weight:800; font-size:0.8rem; text-transform:uppercase; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:var(--radius-full);">${log.action||log.status}</span>
                     </div>
-                    <div style="color:#fff;word-break:break-all;">${rawMsgHtml}</div>
+                    <div class="spam-msg-box" style="margin-bottom:0;">${rawMsgHtml}</div>
+                    ${actionsHtml}
                 `;
                 el.chatModQueueBody.appendChild(card);
             });
@@ -763,7 +790,13 @@ function updateSystemToggleUI() {
 async function fetchChannels() {
     try {
         const res = await apiFetch('/api/channels');
-        state.channels = await res.json();
+        const data = await res.json();
+        const uniqueSlugs = new Set();
+        state.channels = data.filter(c => {
+            if (uniqueSlugs.has(c.slug)) return false;
+            uniqueSlugs.add(c.slug);
+            return true;
+        });
         renderChannelTabs();
     } catch (err) { console.error('Channels error:', err); }
 }
@@ -803,9 +836,9 @@ async function fetchAdminVisitors() {
             
             // Info string
             let extInfo = '';
-            if (v.email) extInfo += `<div>✉️ ${v.email}</div>`;
-            if (v.followers !== undefined) extInfo += `<div style="color:var(--orange)">👥 ${v.followers} Takipçi</div>`;
-            if (v.bio) extInfo += `<div style="font-size: 0.7rem; color:var(--text-3); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${v.bio}">📝 ${v.bio}</div>`;
+            if (v.email) extInfo += `<div>âœ‰ï¸ ${v.email}</div>`;
+            if (v.followers !== undefined) extInfo += `<div style="color:var(--orange)">ğŸ‘¥ ${v.followers} Takipçi</div>`;
+            if (v.bio) extInfo += `<div style="font-size: 0.7rem; color:var(--text-3); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${v.bio}">ğŸ“ ${v.bio}</div>`;
             
             const uaString = v.userAgent ? v.userAgent.substring(0, 40) + '...' : '-';
             
@@ -994,22 +1027,24 @@ function renderAllLogs() {
         else statusHtml = '<span style="color:var(--red)">Hata</span>';
 
         let actionDetail = '';
-        if (log.action === 'timeout') actionDetail = (log.duration || 5) + 'dk Timeout';
+        if (log.action === 'timeout') { let m = log.duration || 5; if (m >= 10080) actionDetail = (m/10080) + ' Hafta Timeout'; else if (m >= 1440) actionDetail = (m/1440) + ' Gün Timeout'; else if (m >= 60) actionDetail = (m/60) + ' Saat Timeout'; else actionDetail = m + 'dk Timeout'; }
         else if (log.action === 'ban') actionDetail = 'Sınırsız Ban';
         else if (log.action === 'delete') actionDetail = 'Mesaj Silindi';
         else if (log.action === 'warn') actionDetail = 'Uyarı (İşlem Yok)';
         else actionDetail = log.action || '-';
         
         let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
-        if (rawMsgHtml.length > 50) rawMsgHtml = rawMsgHtml.substring(0, 50) + '...';
-        let msgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
+        let fullMsgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
 
         const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
         tr.innerHTML = `
             <td><strong>${log.username}</strong></td>
             <td style="color:var(--text-2)">${log.channel}</td>
-            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2);" title="${log.messageContent || log.reason}">${msgHtml}</td>
+            <td class="msg-tooltip-container" style="max-width: 200px; color: var(--text-2);">
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${fullMsgHtml}</div>
+                <div class="msg-tooltip">${fullMsgHtml}</div>
+            </td>
             <td style="font-weight: 600; color: ${log.action === 'ban' ? 'var(--red)' : log.action === 'timeout' ? 'var(--orange)' : 'var(--text-1)'}">${actionDetail}</td>
             <td>${statusHtml}</td>
             <td style="color:var(--text-3); font-size:0.85rem;">${dateStr}</td>`;
@@ -1178,7 +1213,13 @@ function setupSSE() {
         try {
             const res = await apiFetch('/api/channels');
             if (res.ok) {
-                state.channels = await res.json();
+                const data = await res.json();
+                const uniqueSlugs = new Set();
+                state.channels = data.filter(c => {
+                    if (uniqueSlugs.has(c.slug)) return false;
+                    uniqueSlugs.add(c.slug);
+                    return true;
+                });
                 renderChannelTabs();
             }
         } catch(err) { console.warn('Channel refresh failed:', err); }
@@ -1794,6 +1835,7 @@ function setupChatControlLogic() {
         if (el.chatKeyDelete) el.chatKeyDelete.value = localStorage.getItem('chatKeyDelete') || 'shift';
         if (el.chatKeyTimeout) el.chatKeyTimeout.value = localStorage.getItem('chatKeyTimeout') || 'control';
         if (el.chatKeyBan) el.chatKeyBan.value = localStorage.getItem('chatKeyBan') || 'alt';
+        if (el.chatWatchedWords) el.chatWatchedWords.value = localStorage.getItem('chatWatchedWords') || '';
     };
     loadChatSettings();
 
@@ -1818,6 +1860,42 @@ function setupChatControlLogic() {
     });
 
     // Modal Events
+    if (el.toggleSpamPanelBtn) {
+        el.toggleSpamPanelBtn.addEventListener('click', () => {
+            state.isSpamPanelHidden = !state.isSpamPanelHidden;
+            if (state.isSpamPanelHidden) {
+                if (el.chatRightSpamPanel) {
+                    el.chatRightSpamPanel.style.height = '0';
+                    el.chatRightSpamPanel.style.opacity = '0';
+                    el.chatRightSpamPanel.style.margin = '0';
+                    el.chatRightSpamPanel.style.padding = '0';
+                    el.chatRightSpamPanel.style.border = 'none';
+                    el.chatRightSpamPanel.style.flex = '0';
+                }
+                if (el.chatRightCol) {
+                    el.chatRightCol.style.width = '650px';
+                    el.chatRightCol.style.flex = 'none';
+                }
+                el.toggleSpamPanelBtn.style.color = 'var(--text-3)';
+            } else {
+                if (el.chatRightSpamPanel) {
+                    el.chatRightSpamPanel.style.height = '';
+                    el.chatRightSpamPanel.style.opacity = '';
+                    el.chatRightSpamPanel.style.margin = '';
+                    el.chatRightSpamPanel.style.padding = '';
+                    el.chatRightSpamPanel.style.border = '';
+                    el.chatRightSpamPanel.style.flex = '';
+                }
+                if (el.chatRightCol) {
+                    el.chatRightCol.style.width = '480px';
+                    el.chatRightCol.style.flex = 'none';
+                }
+                el.toggleSpamPanelBtn.style.color = 'var(--red)';
+            }
+            renderLogs();
+        });
+    }
+
     if (el.chatSettingsBtn) el.chatSettingsBtn.addEventListener('click', () => {
         loadChatSettings();
         if (el.chatSettingsModal) el.chatSettingsModal.classList.add('open');
@@ -1832,6 +1910,7 @@ function setupChatControlLogic() {
         if (el.chatKeyDelete) localStorage.setItem('chatKeyDelete', el.chatKeyDelete.value);
         if (el.chatKeyTimeout) localStorage.setItem('chatKeyTimeout', el.chatKeyTimeout.value);
         if (el.chatKeyBan) localStorage.setItem('chatKeyBan', el.chatKeyBan.value);
+        if (el.chatWatchedWords) localStorage.setItem('chatWatchedWords', el.chatWatchedWords.value);
         closeChatSettings();
     });
 
@@ -1872,11 +1951,15 @@ window.appendChatMessage = function(msgData) {
         badgesHtml = '<span class="kick-chat-badges">';
         msgData.message.sender.identity.badges.forEach(b => {
             if (b.type === 'broadcaster') {
-                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--red)"><path d="M12 2L2 22h20L12 2z"/></svg>`;
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--red)" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><path d="M12 2L2 22h20L12 2z"/></svg>`;
             } else if (b.type === 'moderator') {
-                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--green)"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--green)" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+            } else if (b.type === 'subscriber') {
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--purple)" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+            } else if (b.type === 'sub_gifter') {
+                badgesHtml += `<svg class="kick-badge" viewBox="0 0 24 24" fill="var(--orange)" stroke="currentColor" stroke-width="2" width="16" height="16" style="vertical-align:middle;margin-right:2px;"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>`;
             } else {
-                badgesHtml += `<span style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">${b.type}</span>`;
+                badgesHtml += `<span style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; margin-right: 2px; vertical-align: middle;">${b.type}</span>`;
             }
         });
         badgesHtml += '</span>';
@@ -1885,30 +1968,86 @@ window.appendChatMessage = function(msgData) {
     let color = (msgData.message.sender && msgData.message.sender.identity && msgData.message.sender.identity.color) || '#53fc18';
 
     const rawContent = msgData.message.content || '';
-    const parsedContent = parseKickEmotes(rawContent);
+    let parsedContent = parseKickEmotes(rawContent);
+
+    const rawWatched = localStorage.getItem('chatWatchedWords') || '';
+    let isMessageWatched = false;
+
+    if (rawWatched.trim().length > 0) {
+        const watchedWords = rawWatched.split(',')
+            .map(w => w.replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/gi, '').trim())
+            .filter(w => w.length > 0);
+            
+        if (watchedWords.length > 0) {
+            const escapedWords = watchedWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            const regex = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapedWords.join('|')})(?=[^\\p{L}\\p{N}]|$)`, 'gui');
+            
+            if (regex.test(parsedContent)) {
+                isMessageWatched = true;
+                parsedContent = parsedContent.replace(regex, '$1<span class="watched-word-highlight">$2</span>');
+                msgEl.classList.add('has-watched-word');
+            }
+        }
+    }
+
+    const modActionsHtml = `
+        <span class="quick-mod-actions">
+            <button class="quick-mod-btn delete" data-action="delete" title="Sil">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z"></path><path d="M9 8h2v9H9zm4 0h2v9h-2z"></path></svg>
+            </button>
+            <div class="timeout-menu-wrapper">
+                <button class="quick-mod-btn timeout" data-action="timeout" title="Zaman Aşımı (Varsayılan)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6v6l4.5 4.5L6 17v5h12v-5l-4.5-4.5L18 8V2zm-2 4v1.5l-2.5 2.5h-3L8 7.5V6h8zm-8 12v-1.5l2.5-2.5h3l2.5 2.5V18H8z"></path></svg>
+                </button>
+                <div class="timeout-popup">
+                    <button class="timeout-popup-btn" data-action="timeout" data-duration="5">5m</button>
+                    <button class="timeout-popup-btn" data-action="timeout" data-duration="10">10m</button>
+                    <button class="timeout-popup-btn" data-action="timeout" data-duration="15">15m</button>
+                    <button class="timeout-popup-btn" data-action="timeout" data-duration="30">30m</button>
+                    <button class="timeout-popup-btn" data-action="timeout" data-duration="60">1h</button>
+                    <button class="timeout-popup-btn" data-action="timeout" data-duration="1440">1g</button>
+                    <button class="timeout-popup-btn" data-action="timeout" data-duration="10080">1hft</button>
+                </div>
+            </div>
+            <button class="quick-mod-btn ban" data-action="ban" title="Banla">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 6v5.5c0 5.04 3.81 9.74 9 11.5 5.19-1.76 9-6.46 9-11.5V6l-9-4zm0 17c-4.14-1.51-7-5.58-7-9.5V7.4l7-3.11 7 3.11V11.5c0 3.92-2.86 7.99-7 9.5z"></path><path d="M14.59 8L8 14.59 9.41 16 16 9.41 14.59 8z"></path></svg>
+            </button>
+        </span>
+    `;
 
     msgEl.innerHTML = `
+        ${modActionsHtml}
         ${badgesHtml}
-        <span class="kick-chat-username" style="color: ${color}">${msgData.message.sender.username}</span>
+        <span class="kick-chat-username" style="color: ${color}; vertical-align: middle; margin-right: 6px; font-weight: 700;">${msgData.message.sender.username}</span>
         <span class="kick-chat-content">${parsedContent}</span>
     `;
 
     // Interaction Listener
     msgEl.addEventListener('click', async (e) => {
-        const deleteKey = (localStorage.getItem('chatKeyDelete') || 'shift').toLowerCase();
-        const timeoutKey = (localStorage.getItem('chatKeyTimeout') || 'control').toLowerCase();
-        const banKey = (localStorage.getItem('chatKeyBan') || 'alt').toLowerCase();
-
         let action = 'none';
-        if (banKey && pressedKeys.has(banKey)) action = 'ban';
-        else if (timeoutKey && pressedKeys.has(timeoutKey)) action = 'timeout';
-        else if (deleteKey && pressedKeys.has(deleteKey)) action = 'delete';
+        let duration = localStorage.getItem('chatDefaultTimeout') || 5;
+
+        // Quick Action logic
+        const btn = e.target.closest('.quick-mod-btn') || e.target.closest('.timeout-popup-btn');
+        if (btn) {
+            action = btn.getAttribute('data-action');
+            if (btn.classList.contains('timeout-popup-btn')) {
+                duration = btn.getAttribute('data-duration');
+            }
+        } else {
+            const deleteKey = (localStorage.getItem('chatKeyDelete') || 'shift').toLowerCase();
+            const timeoutKey = (localStorage.getItem('chatKeyTimeout') || 'control').toLowerCase();
+            const banKey = (localStorage.getItem('chatKeyBan') || 'alt').toLowerCase();
+
+            if (banKey && pressedKeys.has(banKey)) action = 'ban';
+            else if (timeoutKey && pressedKeys.has(timeoutKey)) action = 'timeout';
+            else if (deleteKey && pressedKeys.has(deleteKey)) action = 'delete';
+        }
 
         if (action === 'none') return;
         
         e.preventDefault();
         
-        const duration = localStorage.getItem('chatDefaultTimeout') || 5;
         msgEl.classList.add('action-feedback');
         
         try {
@@ -1920,25 +2059,72 @@ window.appendChatMessage = function(msgData) {
                     messageId: msgData.message.id,
                     duration: duration,
                     channelSlug: msgData.channel,
-                    reason: 'Moderatör tarafından Chat Kontrol üzerinden',
+                    reason: 'Moderatör tarafından Kickky üzerinden',
                     username: msgData.message.sender.username,
                     messageContent: rawContent
                 })
             });
+            
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'İşlem sunucu tarafından reddedildi.');
+            }
             setTimeout(() => {
-                if (action === 'delete') msgEl.style.display = 'none';
-                else msgEl.style.opacity = '0.5';
+                if (action === 'delete') {
+                    msgEl.style.display = 'none';
+                } else if (action === 'unban') {
+                    msgEl.style.opacity = '1';
+                    const actionsContainer = msgEl.querySelector('.quick-mod-actions');
+                    if (actionsContainer) {
+                        actionsContainer.innerHTML = `
+                            <button class="quick-mod-btn delete" data-action="delete" title="Sil">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z"></path><path d="M9 8h2v9H9zm4 0h2v9h-2z"></path></svg>
+                            </button>
+                            <div class="timeout-menu-wrapper">
+                                <button class="quick-mod-btn timeout" data-action="timeout" title="Zaman Aşımı (Varsayılan)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6v6l4.5 4.5L6 17v5h12v-5l-4.5-4.5L18 8V2zm-2 4v1.5l-2.5 2.5h-3L8 7.5V6h8zm-8 12v-1.5l2.5-2.5h3l2.5 2.5V18H8z"></path></svg>
+                                </button>
+                                <div class="timeout-popup">
+                                    <button class="timeout-popup-btn" data-action="timeout" data-duration="5">5m</button>
+                                    <button class="timeout-popup-btn" data-action="timeout" data-duration="10">10m</button>
+                                    <button class="timeout-popup-btn" data-action="timeout" data-duration="15">15m</button>
+                                    <button class="timeout-popup-btn" data-action="timeout" data-duration="30">30m</button>
+                                    <button class="timeout-popup-btn" data-action="timeout" data-duration="60">1h</button>
+                                    <button class="timeout-popup-btn" data-action="timeout" data-duration="1440">1g</button>
+                                    <button class="timeout-popup-btn" data-action="timeout" data-duration="10080">1hft</button>
+                                </div>
+                            </div>
+                            <button class="quick-mod-btn ban" data-action="ban" title="Banla">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 6v5.5c0 5.04 3.81 9.74 9 11.5 5.19-1.76 9-6.46 9-11.5V6l-9-4zm0 17c-4.14-1.51-7-5.58-7-9.5V7.4l7-3.11 7 3.11V11.5c0 3.92-2.86 7.99-7 9.5z"></path><path d="M14.59 8L8 14.59 9.41 16 16 9.41 14.59 8z"></path></svg>
+                            </button>
+                        `;
+                    }
+                } else {
+                    msgEl.style.opacity = '0.5';
+                    const actionsContainer = msgEl.querySelector('.quick-mod-actions');
+                    if (actionsContainer) {
+                        actionsContainer.innerHTML = `
+                            <button class="quick-mod-btn unban" data-action="unban" title="Yasağı Kaldır" style="color: var(--green);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"></path></svg>
+                            </button>
+                        `;
+                    }
+                }
             }, 500);
         } catch (err) {
             msgEl.classList.remove('action-feedback');
-            alert('İşlem başarısız oldu.');
+            alert('İşlem başarısız oldu: ' + err.message);
         }
     });
+
+    const isScrolledToBottom = Math.abs((el.chatContainer.scrollHeight - el.chatContainer.clientHeight) - el.chatContainer.scrollTop) < 50;
 
     el.chatControlMessages.appendChild(msgEl);
     
     // Auto-scroll
-    el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+    if (isScrolledToBottom || el.chatControlMessages.children.length === 1) {
+        el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+    }
 
     // Prune DOM (Max 150 messages)
     while (el.chatControlMessages.children.length > 150) {

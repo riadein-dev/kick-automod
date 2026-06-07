@@ -284,8 +284,24 @@ apiRouter.post('/manual-mod', async (req, res) => {
   try {
       const kickClient = createKickClient(req.session.accessToken);
       const channels = store.getChannels();
-      const channel = channels.find(c => c.slug === channelSlug && c.addedBy === sessionUserId);
-      const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+      let channel = channels.find(c => c.slug === channelSlug && c.addedBy === sessionUserId);
+      
+      // Fallback: Check if channel exists globally (added by someone else)
+      if (!channel) {
+          channel = channels.find(c => c.slug === channelSlug);
+      }
+
+      let chatroomId = channel ? channel.chatroomId : null;
+      let broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+
+      // Robust fallback: if any ID is missing, fetch directly from Kick API
+      if (!chatroomId || (!broadcasterUserId && action !== 'delete')) {
+          const channelData = await kickClient.getChannel(channelSlug);
+          if (channelData) {
+              if (!chatroomId && channelData.chatroom) chatroomId = channelData.chatroom.id;
+              if (!broadcasterUserId) broadcasterUserId = channelData.user_id;
+          }
+      }
 
       if (!broadcasterUserId && action !== 'delete') {
           throw new Error("Broadcaster User ID not found for this channel or you don't have access to this channel.");
@@ -295,18 +311,20 @@ apiRouter.post('/manual-mod', async (req, res) => {
           if (messageId) {
              await kickClient.deleteMessage(messageId);
           } else {
-             throw new Error("Message ID required for delete action");
+             throw new Error("Message ID is required for delete action");
           }
       } else if (action === 'timeout') {
           await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon');
-          if (messageId) {
+          if (messageId && chatroomId) {
              await kickClient.deleteMessage(messageId).catch(() => {});
           }
       } else if (action === 'ban') {
           await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon');
-          if (messageId) {
+          if (messageId && chatroomId) {
              await kickClient.deleteMessage(messageId).catch(() => {});
           }
+      } else if (action === 'unban') {
+          await kickClient.unbanUser(broadcasterUserId, userId);
       }
 
       // Record this manual action to moderation logs so it shows in the UI
