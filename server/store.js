@@ -245,6 +245,16 @@ class Store {
     }
   }
 
+  // Check if a user has an active browser connection
+  isUserOnline(userId) {
+    for (const client of this.sseClients) {
+      if (String(client.userId) === String(userId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   broadcastToUser(userId, event, data) {
     for (const client of this.sseClients) {
       if (String(client.userId) === String(userId)) {

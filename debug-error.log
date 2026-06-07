@@ -1,24 +1,23 @@
 {
-  "id": "mod_1780856021451_5mcbr3",
-  "ownerId": "ilker4444",
-  "userId": 71070920,
-  "username": "2keyyloops",
+  "id": "mod_1780856898311_nxek47",
+  "ownerId": "lmmami06",
+  "userId": 29255488,
+  "username": "izleyicin",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "d6249c73-c0e9-4d03-992b-e6365ea961ce",
-  "messageContent": "KATEGORİ ALINMIYOR",
-  "reason": "Spam (3x aynı mesaj)",
-  "ruleName": "spamDetection",
+  "messageId": "1dcc92a7-21dc-4499-a40c-f47f0184de79",
+  "messageContent": "[emote:37226:KEKW]",
+  "reason": "Emote Spam (3x aynı mesaj)",
+  "ruleName": "emoteSpam",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
-  "spamCount": 4,
+  "spamCount": 3,
   "matchedWords": [],
   "allViolations": [
-    "Spam (3x aynı mesaj)"
+    "Emote Spam (3x aynı mesaj)"
   ],
-  "createdAt": "2026-06-07T18:13:41.706Z",
-  "appliedAt": "2026-06-07T18:13:41.706Z",
-  "error": "Kick API error 500: {\"data\":{},\"message\":\"Internal server error\"}\n"
+  "createdAt": "2026-06-07T18:28:18.311Z",
+  "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }

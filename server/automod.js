@@ -147,6 +147,11 @@ class AutoModEngine {
           continue;
         }
         
+        // Only process if user has their site open (active SSE connection)
+        if (!store.isUserOnline(userId)) {
+          continue;
+        }
+        
         let violations = [];
 
         if (rules.rules.bannedWords.enabled) {
