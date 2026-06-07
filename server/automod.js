@@ -103,14 +103,36 @@ class AutoModEngine {
     
     // Find all unique users who added this channel
     const channels = store.getChannels();
-    const activeChannels = channels.filter(c => 
+    const allActive = channels.filter(c => 
       String(c.id) === logChatroomId || 
       String(c.chatroomId) === logChatroomId ||
       c.slug === (message.channel || message.chatroom_slug)
     );
     
+    // Deduplicate so we don't process the same message 5 times if 5 moderators added the channel!
+    // Prefer a moderator who has AutoMod enabled.
+    const activeChannels = [];
+    const seenSlugs = new Set();
+    
+    for (const c of allActive) {
+        if (!seenSlugs.has(c.slug)) {
+            const rules = store.getAutomodRules(c.addedBy);
+            if (rules && rules.enabled) {
+                seenSlugs.add(c.slug);
+                activeChannels.push(c);
+            }
+        }
+    }
+    
+    // Fallback: if no one has rules enabled, just pick the first one
+    for (const c of allActive) {
+        if (!seenSlugs.has(c.slug)) {
+            seenSlugs.add(c.slug);
+            activeChannels.push(c);
+        }
+    }
+    
     if (activeChannels.length === 0) {
-      console.log(`[AutoMod] DEBUG: No active channels for chatroomId=${logChatroomId} slug=${message.channel}`);
       return null;
     }
     

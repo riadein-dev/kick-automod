@@ -46,11 +46,21 @@ class KickApiClient {
       
       // Kick bazen 200 dondurup icinde hata mesaji veriyor
       if (data) {
+          console.log(`[KickAPI] Raw Response [${endpoint}]:`, JSON.stringify(data));
+          const fs = require('fs');
+          fs.appendFileSync('kick_api_debug.txt', new Date().toISOString() + ' [' + endpoint + '] ' + JSON.stringify(data) + '\n');
+          
           if (data.status && data.status.error) {
               throw new Error(`Kick API Hata: ${data.status.message || 'Bilinmeyen Hata'}`);
           }
-          if (data.message && typeof data.message === 'string' && data.message.toLowerCase().includes('factor authentication')) {
-              throw new Error(`Kick API 2FA Hatasi: ${data.message}`);
+          if (data.error) {
+              throw new Error(`Kick API Hata: ${data.error.message || data.error}`);
+          }
+          if (data.message && typeof data.message === 'string') {
+              const msg = data.message.toLowerCase();
+              if (msg.includes('factor authentication') || msg.includes('unauthorized') || msg.includes('permission') || msg.includes('moderator') || msg.includes('invalid') || msg.includes('failed')) {
+                  throw new Error(`Kick API Hatası: ${data.message}`);
+              }
           }
       }
       

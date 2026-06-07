@@ -331,21 +331,36 @@ apiRouter.post('/manual-mod', async (req, res) => {
           await kickClient.unbanUser(broadcasterUserId, userId);
       }
 
-      // Record this manual action to moderation logs so it shows in the UI
-      store.addModerationLog({
-          channel: channelSlug,
-          userId: userId,
-          messageId: messageId,
-          username: username || 'Bilinmiyor',
-          messageContent: messageContent || 'Manuel işlem uygulandı',
-          ruleName: 'manualAction',
-          reason: reason || 'Chat üzerinden manuel işlem',
-          type: 'manual',
-          action: action,
-          duration: duration || 0,
-          status: 'applied',
-          ownerId: sessionUserId
-      });
+      // Check if an AutoMod log already exists for this message
+      const existingLogs = store.getModerationLogs().filter(l => l.messageId === messageId && l.userId === userId);
+      
+      if (existingLogs.length > 0) {
+          // Update the existing log(s) instead of creating duplicates
+          for (const log of existingLogs) {
+              store.updateModerationLog(log.id, {
+                  action: action,
+                  duration: duration || 0,
+                  status: 'applied',
+                  type: 'manual'
+              });
+          }
+      } else {
+          // Record this manual action to moderation logs so it shows in the UI
+          store.addModerationLog({
+              channel: channelSlug,
+              userId: userId,
+              messageId: messageId,
+              username: username || 'Bilinmiyor',
+              messageContent: messageContent || 'Manuel işlem uygulandı',
+              ruleName: 'manualAction',
+              reason: reason || 'Chat üzerinden manuel işlem',
+              type: 'manual',
+              action: action,
+              duration: duration || 0,
+              status: 'applied',
+              ownerId: sessionUserId
+          });
+      }
 
       res.json({ success: true });
   } catch (err) {
