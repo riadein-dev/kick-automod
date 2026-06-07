@@ -140,6 +140,7 @@ class KickApiClient {
    * Delete a chat message
    */
   async deleteMessage(messageId) {
+    if (!messageId) throw new Error("Message ID is required to delete a message.");
     return this.request(`/chat/${messageId}`, {
       method: 'DELETE'
     });
