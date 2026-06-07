@@ -255,15 +255,15 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
       }
       
       if (action === 'delete') {
-        await kickClient.deleteMessage(log.messageId);
-      } else if (action === 'timeout') {
-        await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason);
-      } else if (action === 'ban') {
-        await kickClient.banUser(broadcasterUserId, log.userId, log.reason);
-      } else if (action === 'unban') {
-        console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.user?.id}`);
-        await kickClient.unbanUser(broadcasterUserId, log.userId);
-      }
+          await kickClient.deleteMessage(log.messageId);
+        } else if (action === 'timeout') {
+          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, req.session.user?.id);
+        } else if (action === 'ban') {
+          await kickClient.banUser(broadcasterUserId, log.userId, log.reason, req.session.user?.id);
+        } else if (action === 'unban') {
+          console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.user?.id}`);
+          await kickClient.unbanUser(broadcasterUserId, log.userId, req.session.user?.id);
+        }
       
       console.log(`[ModAction] ✅ ${action} applied successfully on user ${log.userId} by caller ${req.session.user?.id}`);
     } catch (err) {
@@ -311,25 +311,25 @@ apiRouter.post('/manual-mod', async (req, res) => {
           throw new Error("Broadcaster User ID not found for this channel or you don't have access to this channel.");
       }
 
-      if (action === 'delete') {
-          if (messageId) {
-             await kickClient.deleteMessage(messageId);
-          } else {
-             throw new Error("Message ID is required for delete action");
-          }
-      } else if (action === 'timeout') {
-          await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon');
-          if (messageId && chatroomId) {
-             await kickClient.deleteMessage(messageId).catch(() => {});
-          }
-      } else if (action === 'ban') {
-          await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon');
-          if (messageId && chatroomId) {
-             await kickClient.deleteMessage(messageId).catch(() => {});
-          }
-      } else if (action === 'unban') {
-          await kickClient.unbanUser(broadcasterUserId, userId);
-      }
+        if (action === 'delete') {
+            if (messageId) {
+               await kickClient.deleteMessage(messageId);
+            } else {
+               throw new Error("Message ID is required for delete action");
+            }
+        } else if (action === 'timeout') {
+            await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon', req.session.user?.id);
+            if (messageId && chatroomId) {
+               await kickClient.deleteMessage(messageId).catch(() => {});
+            }
+        } else if (action === 'ban') {
+            await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.user?.id);
+            if (messageId && chatroomId) {
+               await kickClient.deleteMessage(messageId).catch(() => {});
+            }
+        } else if (action === 'unban') {
+            await kickClient.unbanUser(broadcasterUserId, userId, req.session.user?.id);
+        }
 
       // Check if an AutoMod log already exists for this message
       const existingLogs = store.getModerationLogs().filter(l => l.messageId === messageId && l.userId === userId);
@@ -500,11 +500,11 @@ apiRouter.patch('/rules', async (req, res) => {
           String(c.chatroomId) === String(log.chatroomId) ||
           c.slug === log.channel
         );
-        const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
-        if (broadcasterUserId) {
-          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason);
-          store.updateModerationLog(log.id, { status: 'applied', action: 'timeout', duration: log.duration || 5 });
-        }
+          const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+          if (broadcasterUserId) {
+            await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, sessionUserId);
+            store.updateModerationLog(log.id, { status: 'applied', action: 'timeout', duration: log.duration || 5 });
+          }
       }
     } catch (e) {
       console.error('Failed to apply retroactive auto-timeouts:', e);
@@ -524,6 +524,21 @@ apiRouter.patch('/rules/:ruleName', (req, res) => {
 apiRouter.post('/words', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
   const wordData = req.body;
+
+  // Check for exact duplicates to prevent double-click bugs
+  const currentRules = store.getAutomodRules(sessionUserId);
+  const exists = currentRules.rules.bannedWords.words.find(w => 
+    w.word.toLowerCase() === wordData.word.toLowerCase() && 
+    w.action === wordData.action &&
+    String(w.duration) === String(wordData.duration) &&
+    w.channel === wordData.channel &&
+    Boolean(w.exactMatch) === Boolean(wordData.exactMatch)
+  );
+  
+  if (exists) {
+      return res.json(exists);
+  }
+
   const word = store.addCustomWord(sessionUserId, wordData);
   res.json(word);
 });

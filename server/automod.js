@@ -273,7 +273,13 @@ class AutoModEngine {
       );
       
       const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
-      console.log(`[AutoMod] Action: ${logEntry.action}, User: ${logEntry.username}, Channel: ${logEntry.channel}, broadcasterUserId: ${broadcasterUserId}, ownerId: ${ownerId}`);
+      
+      // Fetch numeric Kick ID of the moderator
+      const visitors = store.getVisitors();
+      const visitor = visitors.find(v => v.username === ownerId || String(v.kickId) === String(ownerId));
+      const numericOwnerId = visitor ? visitor.kickId : null;
+
+      console.log(`[AutoMod] Action: ${logEntry.action}, User: ${logEntry.username}, Channel: ${logEntry.channel}, broadcasterUserId: ${broadcasterUserId}, ownerId: ${ownerId}, numericOwnerId: ${numericOwnerId}`);
 
       if (!broadcasterUserId && logEntry.action !== 'delete') {
         throw new Error(`Broadcaster User ID not found for channel ${logEntry.channel}`);
@@ -287,14 +293,15 @@ class AutoModEngine {
           break;
         case 'timeout':
           if (broadcasterUserId && logEntry.userId) {
-            const promises = [
-              client.timeoutUser(
-                broadcasterUserId,
-                logEntry.userId,
-                logEntry.duration || 5,
-                logEntry.reason
-              )
-            ];
+              const promises = [
+                client.timeoutUser(
+                  broadcasterUserId,
+                  logEntry.userId,
+                  logEntry.duration || 5,
+                  logEntry.reason,
+                  numericOwnerId || ownerId
+                )
+              ];
             if (logEntry.messageId) {
               promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
             }
@@ -305,13 +312,14 @@ class AutoModEngine {
           break;
         case 'ban':
           if (broadcasterUserId && logEntry.userId) {
-            const promises = [
-              client.banUser(
-                broadcasterUserId,
-                logEntry.userId,
-                logEntry.reason
-              )
-            ];
+              const promises = [
+                client.banUser(
+                  broadcasterUserId,
+                  logEntry.userId,
+                  logEntry.reason,
+                  numericOwnerId || ownerId
+                )
+              ];
             if (logEntry.messageId) {
               promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
             }

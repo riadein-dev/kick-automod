@@ -100,9 +100,13 @@ class Store {
               this.userRules.set(userId, this._getDefaultRules());
           }
           const rules = this.userRules.get(userId);
-          rules.rules.bannedWords.words.push({
-              id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy
-          });
+          
+          const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id);
+          if (!exists) {
+              rules.rules.bannedWords.words.push({
+                  id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy
+              });
+          }
       }
       
       try {

@@ -180,12 +180,13 @@ class KickApiClient {
   /**
    * Ban a user (permanent)
    */
-  async banUser(broadcasterUserId, userId, reason = '') {
+  async banUser(broadcasterUserId, userId, reason = '', moderatorUserId = null) {
     const payload = {
       broadcaster_user_id: parseInt(broadcasterUserId),
       user_id: parseInt(userId),
       reason: reason
     };
+    if (moderatorUserId) payload.moderator_user_id = parseInt(moderatorUserId);
     console.log('[KickAPI] Sending Ban payload:', payload);
     return this.request('/moderation/bans', {
       method: 'POST',
@@ -196,11 +197,12 @@ class KickApiClient {
   /**
    * Unban or remove timeout from a user
    */
-  async unbanUser(broadcasterUserId, userId) {
+  async unbanUser(broadcasterUserId, userId, moderatorUserId = null) {
     const payload = {
       broadcaster_user_id: parseInt(broadcasterUserId),
       user_id: parseInt(userId)
     };
+    if (moderatorUserId) payload.moderator_user_id = parseInt(moderatorUserId);
     console.log('[KickAPI] Sending Unban payload:', payload);
     return this.request('/moderation/bans', {
       method: 'DELETE',
@@ -211,13 +213,14 @@ class KickApiClient {
   /**
    * Timeout a user (temporary)
    */
-  async timeoutUser(broadcasterUserId, userId, duration = 5, reason = '') {
+  async timeoutUser(broadcasterUserId, userId, duration = 5, reason = '', moderatorUserId = null) {
     const payload = {
       broadcaster_user_id: parseInt(broadcasterUserId),
       user_id: parseInt(userId),
       duration: parseInt(duration), // minutes
       reason: reason
     };
+    if (moderatorUserId) payload.moderator_user_id = parseInt(moderatorUserId);
     console.log('[KickAPI] Sending Timeout payload:', payload);
     return this.request('/moderation/bans', {
       method: 'POST',
