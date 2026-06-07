@@ -1912,7 +1912,7 @@ window.appendChatMessage = function(msgData) {
         msgEl.classList.add('action-feedback');
         
         try {
-            await apiFetch('/api/action', {
+            const res = await apiFetch('/api/manual-mod', {
                 method: 'POST',
                 body: JSON.stringify({
                     action: action,

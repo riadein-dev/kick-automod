@@ -273,7 +273,7 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
 });
 
 // Direct manual action (from Chat Kontrol)
-apiRouter.post('/action', async (req, res) => {
+apiRouter.post('/manual-mod', async (req, res) => {
   const { action, userId, messageId, duration, channelSlug, reason, username, messageContent } = req.body;
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
   
