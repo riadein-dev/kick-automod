@@ -141,6 +141,13 @@ class AutoModEngine {
             continue; // Kanal sahibi moderasyondan muaf
         }
         
+        // Moderatörler de muaf
+        const badges = message.sender?.identity?.badges || [];
+        const isMod = badges.some(b => b.type === 'moderator');
+        if (isMod) {
+            continue;
+        }
+        
         const rules = store.getAutomodRules(userId);
         if (!rules || !rules.enabled) {
           console.log(`[AutoMod] DEBUG: Rules disabled for user ${userId}, enabled=${rules?.enabled}`);
