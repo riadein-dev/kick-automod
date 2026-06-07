@@ -515,6 +515,12 @@ apiRouter.delete('/words/:id', (req, res) => {
   res.json({ success: true });
 });
 
+apiRouter.delete('/words', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  store.removeAllCustomWords(sessionUserId);
+  res.json({ success: true });
+});
+
 // Word Preset Sharing
 apiRouter.post('/words/share', async (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;

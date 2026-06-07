@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Kick AutoMod</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=21">
+    <link rel="stylesheet" href="/css/style.css?v=16">
 </head>
 <body>
     <!-- Sidebar -->
@@ -340,6 +340,9 @@
                         <button class="btn-primary" id="importWordsBtn" style="background: var(--surface-2); color: #fff; border-color: var(--surface-2);">
                             <i class="fa fa-download"></i> İçe Aktar
                         </button>
+                        <button class="btn-primary" id="deleteAllWordsBtn" style="background: rgba(239, 68, 68, 0.1); color: var(--red); border-color: rgba(239, 68, 68, 0.3);" title="Tüm Kelimeleri Sil">
+                            <i class="fa fa-trash"></i>
+                        </button>
                         <button class="btn-primary" id="addWordBtn" style="background: var(--green); color: #000; border-color: var(--green); box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);">
                             + Kelime Ekle
                         </button>
@@ -663,7 +666,7 @@
     <script src="/js/auth.js"></script>
     <script src="/js/websocket.js"></script>
     <script src="/js/sound.js"></script>
-    <script src="/js/app.js?v=19"></script>
+    <script src="/js/app.js?v=21"></script>
     <script>
         // Cursor Glow
         const cursor = document.getElementById('cursorGlow');
@@ -671,23 +674,6 @@
             cursor.style.transform = `translate(calc(${e.clientX}px - 50%), calc(${e.clientY}px - 50%))`;
         });
 
-        // Dashboard Snow
-        function createDashSnow() {
-            const snow = document.createElement('div');
-            snow.classList.add('dashboard-snow');
-            snow.style.left = Math.random() * 100 + 'vw';
-            const size = Math.random() * 3 + 1.5;
-            snow.style.width = size + 'px';
-            snow.style.height = size + 'px';
-            snow.style.animationDuration = Math.random() * 4 + 4 + 's';
-            snow.style.opacity = Math.random() * 0.4 + 0.1;
-            document.body.appendChild(snow);
-
-            setTimeout(() => {
-                snow.remove();
-            }, 8000);
-        }
-        setInterval(createDashSnow, 150);
     </script>
 </body>
 </html>

@@ -88,12 +88,21 @@ class Store {
          rules.rules.spamDetection.maxRepeats = dbRule.spamMaxRepeats ?? rules.rules.spamDetection.maxRepeats;
          rules.rules.emoteSpam.maxRepeats = dbRule.emoteMaxRepeats ?? rules.rules.emoteSpam.maxRepeats;
          
-         // Attach words for this user
-         rules.rules.bannedWords.words = dbWords.filter(w => w.addedBy === dbRule.userId).map(w => ({
-            id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy
-         }));
-         
          this.userRules.set(dbRule.userId, rules);
+      }
+      
+      // Bütün kelimeleri ait oldukları kullanıcılara bağla (kuralları henüz veritabanında oluşmamış kullanıcılar dahil)
+      for (const w of dbWords) {
+          const userId = w.addedBy;
+          if (!userId) continue;
+          
+          if (!this.userRules.has(userId)) {
+              this.userRules.set(userId, this._getDefaultRules());
+          }
+          const rules = this.userRules.get(userId);
+          rules.rules.bannedWords.words.push({
+              id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy
+          });
       }
       
       try {
@@ -490,6 +499,17 @@ class Store {
     const rules = this.getAutomodRules(userId);
     rules.rules.bannedWords.words = rules.rules.bannedWords.words.filter(w => w.id !== wordId);
     this.deleteWordDB(wordId); // delete from DB
+    this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
+    return true;
+  }
+
+  removeAllCustomWords(userId) {
+    const rules = this.getAutomodRules(userId);
+    rules.rules.bannedWords.words = [];
+    if (process.env.MONGODB_URI) {
+        const { Word } = require('./db');
+        Word.deleteMany({ userId }).catch(e => console.error(e));
+    }
     this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
     return true;
   }

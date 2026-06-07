@@ -80,6 +80,7 @@ const el = {
 
     shareWordsBtn: $('#shareWordsBtn'),
     importWordsBtn: $('#importWordsBtn'),
+    deleteAllWordsBtn: $('#deleteAllWordsBtn'),
     addWordBtn: $('#addWordBtn'),
     addWordModal: $('#addWordModal'),
     shareWordsModal: $('#shareWordsModal'),
@@ -669,6 +670,7 @@ function renderLogs() {
                 card.style.padding = '12px 16px';
                 
                 let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
+                let fullMsgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
                 let actionColor = log.status === 'applied' ? 'var(--green)' : 'var(--orange)';
                 
                 let actionsHtml = '';
@@ -693,7 +695,7 @@ function renderLogs() {
                         <span class="spam-username">${log.username}</span>
                         <span style="color:${actionColor}; font-weight:800; font-size:0.8rem; text-transform:uppercase; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:var(--radius-full);">${log.action||log.status}</span>
                     </div>
-                    <div class="spam-msg-box" style="margin-bottom:0;">${rawMsgHtml}</div>
+                    <div class="spam-msg-box" style="margin-bottom:0;">${fullMsgHtml}</div>
                     ${actionsHtml}
                 `;
                 el.chatModQueueBody.appendChild(card);
@@ -1703,6 +1705,23 @@ function setupEventListeners() {
                 }
             } catch (e) {
                 alert('Bağlantı hatası.');
+            }
+        });
+    }
+
+    if (el.deleteAllWordsBtn) {
+        el.deleteAllWordsBtn.addEventListener('click', async () => {
+            if (confirm('Tüm özel kelimeleri silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+                try {
+                    const res = await apiFetch('/api/words', { method: 'DELETE' });
+                    if (res && res.success) {
+                        fetchCustomWords();
+                    } else {
+                        alert('Silme işlemi başarısız.');
+                    }
+                } catch (e) {
+                    alert('Bağlantı hatası.');
+                }
             }
         });
     }

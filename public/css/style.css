@@ -49,6 +49,12 @@ body::before {
     pointer-events: none;
 }
 
+.cursor-glow {
+    position: fixed; top: 0; left: 0; width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, var(--green-glow) 0%, transparent 60%);
+    filter: blur(40px); opacity: 0.15; z-index: 9999; pointer-events: none;
+}
+
 h1, h2, h3, .stat-number, .sidebar-logo { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
 button { cursor: pointer; outline: none; border: none; font-family: inherit; }
 input, select { font-family: inherit; outline: none; }
@@ -283,7 +289,7 @@ input, select { font-family: inherit; outline: none; }
 .spam-badge { background: rgba(255, 255, 255, 0.05); color: var(--text-2); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; border: 1px solid var(--border); }
 
 .spam-main-msg { color: #e2e8f0; font-weight: 400; font-size: 0.95rem; margin: 0.5rem 0 1rem 0; line-height: 1.5; word-wrap: break-word; }
-.spam-main-msg .kick-emote, .spam-msg-box .kick-emote { max-height: 24px; margin: 0 2px; vertical-align: middle; }
+.spam-main-msg .kick-emote, .spam-msg-box .kick-emote { width: 24px; height: 24px; object-fit: contain; margin: 0 2px; vertical-align: middle; }
 .spam-msg-box { background: rgba(0,0,0,0.3); color: var(--text-2); padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.03); margin-bottom: 8px; word-wrap: break-word; font-family: 'Inter', monospace; }
 
 .spam-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); }
@@ -397,7 +403,7 @@ input, select { font-family: inherit; outline: none; }
 .otp-input:focus { border-color: var(--green); background: rgba(0,0,0,0.8); box-shadow: 0 0 0 4px var(--green-glow), inset 0 5px 10px rgba(0,0,0,0.3); transform: translateY(-4px); }
 
 /* EMOTES */
-.kick-emote { height: auto; max-height: 48px; vertical-align: middle; display: inline-block; border-radius: 0; box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
+.kick-emote { width: 24px; height: 24px; object-fit: contain; vertical-align: middle; display: inline-block; border-radius: 0; box-shadow: none; }
 
 /* CHANNELS LIST */
 .channel-list-table { display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem; }
@@ -490,7 +496,7 @@ input, select { font-family: inherit; outline: none; }
     vertical-align: middle; color: #e0e0e0;
 }
 .kick-chat-content .kick-emote {
-    height: 24px; max-height: 24px; vertical-align: middle; margin: 0 2px; border-radius: 0; box-shadow: none;
+    width: 24px; height: 24px; object-fit: contain; vertical-align: middle; margin: 0 2px; border-radius: 0; box-shadow: none;
 }
 
 .kick-chat-msg.has-watched-word {
