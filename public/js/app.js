@@ -589,8 +589,8 @@ function renderLogs() {
                 actionsHtml += `<div style="color:var(--text-3); font-size:0.75rem; text-align: center; margin-top: 8px;">Mevcut Durum: ${log.status === 'applied' ? 'Uygulandı' : log.status} (${log.action || ''})</div>`;
             }
 
-            let spamCount = 3;
-            if (log.reason) {
+            let spamCount = log.spamCount || 3;
+            if (!log.spamCount && log.reason) {
                 const match = log.reason.match(/(\d+)x ayn/);
                 if (match) spamCount = parseInt(match[1]);
             }
@@ -706,6 +706,14 @@ function renderLogs() {
                 let fullMsgHtml = parseKickEmotes(rawMsgHtml, log.matchedWords);
                 let actionColor = log.status === 'applied' ? 'var(--green)' : 'var(--orange)';
                 
+                let spamCount = log.spamCount || null;
+                if (!spamCount && log.reason) {
+                    const match = log.reason.match(/(\d+)x ayn/);
+                    if (match) spamCount = parseInt(match[1]);
+                }
+                
+                let spamBadgeHtml = spamCount ? `<span class="spam-badge" style="margin-right: 8px;">${spamCount}. AYNI MESAJ</span>` : '';
+                
                 let actionsHtml = '';
                 if (log.status === 'pending') {
                     actionsHtml = `
@@ -726,7 +734,10 @@ function renderLogs() {
                 card.innerHTML = `
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;align-items:center;">
                         <span class="spam-username">${log.username}</span>
-                        <span style="color:${actionColor}; font-weight:800; font-size:0.8rem; text-transform:uppercase; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:var(--radius-full);">${log.action||log.status}</span>
+                        <div style="display:flex; align-items:center;">
+                            ${spamBadgeHtml}
+                            <span style="color:${actionColor}; font-weight:800; font-size:0.8rem; text-transform:uppercase; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:var(--radius-full);">${log.action||log.status}</span>
+                        </div>
                     </div>
                     <div class="spam-msg-box" style="margin-bottom:0;">${fullMsgHtml}</div>
                     ${actionsHtml}
@@ -1273,6 +1284,20 @@ function setupSSE() {
         updateStatsUI();
         // Bildirim sesi çal
         if (typeof SoundEngine !== 'undefined') SoundEngine.playNotification();
+    });
+    src.addEventListener('updateModeration', e => {
+        const d = JSON.parse(e.data);
+        const index = state.logs.findIndex(l => l.id === d.log.id);
+        if (index !== -1) {
+            state.logs[index] = d.log;
+        } else {
+            state.logs.unshift(d.log);
+            if (state.logs.length > 100) state.logs.pop();
+        }
+        state.stats = d.stats;
+        renderLogs(); 
+        renderAllLogs();
+        updateStatsUI();
     });
     src.addEventListener('moderationUpdate', e => {
         const d = JSON.parse(e.data);

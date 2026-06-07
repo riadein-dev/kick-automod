@@ -227,6 +227,7 @@ class AutoModEngine {
               action: violation.action,
               duration: violation.duration || 0,
               status: finalStatus,
+              spamCount: violation.spamCount || null,
               matchedWords: violations.map(v => v.matchedWord).filter(Boolean),
               allViolations: violations.map(v => v.reason)
             });
@@ -450,7 +451,8 @@ class AutoModEngine {
           action: purelyEmotes ? (emoteSpamRule?.action && emoteSpamRule.action !== 'delete' ? emoteSpamRule.action : 'timeout') : (spamRule.action || 'timeout'),
           duration: purelyEmotes ? (emoteSpamRule?.duration || 5) : (spamRule.duration || 5),
           reason: purelyEmotes ? `Emote Spam (${count}x aynı mesaj)` : `Spam (${count}x aynı mesaj)`,
-          messageContent: content
+          messageContent: content,
+          spamCount: count
         };
       }
     }

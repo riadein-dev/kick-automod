@@ -350,6 +350,31 @@ class Store {
 
   // Moderation Log Management
   addModerationLog(log) {
+    if (log.ruleName === 'spamDetection' || log.ruleName === 'emoteSpam') {
+      const fiveMinsAgo = Date.now() - (5 * 60 * 1000);
+      const existing = this.moderationLogs.find(l => 
+          l.userId === log.userId && 
+          l.channel === log.channel && 
+          (l.ruleName === 'spamDetection' || l.ruleName === 'emoteSpam') &&
+          l.messageContent === log.messageContent &&
+          new Date(l.createdAt).getTime() > fiveMinsAgo
+      );
+      
+      if (existing) {
+          existing.spamCount = log.spamCount || ((existing.spamCount || 3) + 1);
+          existing.status = log.status || existing.status;
+          existing.action = log.action || existing.action;
+          existing.createdAt = new Date().toISOString();
+          
+          if (existing.ownerId) {
+              this.broadcastToUser(existing.ownerId, 'updateModeration', { log: existing, stats: this.stats });
+          } else {
+              this.broadcast('updateModeration', { log: existing, stats: this.stats });
+          }
+          return existing;
+      }
+    }
+
     const entry = {
       id: `mod_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       ...log,
