@@ -216,6 +216,39 @@ async function initApp() {
 }
 
 // ===== Onboarding Logic =====
+
+window.showConfirm = function(title, text, confirmBtnText = 'Onayla', confirmBtnStyle = '') {
+    return new Promise((resolve) => {
+        const modal = $('#confirmModal');
+        if (!modal) return resolve(window.confirm(text)); // Fallback
+
+        $('#confirmModalTitle').textContent = title;
+        $('#confirmModalText').textContent = text;
+        
+        const acceptBtn = $('#acceptConfirmBtn');
+        const defaultStyle = 'background: var(--red); color: #fff; border-color: var(--red); width: 120px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);';
+        
+        acceptBtn.textContent = confirmBtnText;
+        acceptBtn.style.cssText = confirmBtnStyle || defaultStyle;
+
+        const handleAccept = () => { cleanup(); resolve(true); };
+        const handleCancel = () => { cleanup(); resolve(false); };
+
+        const cleanup = () => {
+            modal.classList.remove('open');
+            acceptBtn.removeEventListener('click', handleAccept);
+            $('#cancelConfirmBtn').removeEventListener('click', handleCancel);
+            $('#closeConfirmModalBtn').removeEventListener('click', handleCancel);
+        };
+
+        acceptBtn.addEventListener('click', handleAccept);
+        $('#cancelConfirmBtn').addEventListener('click', handleCancel);
+        $('#closeConfirmModalBtn').addEventListener('click', handleCancel);
+
+        modal.classList.add('open');
+    });
+};
+
 function checkOnboarding() {
     const modal = document.getElementById('onboardingModal');
     if (!modal) return;
@@ -1711,12 +1744,22 @@ function setupEventListeners() {
 
     if (el.deleteAllWordsBtn) {
         el.deleteAllWordsBtn.addEventListener('click', async () => {
-            if (confirm('Tüm özel kelimeleri silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+            const confirmed = await window.showConfirm(
+                'Tüm Kelimeleri Sil', 
+                'Tüm özel kelimeleri silmek istediğinize emin misiniz? Bu işlem geri alınamaz!', 
+                'Evet, Sil', 
+                'background: var(--red); color: #fff; border-color: var(--red); width: 120px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);'
+            );
+            
+            if (confirmed) {
                 try {
                     const res = await apiFetch('/api/words', { method: 'DELETE' });
-                    if (res && res.success) {
+                    const data = await res.json();
+                    if (data && data.success) {
+                        await fetchStats();
                         fetchCustomWords();
                     } else {
+                        // Let's use standard alert for errors, or we can use another custom modal. For now standard is fine.
                         alert('Silme işlemi başarısız.');
                     }
                 } catch (e) {
