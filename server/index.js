@@ -257,12 +257,12 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
       if (action === 'delete') {
           await kickClient.deleteMessage(log.messageId);
         } else if (action === 'timeout') {
-          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, req.session.userId);
+          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, req.session.kickNumericId);
         } else if (action === 'ban') {
-          await kickClient.banUser(broadcasterUserId, log.userId, log.reason, req.session.userId);
+          await kickClient.banUser(broadcasterUserId, log.userId, log.reason, req.session.kickNumericId);
         } else if (action === 'unban') {
-          console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.userId}`);
-          await kickClient.unbanUser(broadcasterUserId, log.userId, req.session.userId);
+          console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.kickNumericId}`);
+          await kickClient.unbanUser(broadcasterUserId, log.userId, req.session.kickNumericId);
         }
       
       console.log(`[ModAction] ✅ ${action} applied successfully on user ${log.userId} by caller ${req.session.userId}`);
@@ -319,7 +319,7 @@ apiRouter.post('/manual-mod', async (req, res) => {
             }
         } else if (action === 'timeout') {
             try {
-                await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon', req.session.userId);
+                await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon', req.session.kickNumericId);
             } catch (err) {
                 if (err.message.includes('401') || err.message.includes('Unauthorized')) {
                     console.log(`[ModAction] Timeout API yetkisiz (401), sohbet komutu deneniyor... (${username})`);
@@ -333,7 +333,7 @@ apiRouter.post('/manual-mod', async (req, res) => {
             }
         } else if (action === 'ban') {
             try {
-                await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.userId);
+                await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.kickNumericId);
             } catch (err) {
                 if (err.message.includes('401') || err.message.includes('Unauthorized')) {
                     console.log(`[ModAction] Ban API yetkisiz (401), sohbet komutu deneniyor... (${username})`);
@@ -344,7 +344,7 @@ apiRouter.post('/manual-mod', async (req, res) => {
             }
         } else if (action === 'unban') {
             try {
-                await kickClient.unbanUser(broadcasterUserId, userId, req.session.userId);
+                await kickClient.unbanUser(broadcasterUserId, userId, req.session.kickNumericId);
             } catch (err) {
                 if (err.message.includes('401') || err.message.includes('Unauthorized')) {
                     console.log(`[ModAction] Unban API yetkisiz (401), sohbet komutu deneniyor... (${username})`);

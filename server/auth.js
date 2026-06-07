@@ -121,7 +121,7 @@ router.get('/callback', async (req, res) => {
         try {
             const payload = JSON.parse(Buffer.from(tokenData.access_token.split('.')[1], 'base64').toString('utf8'));
             foundName = payload.preferred_username || payload.name || payload.username || foundName;
-            req.session.userId = payload.sub; // ID'yi sakla
+            // NOT: payload.sub'u userId'ye ATAMA - userId her zaman username olmalı
         } catch(e) {}
     }
 
@@ -172,8 +172,11 @@ router.get('/callback', async (req, res) => {
               let rawDataObj = apiData && apiData.data ? apiData.data : apiData;
               if (Array.isArray(rawDataObj) && rawDataObj.length > 0) rawDataObj = rawDataObj[0];
               
-              const numericId = (rawDataObj && rawDataObj.user_id) || (rawDataObj && rawDataObj.id) || req.session.userId;
-              req.session.userId = numericId; // Update session with numeric ID
+              const numericId = (rawDataObj && rawDataObj.user_id) || (rawDataObj && rawDataObj.id) || null;
+              // CRITICAL: userId MUST be username, NOT numeric ID!
+              // Numeric ID is stored separately for Kick API calls only
+              req.session.userId = foundName;
+              req.session.kickNumericId = numericId;
               
               store.addVisitor({
                   kickId: numericId,
