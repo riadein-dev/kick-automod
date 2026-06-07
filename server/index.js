@@ -257,17 +257,17 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
       if (action === 'delete') {
           await kickClient.deleteMessage(log.messageId);
         } else if (action === 'timeout') {
-          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, req.session.user?.id);
+          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, req.session.userId);
         } else if (action === 'ban') {
-          await kickClient.banUser(broadcasterUserId, log.userId, log.reason, req.session.user?.id);
+          await kickClient.banUser(broadcasterUserId, log.userId, log.reason, req.session.userId);
         } else if (action === 'unban') {
-          console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.user?.id}`);
-          await kickClient.unbanUser(broadcasterUserId, log.userId, req.session.user?.id);
+          console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.userId}`);
+          await kickClient.unbanUser(broadcasterUserId, log.userId, req.session.userId);
         }
       
-      console.log(`[ModAction] ✅ ${action} applied successfully on user ${log.userId} by caller ${req.session.user?.id}`);
+      console.log(`[ModAction] ✅ ${action} applied successfully on user ${log.userId} by caller ${req.session.userId}`);
     } catch (err) {
-      console.error(`[ModAction] ❌ Failed to apply moderation action '${action}' for caller ${req.session.user?.id}:`, err);
+      console.error(`[ModAction] ❌ Failed to apply moderation action '${action}' for caller ${req.session.userId}:`, err);
       store.updateModerationLog(id, { status: 'error', error: err.message });
       return res.status(500).json({ error: `Kick API Hatası: ${err.message}`, details: err.message });
     }
@@ -318,17 +318,17 @@ apiRouter.post('/manual-mod', async (req, res) => {
                throw new Error("Message ID is required for delete action");
             }
         } else if (action === 'timeout') {
-            await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon', req.session.user?.id);
+            await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon', req.session.userId);
             if (messageId && chatroomId) {
                await kickClient.deleteMessage(messageId).catch(() => {});
             }
         } else if (action === 'ban') {
-            await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.user?.id);
+            await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.userId);
             if (messageId && chatroomId) {
                await kickClient.deleteMessage(messageId).catch(() => {});
             }
         } else if (action === 'unban') {
-            await kickClient.unbanUser(broadcasterUserId, userId, req.session.user?.id);
+            await kickClient.unbanUser(broadcasterUserId, userId, req.session.userId);
         }
 
       // Check if an AutoMod log already exists for this message
