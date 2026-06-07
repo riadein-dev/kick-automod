@@ -109,25 +109,15 @@ class AutoModEngine {
       c.slug === (message.channel || message.chatroom_slug)
     );
     
-    // Deduplicate so we don't process the same message 5 times if 5 moderators added the channel!
-    // Prefer a moderator who has AutoMod enabled.
+    // Allow each user who added this channel to have their rules checked independently
+    // Only dedup per user+slug combo (prevent same user processing same channel twice)
     const activeChannels = [];
-    const seenSlugs = new Set();
+    const seenUserSlugs = new Set();
     
     for (const c of allActive) {
-        if (!seenSlugs.has(c.slug)) {
-            const rules = store.getAutomodRules(c.addedBy);
-            if (rules && rules.enabled) {
-                seenSlugs.add(c.slug);
-                activeChannels.push(c);
-            }
-        }
-    }
-    
-    // Fallback: if no one has rules enabled, just pick the first one
-    for (const c of allActive) {
-        if (!seenSlugs.has(c.slug)) {
-            seenSlugs.add(c.slug);
+        const key = `${c.addedBy}:${c.slug}`;
+        if (!seenUserSlugs.has(key) && c.addedBy) {
+            seenUserSlugs.add(key);
             activeChannels.push(c);
         }
     }

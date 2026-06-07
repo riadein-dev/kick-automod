@@ -1,27 +1,24 @@
 {
-  "id": "mod_1780854353800_f1vc0x",
+  "id": "mod_1780856021451_5mcbr3",
   "ownerId": "ilker4444",
-  "userId": 98790006,
-  "username": "Burxi3",
+  "userId": 71070920,
+  "username": "2keyyloops",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "e518c4ac-6c80-402c-92fe-ceb1177021b1",
-  "messageContent": "eray yayın açmaz",
-  "reason": "Yasaklı kelime tespit edildi: \"eray yayın\"",
-  "ruleName": "bannedWords",
+  "messageId": "d6249c73-c0e9-4d03-992b-e6365ea961ce",
+  "messageContent": "KATEGORİ ALINMIYOR",
+  "reason": "Spam (3x aynı mesaj)",
+  "ruleName": "spamDetection",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
-  "spamCount": null,
-  "matchedWords": [
-    "eray yayın",
-    "eray"
-  ],
+  "spamCount": 4,
+  "matchedWords": [],
   "allViolations": [
-    "Yasaklı kelime tespit edildi: \"eray yayın\"",
-    "Yasaklı kelime tespit edildi: \"eray\""
+    "Spam (3x aynı mesaj)"
   ],
-  "createdAt": "2026-06-07T17:45:53.800Z",
-  "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
+  "createdAt": "2026-06-07T18:13:41.706Z",
+  "appliedAt": "2026-06-07T18:13:41.706Z",
+  "error": "Kick API error 500: {\"data\":{},\"message\":\"Internal server error\"}\n"
 }
