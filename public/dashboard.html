@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Kick AutoMod</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=21">
 </head>
 <body>
     <!-- Sidebar -->
@@ -27,8 +27,8 @@
                 <span>Dashboard</span>
             </button>
             <button class="sidebar-link" id="chatControlNavBtn">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                <span>Chat Kontrol</span>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="none"><path d="M22.8 2.4L24 0V24L22.8 21.6H12V24H0V0H12V2.4H22.8ZM9.6 4.8H4.8V19.2H9.6V14.4H12V19.2H19.2V14.4H14.4V9.6H19.2V4.8H12V9.6H9.6V4.8Z"></path></svg>
+                <span>Kickky</span>
             </button>
             <button class="sidebar-link" id="channelsNavBtn">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -149,49 +149,7 @@
                 </button>
             </div>
 
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-glow green"></div>
-                    <div class="stat-content">
-                        <span class="stat-label">Toplam Moderasyon</span>
-                        <span class="stat-number" id="statTotal">0</span>
-                    </div>
-                    <div class="stat-icon-wrap green">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-glow orange"></div>
-                    <div class="stat-content">
-                        <span class="stat-label">Bekleyen</span>
-                        <span class="stat-number" id="statPending">0</span>
-                    </div>
-                    <div class="stat-icon-wrap orange">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-glow blue"></div>
-                    <div class="stat-content">
-                        <span class="stat-label">Uygulanan</span>
-                        <span class="stat-number" id="statApplied">0</span>
-                    </div>
-                    <div class="stat-icon-wrap blue">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-glow purple"></div>
-                    <div class="stat-content">
-                        <span class="stat-label">Aktif Kanal</span>
-                        <span class="stat-number" id="statActiveChannels">0</span>
-                    </div>
-                    <div class="stat-icon-wrap purple">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                    </div>
-                </div>
-            </div>
+
 
             <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
                 <button id="toggleSpamBtn" class="btn-primary" style="background: var(--orange); color: #000; border-color: var(--orange); box-shadow: 0 4px 14px var(--orange-glow);">
@@ -212,7 +170,7 @@
                             <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                                 <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
                                     <span style="font-size: 0.65rem; color: var(--text-3); font-weight: 600; text-transform: uppercase;">Emote Spam</span>
-                                    <div class="slide-toggle" id="emoteSpamToggle" style="min-width: 100px; padding: 2px;">
+                                    <div class="slide-toggle" id="emoteSpamToggle" style="min-width: 140px; padding: 2px;">
                                         <div class="slide-toggle-bg"></div>
                                         <button class="slide-toggle-btn active" data-mode="on">Açık</button>
                                         <button class="slide-toggle-btn" data-mode="off">Kapalı</button>
@@ -311,9 +269,14 @@
                     <div class="chat-tabs-container">
                         <div class="channel-tabs" id="chatControlTabs" style="margin-bottom: 0;">
                         </div>
-                        <button class="icon-btn" id="chatSettingsBtn" title="Chat Ayarları" style="padding: 0.5rem;">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                        </button>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="icon-btn" id="toggleSpamPanelBtn" title="Spam Algılamalarını Aç/Kapat" style="padding: 0.5rem; color: var(--red);">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                            </button>
+                            <button class="icon-btn" id="chatSettingsBtn" title="Chat Ayarları" style="padding: 0.5rem;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="chat-container" id="chatContainer">
                         <!-- Messages appended here -->
@@ -598,7 +561,7 @@
     <div class="modal-overlay" id="chatSettingsModal">
         <div class="modal-box" style="max-width: 500px;">
             <div class="modal-top">
-                <h3><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: text-bottom;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Chat Moderasyon Ayarları</h3>
+                <h3 style="display: flex; align-items: center; gap: 12px; font-size: 1.6rem; line-height: 1.2;"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> <span>Chat Moderasyon Ayarları</span></h3>
                 <button class="modal-close-btn" id="closeChatSettingsModal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
             <div>
@@ -627,6 +590,11 @@
                         <input type="text" id="chatKeyBan" class="input-field keybind-input" readonly placeholder="Tuş ata (örn: Alt)" style="flex:1; cursor: pointer; text-align: center; height: 48px;">
                         <button class="btn-secondary clear-key-btn" data-target="chatKeyBan" style="padding: 0 15px; height: 48px;">Temizle</button>
                     </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="input-label">İzlenen Kelimeler (Virgülle Ayırın)</label>
+                    <div style="font-size:0.85rem; color:var(--text-3); margin-bottom: 0.75rem;">Bu kelimeler chatte yazıldığında belirgin bir renkle vurgulanır. Noktalama işaretleri ve boşluklar otomatik yoksayılır. (Örn: küfür1, küfür2, kelime3)</div>
+                    <textarea id="chatWatchedWords" class="input-field" placeholder="İzlenecek kelimeleri virgülle ayırarak yazın..." style="height: 80px; padding-top: 12px; resize: vertical;"></textarea>
                 </div>
             </div>
             <div style="display:flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
@@ -695,7 +663,7 @@
     <script src="/js/auth.js"></script>
     <script src="/js/websocket.js"></script>
     <script src="/js/sound.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="/js/app.js?v=14"></script>
     <script>
         // Cursor Glow
         const cursor = document.getElementById('cursorGlow');

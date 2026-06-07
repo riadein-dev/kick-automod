@@ -39,7 +39,7 @@ router.get('/login', (req, res) => {
     client_id: process.env.KICK_CLIENT_ID,
     redirect_uri: process.env.KICK_REDIRECT_URI,
     response_type: 'code',
-    scope: 'user:read chat:write chat:read events:subscribe channel:read moderation:ban moderation:ban:manage',
+    scope: 'user:read chat:write chat:read events:subscribe channel:read moderation:ban moderation:ban:manage moderation:chat_message:manage',
     state: state,
     code_challenge: challenge,
     code_challenge_method: 'S256'
