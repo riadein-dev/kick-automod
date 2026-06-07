@@ -293,37 +293,53 @@ class AutoModEngine {
           break;
         case 'timeout':
           if (broadcasterUserId && logEntry.userId) {
-              const promises = [
-                client.timeoutUser(
+              const promises = [];
+              if (logEntry.messageId) {
+                promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
+              }
+              try {
+                await client.timeoutUser(
                   broadcasterUserId,
                   logEntry.userId,
                   logEntry.duration || 5,
                   logEntry.reason,
                   numericOwnerId || ownerId
-                )
-              ];
-            if (logEntry.messageId) {
-              promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
-            }
-            await Promise.all(promises);
+                );
+              } catch (err) {
+                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+                  console.log(`[AutoMod] Timeout API yetkisiz (401), sohbet komutu deneniyor... (${logEntry.username})`);
+                  await client.sendMessage(logEntry.chatroomId, `/timeout ${logEntry.username} ${logEntry.duration || 5} ${logEntry.reason || 'AutoMod'}`);
+                } else {
+                  throw err;
+                }
+              }
+              await Promise.all(promises);
           } else {
             throw new Error(`Missing data for timeout: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
           break;
         case 'ban':
           if (broadcasterUserId && logEntry.userId) {
-              const promises = [
-                client.banUser(
+              const promises = [];
+              if (logEntry.messageId) {
+                promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
+              }
+              try {
+                await client.banUser(
                   broadcasterUserId,
                   logEntry.userId,
                   logEntry.reason,
                   numericOwnerId || ownerId
-                )
-              ];
-            if (logEntry.messageId) {
-              promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
-            }
-            await Promise.all(promises);
+                );
+              } catch (err) {
+                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+                  console.log(`[AutoMod] Ban API yetkisiz (401), sohbet komutu deneniyor... (${logEntry.username})`);
+                  await client.sendMessage(logEntry.chatroomId, `/ban ${logEntry.username} ${logEntry.reason || 'AutoMod'}`);
+                } else {
+                  throw err;
+                }
+              }
+              await Promise.all(promises);
           } else {
             throw new Error(`Missing data for ban: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }

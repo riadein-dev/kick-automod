@@ -313,22 +313,46 @@ apiRouter.post('/manual-mod', async (req, res) => {
 
         if (action === 'delete') {
             if (messageId) {
-               await kickClient.deleteMessage(messageId);
+                await kickClient.deleteMessage(messageId);
             } else {
-               throw new Error("Message ID is required for delete action");
+                throw new Error("Message ID is required for delete action");
             }
         } else if (action === 'timeout') {
-            await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon', req.session.userId);
+            try {
+                await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon', req.session.userId);
+            } catch (err) {
+                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+                    console.log(`[ModAction] Timeout API yetkisiz (401), sohbet komutu deneniyor... (${username})`);
+                    await kickClient.sendMessage(chatroomId, `/timeout ${username} ${duration || 5} ${reason || 'Manuel moderasyon'}`);
+                } else {
+                    throw err;
+                }
+            }
             if (messageId && chatroomId) {
                await kickClient.deleteMessage(messageId).catch(() => {});
             }
         } else if (action === 'ban') {
-            await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.userId);
-            if (messageId && chatroomId) {
-               await kickClient.deleteMessage(messageId).catch(() => {});
+            try {
+                await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.userId);
+            } catch (err) {
+                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+                    console.log(`[ModAction] Ban API yetkisiz (401), sohbet komutu deneniyor... (${username})`);
+                    await kickClient.sendMessage(chatroomId, `/ban ${username} ${reason || 'Manuel moderasyon'}`);
+                } else {
+                    throw err;
+                }
             }
         } else if (action === 'unban') {
-            await kickClient.unbanUser(broadcasterUserId, userId, req.session.userId);
+            try {
+                await kickClient.unbanUser(broadcasterUserId, userId, req.session.userId);
+            } catch (err) {
+                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+                    console.log(`[ModAction] Unban API yetkisiz (401), sohbet komutu deneniyor... (${username})`);
+                    await kickClient.sendMessage(chatroomId, `/unban ${username}`);
+                } else {
+                    throw err;
+                }
+            }
         }
 
       // Check if an AutoMod log already exists for this message
@@ -529,10 +553,7 @@ apiRouter.post('/words', (req, res) => {
   const currentRules = store.getAutomodRules(sessionUserId);
   const exists = currentRules.rules.bannedWords.words.find(w => 
     w.word.toLowerCase() === wordData.word.toLowerCase() && 
-    w.action === wordData.action &&
-    String(w.duration) === String(wordData.duration) &&
-    w.channel === wordData.channel &&
-    Boolean(w.exactMatch) === Boolean(wordData.exactMatch)
+    w.exactMatch === (wordData.exactMatch || false)
   );
   
   if (exists) {
