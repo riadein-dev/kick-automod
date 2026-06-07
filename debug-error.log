@@ -1,13 +1,13 @@
 {
-  "id": "mod_1780851805915_1bq2hh",
-  "ownerId": "Riadein",
-  "userId": 28853452,
-  "username": "ioteazz",
-  "channel": "eray",
-  "chatroomId": "10181332",
-  "messageId": "4a8d7155-1c0a-457e-a7fa-a6d1d0b140aa",
-  "messageContent": "[emote:37230:POLICE]",
-  "reason": "Yasaklı kelime tespit edildi: \"POLICE\"",
+  "id": "mod_1780854353800_f1vc0x",
+  "ownerId": "ilker4444",
+  "userId": 98790006,
+  "username": "Burxi3",
+  "channel": "minik",
+  "chatroomId": "24752062",
+  "messageId": "e518c4ac-6c80-402c-92fe-ceb1177021b1",
+  "messageContent": "eray yayın açmaz",
+  "reason": "Yasaklı kelime tespit edildi: \"eray yayın\"",
   "ruleName": "bannedWords",
   "type": "auto",
   "action": "timeout",
@@ -15,13 +15,13 @@
   "status": "error",
   "spamCount": null,
   "matchedWords": [
-    "POLICE",
-    "POLICE"
+    "eray yayın",
+    "eray"
   ],
   "allViolations": [
-    "Yasaklı kelime tespit edildi: \"POLICE\"",
-    "Yasaklı kelime tespit edildi: \"POLICE\""
+    "Yasaklı kelime tespit edildi: \"eray yayın\"",
+    "Yasaklı kelime tespit edildi: \"eray\""
   ],
-  "createdAt": "2026-06-07T17:03:25.915Z",
-  "error": "Kick API error 500: {\"data\":{},\"message\":\"Internal server error\"}\n"
+  "createdAt": "2026-06-07T17:45:53.800Z",
+  "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }
