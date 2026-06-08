@@ -195,7 +195,7 @@ class KickApiClient {
       user_id: parseInt(userId),
       reason: reason
     };
-    if (moderatorUserId) payload.moderator_user_id = parseInt(moderatorUserId);
+    // DİKKAT: moderator_user_id Kick API'de bug yapıyor, o yüzden token sahibini kendi anlıyor
     console.log('[KickAPI] Sending Ban payload:', payload);
     return this.request('/moderation/bans', {
       method: 'POST',
@@ -211,7 +211,7 @@ class KickApiClient {
       broadcaster_user_id: parseInt(broadcasterUserId),
       user_id: parseInt(userId)
     };
-    if (moderatorUserId) payload.moderator_user_id = parseInt(moderatorUserId);
+    // DİKKAT: moderator_user_id Kick API'de bug yapıyor, o yüzden token sahibini kendi anlıyor
     console.log('[KickAPI] Sending Unban payload:', payload);
     return this.request('/moderation/bans', {
       method: 'DELETE',
@@ -238,7 +238,8 @@ class KickApiClient {
       duration: parseInt(duration), // minutes
       reason: reason
     };
-    if (moderatorUserId) payload.moderator_user_id = parseInt(moderatorUserId);
+    // DİKKAT: moderator_user_id gönderilmiyor çünkü Kick API bearer token sahibini zaten moderatör olarak alıyor.
+    // Eğer gönderirsek Kick API kendi içinde aynı işlemi 2 kere execute edip chate 2 kere yansıtabiliyor!
     console.log('[KickAPI] Sending Timeout payload:', payload);
     return this.request('/moderation/bans', {
       method: 'POST',
