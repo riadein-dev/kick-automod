@@ -102,6 +102,19 @@ class AutoModEngine {
   async processMessage(message) {
     const senderId = message.sender?.id || message.user_id;
     const logChatroomId = String(message.chatroom_id || message.chatroomId);
+    const messageId = message.id || message.message_id;
+
+    // Dedup global kontrol
+    const globalDedupKey = `${logChatroomId}:${messageId}`;
+    if (this.processedMessages.has(globalDedupKey)) {
+        return; // zaten işlendi
+    }
+    this.processedMessages.set(globalDedupKey, Date.now());
+    
+    // Temizlik
+    if (this.processedMessages.size > 5000) {
+        this.processedMessages.clear();
+    }
     
     // Find all unique users who added this channel
     const channels = store.getChannels();

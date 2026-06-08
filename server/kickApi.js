@@ -181,6 +181,15 @@ class KickApiClient {
    * Ban a user (permanent)
    */
   async banUser(broadcasterUserId, userId, reason = '', moderatorUserId = null) {
+    // API seviyesinde strict dedup (10 saniye)
+    if (!this.actionCooldowns) this.actionCooldowns = new Map();
+    const cdKey = `ban:${broadcasterUserId}:${userId}`;
+    const last = this.actionCooldowns.get(cdKey);
+    if (last && (Date.now() - last) < 10000) {
+        console.log(`[KickAPI] STRICT BLOCK: Duplicate ban prevented for user ${userId}`);
+        return { status: 'cooldown_blocked' };
+    }
+    this.actionCooldowns.set(cdKey, Date.now());
     const payload = {
       broadcaster_user_id: parseInt(broadcasterUserId),
       user_id: parseInt(userId),
@@ -214,6 +223,15 @@ class KickApiClient {
    * Timeout a user (temporary)
    */
   async timeoutUser(broadcasterUserId, userId, duration = 5, reason = '', moderatorUserId = null) {
+    // API seviyesinde strict dedup (10 saniye)
+    if (!this.actionCooldowns) this.actionCooldowns = new Map();
+    const cdKey = `timeout:${broadcasterUserId}:${userId}`;
+    const last = this.actionCooldowns.get(cdKey);
+    if (last && (Date.now() - last) < 10000) {
+        console.log(`[KickAPI] STRICT BLOCK: Duplicate timeout prevented for user ${userId}`);
+        return { status: 'cooldown_blocked' };
+    }
+    this.actionCooldowns.set(cdKey, Date.now());
     const payload = {
       broadcaster_user_id: parseInt(broadcasterUserId),
       user_id: parseInt(userId),
