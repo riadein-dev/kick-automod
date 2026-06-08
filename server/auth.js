@@ -304,6 +304,13 @@ async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   
+  // Auto-fix: if userId is numeric (old bug), replace with username
+  if (req.session.userId && /^\d+$/.test(String(req.session.userId)) && req.session.user?.name) {
+    console.log(`[Auth] Auto-fixing numeric userId ${req.session.userId} -> ${req.session.user.name}`);
+    req.session.kickNumericId = req.session.userId;
+    req.session.userId = req.session.user.name;
+  }
+  
   // Check token expiry
   if (req.session.tokenExpiry && Date.now() > req.session.tokenExpiry) {
     if (!req.session.refreshToken) {
