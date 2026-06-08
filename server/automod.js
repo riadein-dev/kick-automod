@@ -323,10 +323,6 @@ class AutoModEngine {
           break;
         case 'timeout':
           if (broadcasterUserId && logEntry.userId) {
-              const promises = [];
-              if (logEntry.messageId) {
-                promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
-              }
               try {
                 await client.timeoutUser(
                   broadcasterUserId,
@@ -343,17 +339,12 @@ class AutoModEngine {
                   throw err;
                 }
               }
-              await Promise.all(promises);
           } else {
             throw new Error(`Missing data for timeout: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
           break;
         case 'ban':
           if (broadcasterUserId && logEntry.userId) {
-              const promises = [];
-              if (logEntry.messageId) {
-                promises.push(client.deleteMessage(logEntry.messageId).catch(() => {}));
-              }
               try {
                 await client.banUser(
                   broadcasterUserId,
@@ -369,7 +360,6 @@ class AutoModEngine {
                   throw err;
                 }
               }
-              await Promise.all(promises);
           } else {
             throw new Error(`Missing data for ban: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
