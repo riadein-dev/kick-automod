@@ -19,6 +19,7 @@ class Store {
     this.userRules = new Map(); // userId -> rules object
     this.userMessageHistory = new Map(); // userId -> [{message, timestamp}]
     this.sseClients = new Set();
+    this.userLastActive = new Map(); // userId -> timestamp
   }
 
   // Generate default rules for a new user
@@ -91,7 +92,7 @@ class Store {
          this.userRules.set(dbRule.userId, rules);
       }
       
-      // Bütün kelimeleri ait oldukları kullanıcılara bağla (kuralları henüz veritabanında oluşmamış kullanıcılar dahil)
+      // Bütün kelimeleri ait oldukları kullanıcılara bağla (duplicate kontrolüyle)
       for (const w of dbWords) {
           const userId = w.addedBy;
           if (!userId) continue;
@@ -101,7 +102,8 @@ class Store {
           }
           const rules = this.userRules.get(userId);
           
-          const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id);
+          // Hem ID hem de kelime içeriği bazında duplicate kontrolü
+          const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id || (cw.word === w.word && cw.action === w.action));
           if (!exists) {
               rules.rules.bannedWords.words.push({
                   id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy
@@ -247,12 +249,23 @@ class Store {
 
   // Check if a user has an active browser connection
   isUserOnline(userId) {
+    // Check SSE connection first
     for (const client of this.sseClients) {
       if (String(client.userId) === String(userId)) {
         return true;
       }
     }
+    // Fallback: check last API activity (5 min window)
+    const lastActive = this.userLastActive.get(String(userId));
+    if (lastActive && (Date.now() - lastActive) < 5 * 60 * 1000) {
+      return true;
+    }
     return false;
+  }
+
+  // Update user's last activity timestamp
+  touchUser(userId) {
+    this.userLastActive.set(String(userId), Date.now());
   }
 
   broadcastToUser(userId, event, data) {
@@ -523,6 +536,14 @@ class Store {
 
   addCustomWord(userId, wordData) {
     const rules = this.getAutomodRules(userId);
+    
+    // Aynı kelime zaten varsa ekleme
+    const duplicate = rules.rules.bannedWords.words.some(w => w.word === wordData.word && w.action === wordData.action);
+    if (duplicate) {
+      this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
+      return null;
+    }
+    
     const word = {
       id: `w_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       addedBy: userId,

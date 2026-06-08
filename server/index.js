@@ -164,16 +164,16 @@ apiRouter.get('/csrf-token', (req, res) => {
 
 // Middleware to ensure automod has access token for API calls
 apiRouter.use((req, res, next) => {
-  if (req.session && req.session.accessToken) {
-    automod.setAccessToken(req.session.accessToken);
-    // Logged-in admin shouldn't be moderated
-    const currentUserId = req.session.userId || (req.session.user && req.session.user.raw && req.session.user.raw.id) || null;
-    if (currentUserId) {
-        automod.setAdminUserId(currentUserId);
+    if (req.session && req.session.accessToken) {
+      automod.setAccessToken(req.session.accessToken);
+      const currentUserId = req.session.userId || (req.session.user && req.session.user.raw && req.session.user.raw.id) || null;
+      if (currentUserId) {
+          automod.setAdminUserId(currentUserId);
+          store.touchUser(currentUserId); // Track activity for online status
+      }
     }
-  }
-  next();
-});
+    next();
+  });
 
 // Dashboard stats
 apiRouter.get('/stats', (req, res) => {
