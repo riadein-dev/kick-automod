@@ -9,8 +9,10 @@ const { createKickClient } = require('./kickApi');
 class AutoModEngine {
   constructor() {
     // Singleton state removed for SaaS architecture.
-    // Each action fetches the required user token from store/db.
+    // Dedup sets to prevent duplicate actions
+    this.processedMessages = new Map();
     this.executedActions = new Set();
+    this.recentTimeouts = new Map(); // "chatroomId:userId" -> timestamp
   }
 
   // Backwards compatibility for middleware
@@ -247,6 +249,24 @@ class AutoModEngine {
         store.updateModerationLog(logEntry.id, { status: 'applied', appliedAt: new Date().toISOString() });
         return;
     }
+    
+    // User-level cooldown (10 saniye) to prevent double timeouts for spamming
+    const userTimeoutKey = `${logEntry.chatroomId}:${logEntry.userId}`;
+    if (['timeout', 'ban'].includes(logEntry.action)) {
+        const lastAction = this.recentTimeouts.get(userTimeoutKey);
+        if (lastAction && (Date.now() - lastAction) < 10000) {
+            console.log(`[AutoMod] Skipping duplicate action for user ${logEntry.userId} (cooldown)`);
+            store.updateModerationLog(logEntry.id, { status: 'applied', appliedAt: new Date().toISOString() });
+            return;
+        }
+        this.recentTimeouts.set(userTimeoutKey, Date.now());
+        
+        // Temizlik
+        if (this.recentTimeouts.size > 5000) {
+            this.recentTimeouts.clear();
+        }
+    }
+
     this.executedActions.add(logEntry.messageId);
     if (this.executedActions.size > 1000) {
         this.executedActions.clear();
