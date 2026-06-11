@@ -4,165 +4,281 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kick AutoMod - Giriş</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
+            font-family: 'Inter', -apple-system, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
+            background: #06060a;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
+        /* Noise texture */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.025;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* Ambient orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .orb-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(0, 232, 123, 0.15), transparent 70%);
+            top: 20%; left: 30%;
+            animation: float1 15s ease-in-out infinite alternate;
+        }
+        .orb-2 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.1), transparent 70%);
+            bottom: 10%; right: 20%;
+            animation: float2 18s ease-in-out infinite alternate;
+        }
+        .orb-3 {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.08), transparent 70%);
+            top: 60%; left: 10%;
+            animation: float3 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes float1 {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(60px, -40px); }
+        }
+        @keyframes float2 {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-50px, 30px); }
+        }
+        @keyframes float3 {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(30px, -50px); }
+        }
+
+        /* Grid pattern */
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 20%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 20%, transparent 70%);
+        }
+
+        /* Login Card */
         .login-container {
-            background: rgba(26, 26, 26, 0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(83, 252, 24, 0.1);
-            border-radius: 24px;
-            padding: 3rem;
-            width: 100%;
-            max-width: 480px;
-            text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(83, 252, 24, 0.05);
             position: relative;
             z-index: 10;
+            width: 100%;
+            max-width: 440px;
+            padding: 3rem 2.5rem;
+            text-align: center;
+            background: rgba(10, 10, 16, 0.6);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            box-shadow:
+                0 32px 80px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            animation: cardIn 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .login-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(0, 232, 123, 0.2), transparent 50%, rgba(56, 189, 248, 0.1));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
         }
 
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Logo */
         .logo {
-            width: 80px;
-            height: 80px;
-            background: #53FC18;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #00e87b, #22d3ee);
             border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 2rem;
-            font-weight: 800;
-            font-size: 2rem;
+            font-weight: 900;
+            font-size: 1.8rem;
+            font-family: 'Outfit', sans-serif;
             color: #000;
-            box-shadow: 0 0 30px rgba(83, 252, 24, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 232, 123, 0.3);
+            position: relative;
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 8px 32px rgba(0, 232, 123, 0.3); }
+            50% { box-shadow: 0 8px 48px rgba(0, 232, 123, 0.5); }
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
         }
 
         h1 {
-            font-size: 2rem;
-            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
             color: #fff;
             margin-bottom: 0.5rem;
+            letter-spacing: -0.03em;
         }
 
-        p {
-            color: #a1a1a1;
+        .subtitle {
+            color: #94a3b8;
             margin-bottom: 2.5rem;
-            line-height: 1.5;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            font-weight: 400;
         }
 
+        /* Login Button */
         .btn-kick {
-            background: #53FC18;
-            color: #000;
-            font-weight: 600;
-            font-size: 1.1rem;
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            border: none;
-            cursor: pointer;
-            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            transition: all 0.2s ease;
+            gap: 10px;
+            width: 100%;
+            padding: 1rem 2rem;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 0.01em;
             text-decoration: none;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #00e87b, #34d399);
+            color: #000;
+            box-shadow: 0 4px 24px rgba(0, 232, 123, 0.3);
+            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
         }
-
+        .btn-kick::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -200%;
+            width: 60%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transform: skewX(-25deg);
+            transition: left 0s;
+        }
         .btn-kick:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(83, 252, 24, 0.2);
-            background: #000;
-            color: #53FC18;
-            border: 1px solid #53FC18;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 36px rgba(0, 232, 123, 0.4);
         }
-
+        .btn-kick:hover::after {
+            left: 200%;
+            transition: left 0.6s ease-in-out;
+        }
+        .btn-kick:active {
+            transform: translateY(0) scale(0.97);
+        }
         .btn-kick svg {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
         }
+        .btn-kick .text-hover { display: none; }
+        .btn-kick:hover .text-default { display: none; }
+        .btn-kick:hover .text-hover { display: inline; }
 
-        .btn-kick .text-hover {
-            display: none;
-        }
-        
-        .btn-kick:hover .text-default {
-            display: none;
-        }
-        
-        .btn-kick:hover .text-hover {
-            display: inline;
-        }
-
-        /* Snow Effect */
-        .snow {
-            position: absolute;
-            top: -10px;
-            background: white;
-            border-radius: 50%;
-            pointer-events: none;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-            animation: fall linear forwards;
-            z-index: 0;
-        }
-
-        @keyframes fall {
-            to {
-                transform: translateY(105vh);
-            }
-        }
-
-        /* Animated background elements */
-        .bg-glow {
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(83,252,24,0.15) 0%, rgba(0,0,0,0) 70%);
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1;
-            pointer-events: none;
-            animation: pulse 8s infinite alternate ease-in-out;
-        }
-
-        @keyframes pulse {
-            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
-            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-        }
-
+        /* Error */
         .error-message {
-            background: rgba(251, 44, 54, 0.1);
-            border: 1px solid rgba(251, 44, 54, 0.3);
-            color: #ff5252;
-            padding: 1rem;
+            background: rgba(244, 63, 94, 0.08);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            color: #f43f5e;
+            padding: 0.85rem 1rem;
             border-radius: 12px;
             margin-bottom: 1.5rem;
             display: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Footer badge */
+        .footer-badge {
+            margin-top: 2rem;
+            font-size: 0.72rem;
+            color: #475569;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+        }
+        .footer-badge span { color: #00e87b; font-weight: 700; }
+
+        /* Particles */
+        .particle {
+            position: fixed;
+            width: 2px;
+            height: 2px;
+            background: rgba(0, 232, 123, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            animation: particleFloat linear forwards;
+        }
+
+        @keyframes particleFloat {
+            0% { opacity: 0; transform: translateY(0) scale(0); }
+            10% { opacity: 1; transform: scale(1); }
+            90% { opacity: 0.5; }
+            100% { opacity: 0; transform: translateY(-100vh) scale(0); }
         }
     </style>
 </head>
 <body>
-    <div class="bg-glow"></div>
-    
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid-bg"></div>
+
     <div class="login-container">
-        <div class="logo">K</div>
-        <h1>AutoMod Dashboard</h1>
-        <p>Moderasyon kontrol merkezi için Kick hesabınızla giriş yapın.</p>
-        
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <polyline points="9 12 11 14 15 10"></polyline>
+            </svg>
+        </div>
+        <h1>AutoMod</h1>
+        <p class="subtitle">Kick moderasyon kontrol merkezine<br>güvenli giriş yapın</p>
+
         <div id="errorBox" class="error-message"></div>
 
         <a href="/auth/login" class="btn-kick">
             <svg viewBox="0 0 24 24" fill="currentColor">
-                <!-- Authentic Kick Logo blocky K -->
                 <rect x="4" y="3" width="4" height="18" />
                 <rect x="8" y="9" width="4" height="6" />
                 <rect x="12" y="3" width="4" height="6" />
@@ -171,6 +287,8 @@
             <span class="text-default">Kick ile Giriş Yap</span>
             <span class="text-hover">Tamamen Güvendesin!</span>
         </a>
+
+        <div class="footer-badge">Powered by <span>AutoMod</span> Engine</div>
     </div>
 
     <script>
@@ -196,30 +314,27 @@
             })
             .catch(console.error);
 
-        // Snow effect
-        function createSnowflake() {
-            const snow = document.createElement('div');
-            snow.classList.add('snow');
-            // Random horizontal position
-            snow.style.left = Math.random() * 100 + 'vw';
-            // Random size between 2px and 6px
-            const size = Math.random() * 4 + 2;
-            snow.style.width = size + 'px';
-            snow.style.height = size + 'px';
-            // Random fall duration between 3s and 6s
-            snow.style.animationDuration = Math.random() * 3 + 3 + 's';
-            // Random opacity
-            snow.style.opacity = Math.random() * 0.5 + 0.3;
-            document.body.appendChild(snow);
-
-            // Remove after it finishes falling
-            setTimeout(() => {
-                snow.remove();
-            }, 6000);
+        // Floating particles
+        function createParticle() {
+            const p = document.createElement('div');
+            p.classList.add('particle');
+            p.style.left = Math.random() * 100 + 'vw';
+            p.style.bottom = '-10px';
+            const size = Math.random() * 3 + 1;
+            p.style.width = size + 'px';
+            p.style.height = size + 'px';
+            p.style.animationDuration = Math.random() * 6 + 4 + 's';
+            p.style.opacity = Math.random() * 0.5 + 0.2;
+            const colors = [
+                'rgba(0, 232, 123, 0.5)',
+                'rgba(56, 189, 248, 0.4)',
+                'rgba(167, 139, 250, 0.3)'
+            ];
+            p.style.background = colors[Math.floor(Math.random() * colors.length)];
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 10000);
         }
-        
-        // Spawn a snowflake every 100ms
-        setInterval(createSnowflake, 100);
+        setInterval(createParticle, 200);
     </script>
 </body>
 </html>
