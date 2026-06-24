@@ -400,14 +400,23 @@ apiRouter.post('/chat/send', async (req, res) => {
     const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     
-    const { chatroomId, content } = req.body;
-    if (!chatroomId || !content) return res.status(400).json({ error: 'Missing chatroomId or content' });
+    const { chatroomId, content, channelSlug } = req.body;
+    if (!content) return res.status(400).json({ error: 'Missing content' });
     
     try {
         const kickClient = await automod._getClient(userId);
         if (!kickClient) return res.status(401).json({ error: 'Kick token not available' });
         
-        await kickClient.sendMessage(parseInt(chatroomId), content);
+        // Find broadcaster user ID from channel data
+        const channels = store.getChannels();
+        const channel = channels.find(c => 
+            String(c.chatroomId) === String(chatroomId) || 
+            String(c.id) === String(chatroomId) ||
+            c.slug === channelSlug
+        );
+        const broadcasterUserId = channel?.broadcasterUserId || channel?.userId || null;
+        
+        await kickClient.sendMessage(parseInt(chatroomId), content, broadcasterUserId);
         res.json({ ok: true });
     } catch (err) {
         console.error('[API] Chat send error:', err.message);
@@ -416,11 +425,43 @@ apiRouter.post('/chat/send', async (req, res) => {
 });
 
 // Chat History (load previous messages)
-apiRouter.get('/chat/history', (req, res) => {
+apiRouter.get('/chat/history', async (req, res) => {
     const channel = req.query.channel;
     if (!channel) return res.status(400).json({ error: 'Missing channel' });
     
-    const history = store.getChatHistory(channel, 500);
+    let history = store.getChatHistory(channel, 500);
+    
+    // If we have very few messages in buffer, try fetching from Kick API
+    if (history.length < 50) {
+        try {
+            const dummyClient = createKickClient(null);
+            const recent = await dummyClient.getRecentMessages(channel);
+            if (recent && recent.length > 0) {
+                // Map to our expected format
+                const mappedRecent = recent.map(msg => ({
+                    id: msg.id,
+                    content: msg.content,
+                    username: msg.sender?.username,
+                    user_id: msg.sender?.id,
+                    timestamp: msg.created_at,
+                    sender: msg.sender
+                }));
+                
+                // Merge without duplicates
+                const existingIds = new Set(history.map(m => m.id));
+                const newMessages = mappedRecent.filter(m => !existingIds.has(m.id));
+                
+                // Add to local store so we don't keep fetching
+                newMessages.forEach(m => store.addChatMessage(channel, m));
+                
+                // Get updated history
+                history = store.getChatHistory(channel, 500);
+            }
+        } catch (e) {
+            console.error('[API] Failed to fetch recent messages:', e.message);
+        }
+    }
+    
     res.json(history);
 });
 

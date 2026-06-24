@@ -155,14 +155,47 @@ class KickApiClient {
   /**
    * Send a chat message
    */
-  async sendMessage(chatroomId, content) {
-    return this.request('/chat/messages', {
+  async sendMessage(chatroomId, content, broadcasterUserId = null) {
+    const body = {
+      content: content,
+      type: 'message'
+    };
+    // API expects broadcaster_user_id for the channel
+    if (broadcasterUserId) {
+      body.broadcaster_user_id = parseInt(broadcasterUserId);
+    } else {
+      body.chatroom_id = parseInt(chatroomId);
+    }
+    return this.request('/chat', {
       method: 'POST',
-      body: JSON.stringify({
-        chatroom_id: chatroomId,
-        content: content
-      })
+      body: JSON.stringify(body)
     });
+  }
+
+  /**
+   * Get recent chat messages from a channel (Kick v2 API)
+   */
+  async getRecentMessages(channelSlug) {
+    try {
+      const resp = await fetch(`https://kick.com/api/v2/channels/${channelSlug}/messages`, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      if (!resp.ok) {
+        console.warn(`[KickAPI] Failed to fetch messages for ${channelSlug}: ${resp.status}`);
+        return [];
+      }
+      const data = await resp.json();
+      // data.data.messages is the typical structure
+      const messages = data?.data?.messages || data?.messages || data?.data || [];
+      if (!Array.isArray(messages)) return [];
+      return messages.slice(-50);
+    } catch (err) {
+      console.warn(`[KickAPI] getRecentMessages error for ${channelSlug}:`, err.message);
+      return [];
+    }
   }
 
   /**

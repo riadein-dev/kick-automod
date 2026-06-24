@@ -235,6 +235,15 @@ class AutoModEngine {
             continue; // Kanal sahibi moderasyondan muaf
         }
         
+        // Banned visitor check - CRITICAL FIX
+        const visitors = store.getVisitors();
+        // Check by username (userId), internal id, or kickId
+        const visitor = visitors.find(v => v.username === userId || v.id === userId || String(v.kickId) === String(userId));
+        if (visitor && visitor.isBanned) {
+            console.log(`[AutoMod] DEBUG: User ${userId} is BANNED from the system. Skipping their rules.`);
+            continue;
+        }
+        
         // Moderatörler de muaf
         const badges = message.sender?.identity?.badges || [];
         const isMod = badges.some(b => b.type === 'moderator');

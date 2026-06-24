@@ -374,6 +374,10 @@ class Store {
   // Channel Management
   addChannel(channel) {
     const channelIdStr = String(channel.id || channel.chatroomId);
+    
+    // YENİ DÜZELTME: Aynı kanalı BİRDEN FAZLA kişinin takip edebilmesi için
+    // sadece "slug" a bakarak değil, "slug + addedBy" kombinasyonuna bakarak
+    // duplicate kontrolü yapmalıyız. Yoksa A kişisi sistemi durdurduğunda B kişisinin sistemi de duruyor!
     const exists = this.channels.find(c => 
         (String(c.id) === channelIdStr || c.slug === channel.slug) && 
         c.addedBy === channel.addedBy
