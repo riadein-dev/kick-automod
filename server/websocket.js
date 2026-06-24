@@ -208,6 +208,16 @@ class WebSocketManager {
       }
     });
 
+    // Store in history buffer
+    store.addChatMessage(channelSlug, {
+      id: message.id,
+      content: message.content,
+      username: message.username,
+      user_id: message.user_id,
+      timestamp: message.timestamp,
+      sender: message.sender
+    });
+
     // Run through automod
     try {
       await automod.processMessage(message);

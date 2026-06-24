@@ -29,9 +29,13 @@ class AutoModEngine {
   }
 
   async _refreshToken(user) {
-    if (!user.refreshToken) return false;
+    if (!user.refreshToken) {
+      console.warn(`[AutoMod] No refresh token for user ${user.kickId || user.username}`);
+      return false;
+    }
     try {
       const KICK_TOKEN_URL = 'https://id.kick.com/oauth/token';
+      console.log(`[AutoMod] Attempting token refresh for user ${user.kickId || user.username}...`);
       const response = await fetch(KICK_TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -42,19 +46,94 @@ class AutoModEngine {
           refresh_token: user.refreshToken
         }).toString()
       });
-      if (!response.ok) return false;
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`[AutoMod] Token refresh HTTP ${response.status} for user ${user.kickId}: ${errText}`);
+        return false;
+      }
       const data = await response.json();
       // Update visitor store with new tokens
       user.accessToken = data.access_token;
       user.refreshToken = data.refresh_token || user.refreshToken;
       user.tokenExpiry = Date.now() + (data.expires_in * 1000);
-      store.addVisitor({ kickId: user.kickId, accessToken: user.accessToken, refreshToken: user.refreshToken, tokenExpiry: user.tokenExpiry });
-      console.log(`[AutoMod] Token auto-refreshed for user ${user.kickId}`);
+      store.addVisitor({ kickId: user.kickId, username: user.username, accessToken: user.accessToken, refreshToken: user.refreshToken, tokenExpiry: user.tokenExpiry });
+      console.log(`[AutoMod] ✅ Token refreshed for user ${user.kickId || user.username} (expires in ${data.expires_in}s)`);
       return true;
     } catch (err) {
-      console.error(`[AutoMod] Token refresh failed for user ${user.kickId}:`, err.message);
+      console.error(`[AutoMod] ❌ Token refresh failed for user ${user.kickId}:`, err.message);
       return false;
     }
+  }
+
+  /**
+   * Refresh all expired/near-expiry tokens proactively
+   * Called on startup and periodically
+   */
+  async refreshAllTokens() {
+    const visitors = store.getVisitors();
+    const now = Date.now();
+    let refreshed = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    console.log(`[AutoMod] 🔄 Starting token refresh cycle for ${visitors.length} users...`);
+
+    for (const user of visitors) {
+      if (!user.refreshToken) {
+        skipped++;
+        continue;
+      }
+      if (user.isBanned) {
+        skipped++;
+        continue;
+      }
+
+      // Refresh if expired, about to expire (within 5 min), or no expiry set
+      const needsRefresh = !user.tokenExpiry || (now > user.tokenExpiry - 300000);
+      
+      if (!needsRefresh) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const success = await this._refreshToken(user);
+        if (success) {
+          refreshed++;
+        } else {
+          failed++;
+        }
+        // Rate limit: wait 500ms between refreshes to avoid hammering Kick API
+        await new Promise(r => setTimeout(r, 500));
+      } catch (err) {
+        failed++;
+        console.error(`[AutoMod] Token refresh error for ${user.kickId}:`, err.message);
+      }
+    }
+
+    console.log(`[AutoMod] 🔄 Token refresh complete: ${refreshed} refreshed, ${failed} failed, ${skipped} skipped`);
+    return { refreshed, failed, skipped };
+  }
+
+  /**
+   * Start periodic token refresh (every 30 minutes)
+   */
+  startTokenRefreshInterval() {
+    // Initial refresh after 10 seconds (give DB time to load)
+    setTimeout(() => {
+      this.refreshAllTokens().catch(err => {
+        console.error('[AutoMod] Initial token refresh failed:', err.message);
+      });
+    }, 10000);
+
+    // Periodic refresh every 30 minutes
+    this._tokenRefreshInterval = setInterval(() => {
+      this.refreshAllTokens().catch(err => {
+        console.error('[AutoMod] Periodic token refresh failed:', err.message);
+      });
+    }, 30 * 60 * 1000);
+
+    console.log('[AutoMod] ⏰ Token refresh interval started (every 30 min)');
   }
 
   async _getClient(userId) {

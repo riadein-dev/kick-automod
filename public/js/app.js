@@ -130,6 +130,8 @@ const el = {
     chatSettingsBtn: $('#chatSettingsBtn'),
     chatContainer: $('#chatContainer'),
     chatControlMessages: $('#chatContainer'),
+    chatMessageInput: $('#chatMessageInput'),
+    chatSendBtn: $('#chatSendBtn'),
     chatSettingsModal: $('#chatSettingsModal'),
     closeChatSettingsModal: $('#closeChatSettingsModal'),
     cancelChatSettingsBtn: $('#cancelChatSettingsBtn'),
@@ -1917,12 +1919,30 @@ window.addEventListener('blur', () => pressedKeys.clear());
 
 function setupChatControlLogic() {
     // Load Settings
-    const loadChatSettings = () => {
+    const loadChatSettings = async () => {
+        // Load keybinds from localStorage (device-specific)
         if (el.chatDefaultTimeout) el.chatDefaultTimeout.value = localStorage.getItem('chatDefaultTimeout') || 5;
         if (el.chatKeyDelete) el.chatKeyDelete.value = localStorage.getItem('chatKeyDelete') || 'shift';
         if (el.chatKeyTimeout) el.chatKeyTimeout.value = localStorage.getItem('chatKeyTimeout') || 'control';
         if (el.chatKeyBan) el.chatKeyBan.value = localStorage.getItem('chatKeyBan') || 'alt';
-        if (el.chatWatchedWords) el.chatWatchedWords.value = localStorage.getItem('chatWatchedWords') || '';
+        
+        // Load watched words from SERVER (persistent across devices/sessions)
+        try {
+            const res = await apiFetch('/api/user-settings');
+            if (res.ok) {
+                const settings = await res.json();
+                if (el.chatWatchedWords && settings.chatWatchedWords) {
+                    el.chatWatchedWords.value = settings.chatWatchedWords;
+                    localStorage.setItem('chatWatchedWords', settings.chatWatchedWords);
+                }
+                if (settings.chatDefaultTimeout && el.chatDefaultTimeout) {
+                    el.chatDefaultTimeout.value = settings.chatDefaultTimeout;
+                }
+            }
+        } catch (e) {
+            // Fallback to localStorage
+            if (el.chatWatchedWords) el.chatWatchedWords.value = localStorage.getItem('chatWatchedWords') || '';
+        }
     };
     loadChatSettings();
 
@@ -1992,14 +2012,73 @@ function setupChatControlLogic() {
     if (el.closeChatSettingsModal) el.closeChatSettingsModal.addEventListener('click', closeChatSettings);
     if (el.cancelChatSettingsBtn) el.cancelChatSettingsBtn.addEventListener('click', closeChatSettings);
 
-    if (el.saveChatSettingsBtn) el.saveChatSettingsBtn.addEventListener('click', () => {
+    if (el.saveChatSettingsBtn) el.saveChatSettingsBtn.addEventListener('click', async () => {
         if (el.chatDefaultTimeout) localStorage.setItem('chatDefaultTimeout', el.chatDefaultTimeout.value);
         if (el.chatKeyDelete) localStorage.setItem('chatKeyDelete', el.chatKeyDelete.value);
         if (el.chatKeyTimeout) localStorage.setItem('chatKeyTimeout', el.chatKeyTimeout.value);
         if (el.chatKeyBan) localStorage.setItem('chatKeyBan', el.chatKeyBan.value);
         if (el.chatWatchedWords) localStorage.setItem('chatWatchedWords', el.chatWatchedWords.value);
+        
+        // Save watched words and timeout to server (persistent)
+        try {
+            await apiFetch('/api/user-settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chatWatchedWords: el.chatWatchedWords ? el.chatWatchedWords.value : '',
+                    chatDefaultTimeout: el.chatDefaultTimeout ? el.chatDefaultTimeout.value : 5
+                })
+            });
+        } catch (e) {
+            console.warn('Server settings save failed:', e);
+        }
+        
         closeChatSettings();
     });
+
+    // Chat Send Message
+    if (el.chatSendBtn && el.chatMessageInput) {
+        const sendChatMessage = async () => {
+            const content = el.chatMessageInput.value.trim();
+            if (!content) return;
+            
+            const activeChannel = state.channels.find(ch => ch.slug === state.chatControlActiveTab);
+            if (!activeChannel) {
+                alert('Aktif bir kanal seçin.');
+                return;
+            }
+            
+            const chatroomId = activeChannel.chatroomId || activeChannel.id;
+            
+            try {
+                el.chatSendBtn.disabled = true;
+                const res = await apiFetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatroomId, content })
+                });
+                
+                if (res.ok) {
+                    el.chatMessageInput.value = '';
+                } else {
+                    const data = await res.json();
+                    alert('Mesaj gönderilemedi: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                alert('Bağlantı hatası');
+            } finally {
+                el.chatSendBtn.disabled = false;
+            }
+        };
+        
+        el.chatSendBtn.addEventListener('click', sendChatMessage);
+        el.chatMessageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+    }
 
     // Chat Tab Switching
     if (el.chatControlTabs) {
@@ -2012,12 +2091,190 @@ function setupChatControlLogic() {
             el.chatControlTabs.querySelectorAll('.channel-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            if (el.chatControlMessages) el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
+            if (el.chatControlMessages) {
+                el.chatControlMessages.innerHTML = '<div class="chat-welcome">Mesaj geçmişi yükleniyor...</div>';
+                
+                // Load previous messages from server buffer
+                apiFetch(`/api/chat/history?channel=${encodeURIComponent(channel)}`)
+                    .then(res => res.ok ? res.json() : [])
+                    .then(history => {
+                        if (!Array.isArray(history) || history.length === 0) {
+                            el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
+                            return;
+                        }
+                        el.chatControlMessages.innerHTML = '';
+                        history.forEach(msg => {
+                            window.appendChatMessage({
+                                channel: channel,
+                                message: {
+                                    id: msg.id,
+                                    content: msg.content,
+                                    username: msg.username,
+                                    user_id: msg.user_id,
+                                    timestamp: msg.timestamp,
+                                    sender: msg.sender || { id: msg.user_id, username: msg.username, identity: { color: '#53fc18', badges: [] } }
+                                }
+                            });
+                        });
+                        el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+                    })
+                    .catch(() => {
+                        el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
+                    });
+            }
             renderLogs(); // Update the right panels for this tab
         });
     }
 }
-state.chatControlActiveTab = null; // Will be set to the first channel in renderChannelTabs if available
+state.chatControlActiveTab = null;
+if (!window._chatMessageBuffer) window._chatMessageBuffer = [];
+
+function showUserMessageHistory(username, color) {
+    // Remove existing popup
+    const existing = document.getElementById('userHistoryPopup');
+    if (existing) existing.remove();
+    const existingBackdrop = document.getElementById('userHistoryBackdrop');
+    if (existingBackdrop) existingBackdrop.remove();
+
+    const msgs = (window._chatMessageBuffer || []).filter(m => m.username === username);
+    const userId = msgs.length > 0 ? msgs[msgs.length - 1].userId : null;
+    
+    let historyHtml = '';
+    if (msgs.length === 0) {
+        historyHtml = '<div style="color: var(--text-3); text-align: center; padding: 2rem;">Bu kullanıcıdan henüz mesaj yok.</div>';
+    } else {
+        msgs.forEach(m => {
+            const time = new Date(m.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            const safeContent = (m.content || '').replace(/[&<>"']/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[tag]||tag));
+            historyHtml += `<div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.88rem; line-height: 1.5;">
+                <span style="color: var(--text-3); font-size: 0.75rem; margin-right: 8px;">${time}</span>
+                <span style="color: var(--text-2);">${parseKickEmotes(safeContent)}</span>
+            </div>`;
+        });
+    }
+
+    const popup = document.createElement('div');
+    popup.id = 'userHistoryPopup';
+    popup.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; width: 520px; max-width: 90vw; max-height: 75vh; background: var(--bg-elevated); border: 1px solid var(--border-bright); border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: hidden;';
+    
+    popup.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+            <div>
+                <span style="font-weight: 700; font-size: 1.1rem; color: ${color || '#53fc18'};">${username}</span>
+                <span style="color: var(--text-3); font-size: 0.85rem; margin-left: 8px;">${msgs.length} mesaj</span>
+            </div>
+            <button id="closeUserHistory" style="background: transparent; border: none; color: var(--text-2); cursor: pointer; padding: 4px;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div style="overflow-y: auto; flex: 1;">${historyHtml}</div>
+        <div class="user-history-actions" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); flex-shrink: 0; gap: 10px; position: relative;">
+            <div style="position: relative; flex: 1;">
+                <button id="uhTimeoutBtn" style="width: 100%; padding: 10px 16px; border-radius: var(--radius-md); border: 1px solid rgba(255,165,0,0.3); background: rgba(255,165,0,0.1); color: #ffa500; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6v6l4.5 4.5L6 17v5h12v-5l-4.5-4.5L18 8V2zm-2 4v1.5l-2.5 2.5h-3L8 7.5V6h8zm-8 12v-1.5l2.5-2.5h3l2.5 2.5V18H8z"></path></svg>
+                    Timeout
+                </button>
+                <div id="uhTimeoutMenu" style="display: none; position: absolute; bottom: 100%; left: 0; width: 100%; margin-bottom: 6px; background: var(--bg-elevated); border: 1px solid var(--border-bright); border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.7); overflow: hidden; z-index: 10;">
+                    <div style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-3); border-bottom: 1px solid var(--border); font-weight: 600;">Timeout Süresi Seçin</div>
+                    <button class="uh-timeout-opt" data-dur="1" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">1 Dakika</button>
+                    <button class="uh-timeout-opt" data-dur="5" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">5 Dakika</button>
+                    <button class="uh-timeout-opt" data-dur="10" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">10 Dakika</button>
+                    <button class="uh-timeout-opt" data-dur="30" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">30 Dakika</button>
+                    <button class="uh-timeout-opt" data-dur="60" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">1 Saat</button>
+                    <button class="uh-timeout-opt" data-dur="360" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">6 Saat</button>
+                    <button class="uh-timeout-opt" data-dur="1440" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">1 Gün</button>
+                    <button class="uh-timeout-opt" data-dur="4320" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">3 Gün</button>
+                    <button class="uh-timeout-opt" data-dur="10080" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;">1 Hafta</button>
+                </div>
+            </div>
+            <button id="uhBanBtn" style="flex: 1; padding: 10px 16px; border-radius: var(--radius-md); border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); color: var(--red); font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9A7.902 7.902 0 0 1 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1A7.902 7.902 0 0 1 20 12c0 4.42-3.58 8-8 8z"></path></svg>
+                Banla
+            </button>
+        </div>
+    `;
+
+    // Backdrop
+    const backdrop = document.createElement('div');
+    backdrop.id = 'userHistoryBackdrop';
+    backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998; backdrop-filter: blur(4px);';
+    
+    document.body.appendChild(backdrop);
+    document.body.appendChild(popup);
+
+    const close = () => { popup.remove(); backdrop.remove(); };
+    popup.querySelector('#closeUserHistory').addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+
+    // Timeout toggle menu
+    const timeoutBtn = popup.querySelector('#uhTimeoutBtn');
+    const timeoutMenu = popup.querySelector('#uhTimeoutMenu');
+    timeoutBtn.addEventListener('click', () => {
+        timeoutMenu.style.display = timeoutMenu.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Hover effects
+    popup.querySelectorAll('.uh-timeout-opt').forEach(btn => {
+        btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,165,0,0.1)'; btn.style.color = '#ffa500'; });
+        btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; btn.style.color = 'var(--text-2)'; });
+    });
+    timeoutBtn.addEventListener('mouseenter', () => { timeoutBtn.style.background = 'rgba(255,165,0,0.2)'; });
+    timeoutBtn.addEventListener('mouseleave', () => { timeoutBtn.style.background = 'rgba(255,165,0,0.1)'; });
+    const banBtn = popup.querySelector('#uhBanBtn');
+    banBtn.addEventListener('mouseenter', () => { banBtn.style.background = 'rgba(239,68,68,0.2)'; });
+    banBtn.addEventListener('mouseleave', () => { banBtn.style.background = 'rgba(239,68,68,0.1)'; });
+
+    // Action handler
+    const executeAction = async (action, duration) => {
+        if (!userId) { alert('Kullanıcı ID bulunamadı.'); return; }
+        const channelSlug = state.chatControlActiveTab;
+        if (!channelSlug) { alert('Aktif kanal yok.'); return; }
+
+        try {
+            const res = await apiFetch('/api/manual-mod', {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: action,
+                    userId: userId,
+                    duration: duration,
+                    channelSlug: channelSlug,
+                    reason: `Moderatör tarafından Kickky üzerinden (${action})`,
+                    username: username
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'İşlem başarısız');
+            }
+            // Success feedback
+            const actionsDiv = popup.querySelector('.user-history-actions');
+            if (actionsDiv) {
+                const label = action === 'ban' ? 'Banlandı' : `${duration}dk Timeout`;
+                actionsDiv.innerHTML = `<div style="width:100%;text-align:center;padding:6px;color:var(--green);font-weight:700;font-size:0.95rem;">✅ ${username} → ${label}</div>`;
+            }
+            fetchLogs();
+            fetchStats();
+        } catch (err) {
+            alert('İşlem başarısız: ' + err.message);
+        }
+    };
+
+    // Timeout options
+    popup.querySelectorAll('.uh-timeout-opt').forEach(opt => {
+        opt.addEventListener('click', () => {
+            const dur = parseInt(opt.dataset.dur);
+            executeAction('timeout', dur);
+        });
+    });
+
+    // Ban button
+    banBtn.addEventListener('click', () => {
+        if (confirm(`${username} kullanıcısını banlamak istediğinize emin misiniz?`)) {
+            executeAction('ban', 0);
+        }
+    });
+}
 
 window.appendChatMessage = function(msgData) {
     if (!el.chatControlMessages) return;
@@ -2105,9 +2362,33 @@ window.appendChatMessage = function(msgData) {
     msgEl.innerHTML = `
         ${modActionsHtml}
         ${badgesHtml}
-        <span class="kick-chat-username" style="color: ${color}; vertical-align: middle; margin-right: 6px; font-weight: 700;">${msgData.message.sender.username}</span>
+        <span class="kick-chat-username" style="color: ${color}; vertical-align: middle; margin-right: 6px; font-weight: 700; cursor: pointer;" data-username="${msgData.message.sender.username}" data-userid="${msgData.message.sender.id}">${msgData.message.sender.username}</span>
         <span class="kick-chat-content">${parsedContent}</span>
     `;
+
+    // Store message in client-side buffer for user history
+    if (!window._chatMessageBuffer) window._chatMessageBuffer = [];
+    window._chatMessageBuffer.push({
+        channel: msgData.channel,
+        username: msgData.message.sender.username,
+        userId: msgData.message.sender.id,
+        content: msgData.message.content || rawContent,
+        timestamp: msgData.message.timestamp || new Date().toISOString(),
+        color: color
+    });
+    if (window._chatMessageBuffer.length > 2000) {
+        window._chatMessageBuffer = window._chatMessageBuffer.slice(-1500);
+    }
+
+    // Username click → show message history
+    const usernameEl = msgEl.querySelector('.kick-chat-username');
+    if (usernameEl) {
+        usernameEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const clickedUser = usernameEl.dataset.username;
+            showUserMessageHistory(clickedUser, color);
+        });
+    }
 
     // Interaction Listener
     msgEl.addEventListener('click', async (e) => {
@@ -2217,8 +2498,8 @@ window.appendChatMessage = function(msgData) {
         el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
     }
 
-    // Prune DOM (Max 150 messages)
-    while (el.chatControlMessages.children.length > 150) {
+    // Prune DOM (Max 500 messages)
+    while (el.chatControlMessages.children.length > 500) {
         el.chatControlMessages.removeChild(el.chatControlMessages.firstChild);
     }
 };

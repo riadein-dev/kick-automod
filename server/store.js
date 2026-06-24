@@ -20,6 +20,37 @@ class Store {
     this.userMessageHistory = new Map(); // userId -> [{message, timestamp}]
     this.sseClients = new Set();
     this.userLastActive = new Map(); // userId -> timestamp
+    this.userSettings = new Map(); // userId -> { chatWatchedWords, chatDefaultTimeout, ... }
+    this.chatHistory = new Map(); // channelSlug -> [{sender, content, timestamp, ...}]
+  }
+
+  // Chat History Buffer
+  addChatMessage(channelSlug, msgData) {
+    if (!this.chatHistory.has(channelSlug)) {
+      this.chatHistory.set(channelSlug, []);
+    }
+    const buffer = this.chatHistory.get(channelSlug);
+    buffer.push(msgData);
+    if (buffer.length > 500) {
+      buffer.splice(0, buffer.length - 500);
+    }
+  }
+
+  getChatHistory(channelSlug, limit = 500) {
+    return (this.chatHistory.get(channelSlug) || []).slice(-limit);
+  }
+
+  // User Settings (server-side persistence)
+  getUserSettings(userId) {
+    return this.userSettings.get(String(userId)) || {};
+  }
+
+  updateUserSettings(userId, updates) {
+    const key = String(userId);
+    const existing = this.userSettings.get(key) || {};
+    const merged = { ...existing, ...updates };
+    this.userSettings.set(key, merged);
+    return merged;
   }
 
   // Generate default rules for a new user
@@ -102,14 +133,20 @@ class Store {
           }
           const rules = this.userRules.get(userId);
           
+          // Fallback: Eski kelimeler action/duration eksik olabilir
+          const wordAction = w.action || 'ban';
+          const wordDuration = w.duration || (wordAction === 'timeout' ? 5 : 0);
+          const wordChannel = w.channel || 'all';
+          
           // Hem ID hem de kelime içeriği bazında duplicate kontrolü
-          const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id || (cw.word === w.word && cw.action === w.action));
+          const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id || (cw.word === w.word && cw.action === wordAction));
           if (!exists) {
               rules.rules.bannedWords.words.push({
-                  id: w.id, channel: w.channel, word: w.word, exactMatch: w.exactMatch, action: w.action, duration: w.duration, addedBy: w.addedBy
+                  id: w.id, channel: wordChannel, word: w.word, exactMatch: w.exactMatch || false, action: wordAction, duration: wordDuration, addedBy: w.addedBy
               });
           }
       }
+      console.log(`[Store] Loaded words per user: ${[...this.userRules.entries()].map(([u, r]) => `${u}=${r.rules.bannedWords.words.length}`).join(', ')}`);
       
       try {
           const dbVisitors = await Visitor.find({}).sort({ lastLogin: -1 });

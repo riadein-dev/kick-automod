@@ -1394,3 +1394,23 @@ input, select { font-family: inherit; outline: none; }
     transform: translateZ(0);
     will-change: transform;
 }
+
+/* ═══════════════════════════════════════════════════
+   CHAT INPUT BAR
+   ═══════════════════════════════════════════════════ */
+.chat-input-bar {
+    display: flex;
+    gap: 8px;
+    padding: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+.chat-input-bar .input-field:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 2px rgba(0, 232, 123, 0.15);
+}
+.chat-input-bar .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

@@ -1,23 +1,27 @@
 {
-  "id": "mod_1781010943019_33qwa8",
+  "id": "mod_1782142075134_qhbyld",
   "ownerId": "lmmami06",
-  "userId": 73981050,
-  "username": "ardademrtony",
+  "userId": 90701926,
+  "username": "Enes_ulas36",
   "channel": "minik",
   "chatroomId": "24752062",
-  "messageId": "f7a9630a-cd86-40f4-bb4f-60687fe2e0fe",
-  "messageContent": "[emote:37226:KEKW]",
-  "reason": "Emote Spam (3x aynı mesaj)",
-  "ruleName": "emoteSpam",
+  "messageId": "853fe12d-a3a3-4567-9e04-cee1af3f571f",
+  "messageContent": "[emote:1730753:emojiAngry][emote:37226:KEKW]",
+  "reason": "Yasaklı kelime tespit edildi: \"emojiAngry\"",
+  "ruleName": "bannedWords",
   "type": "auto",
   "action": "timeout",
   "duration": 5,
   "status": "error",
-  "spamCount": 3,
-  "matchedWords": [],
-  "allViolations": [
-    "Emote Spam (3x aynı mesaj)"
+  "spamCount": null,
+  "matchedWords": [
+    "emojiAngry",
+    "emojiAngry"
   ],
-  "createdAt": "2026-06-09T13:15:43.019Z",
+  "allViolations": [
+    "Yasaklı kelime tespit edildi: \"emojiAngry\"",
+    "Yasaklı kelime tespit edildi: \"emojiAngry\""
+  ],
+  "createdAt": "2026-06-22T15:27:55.134Z",
   "error": "Kick API error 401: {\"data\":{},\"message\":\"Unauthorized\"}\n"
 }

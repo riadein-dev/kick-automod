@@ -146,6 +146,9 @@ async function startServer() {
     // Initialize WebSocket Manager after loading channels
     wsManager.connect();
     
+    // Start automatic token refresh (refreshes all expired tokens on startup + every 30 min)
+    automod.startTokenRefreshInterval();
+    
     // Setup Routes
 app.use('/auth', auth.router);
 
@@ -390,6 +393,53 @@ apiRouter.post('/manual-mod', async (req, res) => {
       console.error(`[ManualAction] Error:`, err);
       res.status(500).json({ error: err.message });
   }
+});
+
+// Chat Send Message
+apiRouter.post('/chat/send', async (req, res) => {
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const { chatroomId, content } = req.body;
+    if (!chatroomId || !content) return res.status(400).json({ error: 'Missing chatroomId or content' });
+    
+    try {
+        const kickClient = await automod._getClient(userId);
+        if (!kickClient) return res.status(401).json({ error: 'Kick token not available' });
+        
+        await kickClient.sendMessage(parseInt(chatroomId), content);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[API] Chat send error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Chat History (load previous messages)
+apiRouter.get('/chat/history', (req, res) => {
+    const channel = req.query.channel;
+    if (!channel) return res.status(400).json({ error: 'Missing channel' });
+    
+    const history = store.getChatHistory(channel, 500);
+    res.json(history);
+});
+
+// User Settings (per-user, server-side persistence)
+apiRouter.get('/user-settings', (req, res) => {
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const settings = store.getUserSettings(userId);
+    res.json(settings || {});
+});
+
+apiRouter.patch('/user-settings', (req, res) => {
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const updates = req.body;
+    store.updateUserSettings(userId, updates);
+    res.json({ ok: true });
 });
 
 // Channels management
