@@ -2,7 +2,7 @@
  * Kick AutoMod Dashboard - In-Memory Store & MongoDB Persistence
  * Moderasyon logları, kanal durumları ve konfigürasyon
  */
-const { Channel, Word, AutomodRule, Visitor } = require('./db');
+const { Channel, Word, AutomodRule, Visitor, ChatMessage } = require('./db');
 
 class Store {
   constructor() {
@@ -33,6 +33,21 @@ class Store {
     buffer.push(msgData);
     if (buffer.length > 500) {
       buffer.splice(0, buffer.length - 500);
+    }
+    
+    // Save to MongoDB for persistence across server restarts
+    if (process.env.MONGODB_URI) {
+        ChatMessage.create({
+            channelSlug: channelSlug,
+            messageId: msgData.id,
+            content: msgData.content,
+            username: msgData.username,
+            userId: msgData.userId || msgData.user_id,
+            timestamp: msgData.timestamp,
+            sender: msgData.sender
+        }).catch(err => {
+            console.error('[Store] Failed to save chat message to DB:', err.message);
+        });
     }
   }
 
@@ -153,6 +168,28 @@ class Store {
           this.visitors = dbVisitors.map(v => v.toObject());
       } catch (e) {
           console.error('[Store] Visitor load error:', e);
+      }
+      
+      try {
+          // Her kanal için sadece son 200 mesajı yükle
+          const recentMessages = await ChatMessage.find({}).sort({ createdAt: -1 }).limit(10000); // En son mesajlar
+          // Eski mesajlardan yeniye doğru dizilmeli
+          recentMessages.reverse();
+          for (const msg of recentMessages) {
+              if (!this.chatHistory.has(msg.channelSlug)) {
+                  this.chatHistory.set(msg.channelSlug, []);
+              }
+              this.chatHistory.get(msg.channelSlug).push({
+                  id: msg.messageId,
+                  content: msg.content,
+                  username: msg.username,
+                  userId: msg.userId,
+                  timestamp: msg.timestamp,
+                  sender: msg.sender
+              });
+          }
+      } catch (e) {
+          console.error('[Store] ChatMessage load error:', e);
       }
       
       console.log('[Store] Veritabanından veriler başarıyla yüklendi.');

@@ -11,29 +11,29 @@ const state = {
     activeTab: 'all'
 };
 
-// ===== API Fetch Wrapper (CSRF KorumasÄ±) =====
+// ===== API Fetch Wrapper (CSRF Koruması) =====
 let csrfToken = null;
 async function apiFetch(url, options = {}) {
-    // Sadece Kick API hariÃ§ bizim kendi API'lerimizde CSRF uygula
+    // Sadece Kick API hariç bizim kendi API'lerimizde CSRF uygula
     if (!url.startsWith('http') && (options.method && options.method !== 'GET')) {
         if (!csrfToken) {
             try {
                 const res = await fetch('/api/csrf-token');
                 const data = await res.json();
                 csrfToken = data.csrfToken;
-            } catch (e) { console.error('CSRF token alÄ±namadÄ±:', e); }
+            } catch (e) { console.error('CSRF token alınamadı:', e); }
         }
         options.headers = {
             ...options.headers,
             'CSRF-Token': csrfToken
         };
-        // Content-Type otomatik JSON deÄŸilse, ama body string ise JSON yapalÄ±m
+        // Content-Type otomatik JSON değilse, ama body string ise JSON yapalım
         if (options.body && typeof options.body === 'string' && !options.headers['Content-Type']) {
             options.headers['Content-Type'] = 'application/json';
         }
     }
     const response = await fetch(url, options);
-    // CSRF hatasÄ± alÄ±rsak tokeni sÄ±fÄ±rla
+    // CSRF hatası alırsak tokeni sıfırla
     if (response.status === 403) {
         const errorData = await response.clone().json().catch(() => ({}));
         if (errorData.error && errorData.error.includes('CSRF')) {
@@ -191,7 +191,7 @@ async function initApp() {
         const savedTab = localStorage.getItem('activeTab');
         if (savedTab) state.activeTab = savedTab;
 
-        // Kanallar artÄ±k sayfayÄ± yenileyince silinmeyecek, kalÄ±cÄ± olacak.
+        // Kanallar artık sayfayı yenileyince silinmeyecek, kalıcı olacak.
 
         await Promise.all([fetchStats(), fetchChannels(), fetchLogs()]);
         
@@ -333,19 +333,19 @@ function updateUserProfile() {
     
     let name = state.user.username || state.user.name || state.user.slug || state.user.preferred_username;
     
-    // EÄŸer isim bulunamadÄ±ysa arka plandan gelene kadar geÃ§ici isim ver
-    if (!name || name === 'KullanÄ±cÄ±' || name === 'Kick User') {
-        // Ã–nceden kaydedilmiÅŸ varsa onu kullan (sessizce)
+    // Eğer isim bulunamadıysa arka plandan gelene kadar geçici isim ver
+    if (!name || name === 'Kullanıcı' || name === 'Kick User') {
+        // Önceden kaydedilmiş varsa onu kullan (sessizce)
         const cached = localStorage.getItem('customKickUsername');
         if (cached) {
             name = cached;
         } else {
-            // ID varsa onu gÃ¶ster, yoksa YÃ¶netici yaz
-            name = state.user.id ? `User_${String(state.user.id).substring(0,4)}` : 'YÃ¶netici';
+            // ID varsa onu göster, yoksa Yönetici yaz
+            name = state.user.id ? `User_${String(state.user.id).substring(0,4)}` : 'Yönetici';
         }
     }
     
-    if (name.toLowerCase() === 'riadein') name = 'Riadein'; // GÃ¶rsellik iÃ§in baÅŸ harfi bÃ¼yÃ¼t
+    if (name.toLowerCase() === 'riadein') name = 'Riadein'; // Görsellik için baş harfi büyüt
 
     const initial = name.charAt(0).toUpperCase();
 
@@ -354,7 +354,7 @@ function updateUserProfile() {
     if (el.sidebarUserName) el.sidebarUserName.textContent = name;
     if (el.sidebarAvatar) el.sidebarAvatar.textContent = initial;
 
-    // Admin yetkisi kontrolÃ¼ - %100 GÃ¼venli (Sadece Kick'ten Riadein dÃ¶nerse)
+    // Admin yetkisi kontrolü - %100 Güvenli (Sadece Kick'ten Riadein dönerse)
     if (el.adminNavBtn) {
         if (name && name.toLowerCase() === 'riadein') {
             el.adminNavBtn.style.display = 'flex';
@@ -427,7 +427,7 @@ function renderChannelTabs() {
                 $$('#chatControlTabs .channel-tab').forEach(b => b.classList.remove('active'));
                 ccBtn.classList.add('active');
                 state.chatControlActiveTab = ch.slug;
-                if (el.chatControlMessages) el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat baÄŸlandÄ±. Ä°zleniyor...</div>';
+                if (el.chatControlMessages) el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
             });
             el.chatControlTabs.appendChild(ccBtn);
         }
@@ -469,11 +469,11 @@ function renderChannelsList() {
         `;
 
         row.querySelector('.ch-action-btn.delete').addEventListener('click', async () => {
-            if (confirm(`${ch.slug} kanalÄ±nÄ± kaldÄ±rmak istediÄŸinize emin misiniz?`)) {
+            if (confirm(`${ch.slug} kanalını kaldırmak istediğinize emin misiniz?`)) {
                 try {
                     await apiFetch(`/api/channels/${ch.id}`, { method: 'DELETE' });
                     fetchChannels();
-                } catch (e) { alert('Hata oluÅŸtu'); }
+                } catch (e) { alert('Hata oluştu'); }
             }
         });
 
@@ -496,7 +496,7 @@ let editingChannel = null;
 
 function openChannelEditModal(slug) {
     editingChannel = slug;
-    if (el.channelEditTitle) el.channelEditTitle.textContent = `${slug} - YasaklÄ± Kelimeler`;
+    if (el.channelEditTitle) el.channelEditTitle.textContent = `${slug} - Yasaklı Kelimeler`;
     if (el.channelEditModal) el.channelEditModal.classList.add('open');
     loadChannelWords(slug);
 }
@@ -514,7 +514,7 @@ async function loadChannelWords(slug) {
         const data = await res.json();
         const words = (data.rules?.bannedWords?.words || []).filter(w => w.channel === slug);
         if (words.length === 0) {
-            el.channelWordsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color: var(--text-3);">HenÃ¼z kelime eklenmedi</td></tr>';
+            el.channelWordsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color: var(--text-3);">Henüz kelime eklenmedi</td></tr>';
             return;
         }
         el.channelWordsBody.innerHTML = words.map(w => `
@@ -590,7 +590,7 @@ function renderLogs() {
             const rawMsg = log.messageContent || log.allViolations?.[0] || log.reason || '';
             const msgContent = parseKickEmotes(rawMsg, log.matchedWords);
 
-            // Spam panelinde butonlar her zaman gÃ¶rÃ¼nsÃ¼n, iÅŸlem yapÄ±lmÄ±ÅŸ olsa bile ezebilmek iÃ§in.
+            // Spam panelinde butonlar her zaman görünsün, işlem yapılmış olsa bile ezebilmek için.
             let actionsHtml = `
                 <div class="spam-actions">
                     <button class="spam-action-btn" onclick="handleTimeoutAction('${log.id}', 300)">5dk</button>
@@ -602,7 +602,7 @@ function renderLogs() {
             `;
             
             if (log.status !== 'pending') {
-                actionsHtml += `<div style="color:var(--text-3); font-size:0.75rem; text-align: center; margin-top: 8px;">Mevcut Durum: ${log.status === 'applied' ? 'UygulandÄ±' : log.status} (${log.action || ''})</div>`;
+                actionsHtml += `<div style="color:var(--text-3); font-size:0.75rem; text-align: center; margin-top: 8px;">Mevcut Durum: ${log.status === 'applied' ? 'Uygulandı' : log.status} (${log.action || ''})</div>`;
             }
 
             let spamCount = log.spamCount || 3;
@@ -614,7 +614,7 @@ function renderLogs() {
             card.innerHTML = `
                 <div class="spam-card-header">
                     <span class="spam-username">${log.username}</span>
-                    <span class="spam-badge">${spamCount}. aynÄ± mesaj</span>
+                    <span class="spam-badge">${spamCount}. aynı mesaj</span>
                 </div>
                 <div class="spam-main-msg">${msgContent}</div>
                 ${actionsHtml}
@@ -638,9 +638,9 @@ function renderLogs() {
 
         let statusHtml = '';
         if (log.status === 'pending') statusHtml = '<span style="color:var(--orange)">Bekliyor</span>';
-        else if (log.status === 'applied') statusHtml = '<span style="color:var(--green)">UygulandÄ±</span>';
+        else if (log.status === 'applied') statusHtml = '<span style="color:var(--green)">Uygulandı</span>';
         else if (log.status === 'rejected') statusHtml = '<span style="color:var(--text-3)">Reddedildi</span>';
-        else if (log.status === 'unbanned') statusHtml = '<span style="color:var(--blue)">Ban KaldÄ±rÄ±ldÄ±</span>';
+        else if (log.status === 'unbanned') statusHtml = '<span style="color:var(--blue)">Ban Kaldırıldı</span>';
         else statusHtml = '<span style="color:var(--red)">Hata</span>';
 
         let isBanOrTimeout = false;
@@ -668,11 +668,11 @@ function renderLogs() {
         if (log.action === 'timeout') {
             let m = log.duration || 5;
             if (m >= 10080) actionDetail = (m/10080) + ' Hafta Timeout';
-            else if (m >= 1440) actionDetail = (m/1440) + ' GÃ¼n Timeout';
+            else if (m >= 1440) actionDetail = (m/1440) + ' Gün Timeout';
             else if (m >= 60) actionDetail = (m/60) + ' Saat Timeout';
             else actionDetail = m + 'dk Timeout';
         }
-        else if (log.action === 'ban') actionDetail = 'SÄ±nÄ±rsÄ±z Ban';
+        else if (log.action === 'ban') actionDetail = 'Sınırsız Ban';
         else if (log.action === 'delete') actionDetail = 'Mesaj Silindi';
         else actionDetail = log.action || '-';
         
@@ -693,7 +693,7 @@ function renderLogs() {
         el.modQueueBody.appendChild(tr);
     });
 
-    // Mod Queue ve Chat Kontrol SaÄŸ TarafÄ± EÅŸzamanlama
+    // Mod Queue ve Chat Kontrol Sağ Tarafı Eşzamanlama
     if (el.chatSpamQueueBody && el.spamQueueBody) {
         const spamClone = el.spamQueueBody.cloneNode(true);
         el.chatSpamQueueBody.innerHTML = '';
@@ -776,10 +776,10 @@ async function fetchStats() {
         const chip = el.wsStatusDot?.closest('.status-chip');
         if (data.wsStatus?.connected) {
             chip?.classList.add('connected');
-            el.wsStatusText.textContent = 'WebSocket BaÄŸlÄ±';
+            el.wsStatusText.textContent = 'WebSocket Bağlı';
         } else {
             chip?.classList.remove('connected');
-            el.wsStatusText.textContent = 'BaÄŸlantÄ± Koptu';
+            el.wsStatusText.textContent = 'Bağlantı Koptu';
         }
         
         // Sync Spam Mode Toggle UI with server state
@@ -877,14 +877,14 @@ async function fetchAdminVisitors() {
         let res = await apiFetch('/api/admin/visitors');
         
         if (!res.ok) {
-            el.visitorsListBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--red);">Yetkisiz eriÅŸim. Sadece yÃ¶netici (Riadein) gÃ¶rebilir.</td></tr>`;
+            el.visitorsListBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--red);">Yetkisiz erişim. Sadece yönetici (Riadein) görebilir.</td></tr>`;
             return;
         }
         
         const visitors = await res.json();
         
         if (visitors.length === 0) {
-            el.visitorsListBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-3);">HenÃ¼z ziyaretÃ§i kaydÄ± yok.</td></tr>`;
+            el.visitorsListBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-3);">Henüz ziyaretçi kaydı yok.</td></tr>`;
             return;
         }
         
@@ -898,14 +898,14 @@ async function fetchAdminVisitors() {
             
             // Info string
             let extInfo = '';
-            if (v.email) extInfo += `<div>Ã¢Å“â€°Ã¯Â¸Â ${v.email}</div>`;
-            if (v.followers !== undefined) extInfo += `<div style="color:var(--orange)">ÄŸÅ¸â€˜Â¥ ${v.followers} TakipÃ§i</div>`;
-            if (v.bio) extInfo += `<div style="font-size: 0.7rem; color:var(--text-3); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${v.bio}">ÄŸÅ¸â€œÂ ${v.bio}</div>`;
+            if (v.email) extInfo += `<div>âÅ“â€°Ã¯Â¸Â ${v.email}</div>`;
+            if (v.followers !== undefined) extInfo += `<div style="color:var(--orange)">ğÅ¸â€˜Â¥ ${v.followers} Takipçi</div>`;
+            if (v.bio) extInfo += `<div style="font-size: 0.7rem; color:var(--text-3); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${v.bio}">ğÅ¸â€œÂ ${v.bio}</div>`;
             
             const uaString = v.userAgent ? v.userAgent.substring(0, 40) + '...' : '-';
             
             const actionsHtml = v.isBanned ? 
-                `<button class="btn-primary unban-btn" data-id="${v.id}" style="background: rgba(83,252,24,0.1); color: var(--green); border: 1px solid var(--green); padding: 4px 8px; font-size: 0.75rem;">YasaÄŸÄ± KaldÄ±r</button>` : 
+                `<button class="btn-primary unban-btn" data-id="${v.id}" style="background: rgba(83,252,24,0.1); color: var(--green); border: 1px solid var(--green); padding: 4px 8px; font-size: 0.75rem;">Yasağı Kaldır</button>` : 
                 `<button class="btn-primary ban-btn" data-id="${v.id}" style="background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid var(--red); padding: 4px 8px; font-size: 0.75rem;">Banla</button>`;
 
             const trStyle = v.isBanned ? 'opacity: 0.6; background: rgba(239,68,68,0.05);' : '';
@@ -922,7 +922,7 @@ async function fetchAdminVisitors() {
                 <td style="${trStyle}">${extInfo || '-'}</td>
                 <td style="color:var(--text-2); font-size: 0.8rem; ${trStyle}">
                     <div>${firstDate}</div>
-                    <div style="font-size:0.7rem; color:var(--text-3);">KayÄ±t: ${createdAtDate}</div>
+                    <div style="font-size:0.7rem; color:var(--text-3);">Kayıt: ${createdAtDate}</div>
                 </td>
                 <td style="${trStyle}"><span style="padding: 2px 8px; border-radius: 12px; background:var(--bg-elevated); border:1px solid var(--border); font-size:0.8rem;">${v.loginCount} kez</span></td>
                 <td style="color:var(--text-3); font-size: 0.75rem; ${trStyle}" title="${v.userAgent}">${uaString}</td>
@@ -934,7 +934,7 @@ async function fetchAdminVisitors() {
         // Event Listeners for Ban/Unban
         document.querySelectorAll('.ban-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if (confirm('Bu kullanÄ±cÄ±nÄ±n siteye eriÅŸimini kalÄ±cÄ± olarak yasaklamak istediÄŸinize emin misiniz?')) {
+                if (confirm('Bu kullanıcının siteye erişimini kalıcı olarak yasaklamak istediğinize emin misiniz?')) {
                     const id = e.currentTarget.dataset.id;
                     try {
                         const res = await apiFetch('/api/admin/ban', {
@@ -944,15 +944,15 @@ async function fetchAdminVisitors() {
                         });
                         const data = await res.json();
                         if (res.ok) fetchAdminVisitors();
-                        else alert(data.error || 'Hata oluÅŸtu');
-                    } catch(err) { alert('Hata oluÅŸtu'); }
+                        else alert(data.error || 'Hata oluştu');
+                    } catch(err) { alert('Hata oluştu'); }
                 }
             });
         });
         
         document.querySelectorAll('.unban-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if (confirm('Bu kullanÄ±cÄ±nÄ±n yasaÄŸÄ±nÄ± kaldÄ±rmak istediÄŸinize emin misiniz?')) {
+                if (confirm('Bu kullanıcının yasağını kaldırmak istediğinize emin misiniz?')) {
                     const id = e.currentTarget.dataset.id;
                     try {
                         const res = await apiFetch('/api/admin/unban', {
@@ -962,8 +962,8 @@ async function fetchAdminVisitors() {
                         });
                         const data = await res.json();
                         if (res.ok) fetchAdminVisitors();
-                        else alert(data.error || 'Hata oluÅŸtu');
-                    } catch(err) { alert('Hata oluÅŸtu'); }
+                        else alert(data.error || 'Hata oluştu');
+                    } catch(err) { alert('Hata oluştu'); }
                 }
             });
         });
@@ -976,11 +976,11 @@ async function fetchAdminVisitors() {
 function renderWords() {
     if (!el.wordsListBody || !state.automodRules) return;
     const words = state.automodRules.rules.bannedWords.words || [];
-    el.wordCountLabel.textContent = `Yasak kelimeler ve moderasyon kurallarÄ± (${words.length} kelime)`;
+    el.wordCountLabel.textContent = `Yasak kelimeler ve moderasyon kuralları (${words.length} kelime)`;
     el.wordsListBody.innerHTML = '';
     
     if (words.length === 0) {
-        el.wordsListBody.innerHTML = `<tr><td colspan="5" class="text-center" style="color:var(--text-3); padding: 2rem;">HenÃ¼z kelime eklenmedi</td></tr>`;
+        el.wordsListBody.innerHTML = `<tr><td colspan="5" class="text-center" style="color:var(--text-3); padding: 2rem;">Henüz kelime eklenmedi</td></tr>`;
         return;
     }
 
@@ -993,16 +993,16 @@ function renderWords() {
         else if (w.action === 'warn') actionBadge = '<span style="color:var(--blue); font-weight:700; font-size:0.75rem; background:rgba(59,130,246,0.1); padding:4px 8px; border-radius:4px;">UYARI</span>';
         else if (w.action === 'whitelist') actionBadge = '<span style="color:var(--green); font-weight:700; font-size:0.75rem; background:rgba(83,252,24,0.1); padding:4px 8px; border-radius:4px;">WHITELIST</span>';
 
-        const durationStr = w.action === 'timeout' ? `${w.duration}dk` : (w.action === 'ban' ? 'SÄ±nÄ±rsÄ±z' : '-');
-        const wordHtml = w.exactMatch ? `${w.word} <span style="background:var(--green); color:#000; padding: 2px 6px; border-radius:4px; font-size:0.65rem; white-space:nowrap;">Tam CÃ¼mle</span>` : w.word;
+        const durationStr = w.action === 'timeout' ? `${w.duration}dk` : (w.action === 'ban' ? 'Sınırsız' : '-');
+        const wordHtml = w.exactMatch ? `${w.word} <span style="background:var(--green); color:#000; padding: 2px 6px; border-radius:4px; font-size:0.65rem; white-space:nowrap;">Tam Cümle</span>` : w.word;
 
         tr.innerHTML = `
             <td><div style="color:#fff; font-family:monospace; background:#222; padding:6px 10px; border-radius:4px; display:inline-flex; align-items:center; gap:8px;">${wordHtml}</div></td>
-            <td style="color:var(--text-2);">${w.channel || 'TÃ¼m Kanallar'}</td>
+            <td style="color:var(--text-2);">${w.channel || 'Tüm Kanallar'}</td>
             <td>${actionBadge}</td>
             <td style="color:var(--text-2);">${durationStr}</td>
             <td class="text-right">
-                <button class="action-btn approve edit-word-btn" data-id="${w.id}" title="DÃ¼zenle">
+                <button class="action-btn approve edit-word-btn" data-id="${w.id}" title="Düzenle">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                 </button>
                 <button class="action-btn reject delete-word-btn" data-id="${w.id}" title="Sil">
@@ -1016,7 +1016,7 @@ function renderWords() {
     document.querySelectorAll('.delete-word-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const id = e.currentTarget.dataset.id;
-            if(confirm('Kelimeyi silmek istediÄŸinize emin misiniz?')) {
+            if(confirm('Kelimeyi silmek istediğinize emin misiniz?')) {
                 try {
                     await apiFetch(`/api/words/${id}`, { method: 'DELETE' });
                     await fetchStats(); // re-fetches rules
@@ -1032,7 +1032,7 @@ function renderWords() {
             const w = state.automodRules.rules.bannedWords.words.find(x => x.id === id);
             if (!w) return;
             
-            el.wordChannelSelect.innerHTML = '<option value="" disabled>Kanal SeÃ§in</option><option value="all">TÃ¼m Kanallar</option>';
+            el.wordChannelSelect.innerHTML = '<option value="" disabled>Kanal Seçin</option><option value="all">Tüm Kanallar</option>';
             state.channels.forEach(ch => {
                 const opt = document.createElement('option');
                 opt.value = ch.slug;
@@ -1071,7 +1071,7 @@ function renderAllLogs() {
     el.allLogsBody.innerHTML = '';
     
     if (state.logs.length === 0) {
-        el.allLogsBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-3);">HenÃ¼z log bulunmuyor</td></tr>';
+        el.allLogsBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-3);">Henüz log bulunmuyor</td></tr>';
         return;
     }
 
@@ -1083,16 +1083,16 @@ function renderAllLogs() {
 
         let statusHtml = '';
         if (log.status === 'pending') statusHtml = '<span style="color:var(--orange)">Bekliyor</span>';
-        else if (log.status === 'applied') statusHtml = '<span style="color:var(--green)">UygulandÄ±</span>';
+        else if (log.status === 'applied') statusHtml = '<span style="color:var(--green)">Uygulandı</span>';
         else if (log.status === 'rejected') statusHtml = '<span style="color:var(--text-3)">Reddedildi</span>';
-        else if (log.status === 'unbanned') statusHtml = '<span style="color:var(--blue)">Ban KaldÄ±rÄ±ldÄ±</span>';
+        else if (log.status === 'unbanned') statusHtml = '<span style="color:var(--blue)">Ban Kaldırıldı</span>';
         else statusHtml = '<span style="color:var(--red)">Hata</span>';
 
         let actionDetail = '';
-        if (log.action === 'timeout') { let m = log.duration || 5; if (m >= 10080) actionDetail = (m/10080) + ' Hafta Timeout'; else if (m >= 1440) actionDetail = (m/1440) + ' GÃ¼n Timeout'; else if (m >= 60) actionDetail = (m/60) + ' Saat Timeout'; else actionDetail = m + 'dk Timeout'; }
-        else if (log.action === 'ban') actionDetail = 'SÄ±nÄ±rsÄ±z Ban';
+        if (log.action === 'timeout') { let m = log.duration || 5; if (m >= 10080) actionDetail = (m/10080) + ' Hafta Timeout'; else if (m >= 1440) actionDetail = (m/1440) + ' Gün Timeout'; else if (m >= 60) actionDetail = (m/60) + ' Saat Timeout'; else actionDetail = m + 'dk Timeout'; }
+        else if (log.action === 'ban') actionDetail = 'Sınırsız Ban';
         else if (log.action === 'delete') actionDetail = 'Mesaj Silindi';
-        else if (log.action === 'warn') actionDetail = 'UyarÄ± (Ä°ÅŸlem Yok)';
+        else if (log.action === 'warn') actionDetail = 'Uyarı (İşlem Yok)';
         else actionDetail = log.action || '-';
         
         let rawMsgHtml = log.messageContent || log.allViolations?.[0] || log.reason || '-';
@@ -1152,9 +1152,9 @@ async function handleAction(logId, status, actionType, duration = null) {
             fetchStats();
         } else {
             const errorData = await res.json();
-            alert('Ä°ÅŸlem baÅŸarÄ±sÄ±z (LÃ¼tfen bu hatayÄ± bana sÃ¶yleyin): ' + (errorData.error || 'Bilinmeyen hata') + ' Detay: ' + (errorData.details || ''));
+            alert('İşlem başarısız (Lütfen bu hatayı bana söyleyin): ' + (errorData.error || 'Bilinmeyen hata') + ' Detay: ' + (errorData.details || ''));
         }
-    } catch (err) { console.error('Action error:', err); alert('Ä°ÅŸlem baÅŸarÄ±sÄ±z.'); }
+    } catch (err) { console.error('Action error:', err); alert('İşlem başarısız.'); }
 }
 
 async function handleTimeoutAction(logId, durationInSeconds) {
@@ -1238,7 +1238,7 @@ function setupSoundControl() {
 function attachHoverSounds() {
     if (typeof SoundEngine === 'undefined') return;
     
-    // TÃ¼m etkileÅŸimli elementlere hover sesi ekle
+    // Tüm etkileşimli elementlere hover sesi ekle
     const selectors = [
         'button', '.btn-primary', '.sidebar-link', '.channel-tab',
         '.icon-btn', '.slide-toggle-btn', '.spam-action-btn',
@@ -1246,7 +1246,7 @@ function attachHoverSounds() {
         'select', 'a'
     ].join(', ');
 
-    // Event delegation - daha performanslÄ±
+    // Event delegation - daha performanslı
     document.addEventListener('mouseenter', (e) => {
         const target = e.target.closest(selectors);
         if (target && !target._soundHoverBound) {
@@ -1290,7 +1290,7 @@ function setupSSE() {
     });
     src.addEventListener('newModeration', e => {
         const d = JSON.parse(e.data);
-        // AynÄ± log zaten varsa tekrar ekleme (SSE reconnect veya race condition Ã¶nlemi)
+        // Aynı log zaten varsa tekrar ekleme (SSE reconnect veya race condition önlemi)
         if (state.logs.some(l => l.id === d.log.id)) return;
         state.logs.unshift(d.log);
         if (state.logs.length > 100) state.logs.pop();
@@ -1298,7 +1298,7 @@ function setupSSE() {
         renderLogs(); 
         renderAllLogs();
         updateStatsUI();
-        // Bildirim sesi Ã§al
+        // Bildirim sesi çal
         if (typeof SoundEngine !== 'undefined') SoundEngine.playNotification();
     });
     src.addEventListener('updateModeration', e => {
@@ -1331,10 +1331,10 @@ function setupSSE() {
         const chip = el.wsStatusDot?.closest('.status-chip');
         if (d.connected) {
             chip?.classList.add('connected');
-            el.wsStatusText.textContent = 'WebSocket BaÄŸlÄ±';
+            el.wsStatusText.textContent = 'WebSocket Bağlı';
         } else {
             chip?.classList.remove('connected');
-            el.wsStatusText.textContent = 'BaÄŸlantÄ± Koptu';
+            el.wsStatusText.textContent = 'Bağlantı Koptu';
         }
     });
     src.addEventListener('chatMessage', e => {
@@ -1349,7 +1349,7 @@ function setupSSE() {
 function setupEventListeners() {
     // --- SES KONTROL AYARLARI ---
     setupSoundControl();
-    // --- HOVER SES EFEKTLERÄ° ---
+    // --- HOVER SES EFEKTLERİ ---
     attachHoverSounds();
 
     // Sidebar
@@ -1397,7 +1397,7 @@ function setupEventListeners() {
     
     if (el.clearVisitorsBtn) {
         el.clearVisitorsBtn.addEventListener('click', async () => {
-            if (confirm('TÃ¼m ziyaretÃ§i kayÄ±tlarÄ±nÄ± silmek istediÄŸinize emin misiniz?')) {
+            if (confirm('Tüm ziyaretçi kayıtlarını silmek istediğinize emin misiniz?')) {
                 try {
                     await apiFetch('/api/admin/visitors', { method: 'DELETE' });
                     fetchAdminVisitors();
@@ -1410,26 +1410,26 @@ function setupEventListeners() {
     const clearLogsBtn = $('#clearLogsBtn');
     if (clearLogsBtn) {
         clearLogsBtn.addEventListener('click', async () => {
-            if (confirm('TÃ¼m moderasyon loglarÄ±nÄ± temizlemek istediÄŸinize emin misiniz?')) {
+            if (confirm('Tüm moderasyon loglarını temizlemek istediğinize emin misiniz?')) {
                 try {
                     await apiFetch('/api/logs', { method: 'DELETE' });
                     state.logs = [];
                     renderLogs();
                     renderAllLogs();
-                } catch(e) { alert('Hata oluÅŸtu'); }
+                } catch(e) { alert('Hata oluştu'); }
             }
         });
     }
 
     if (el.clearAllLogsBtn) {
         el.clearAllLogsBtn.addEventListener('click', async () => {
-            if (confirm('TÃ¼m moderasyon loglarÄ±nÄ± temizlemek istediÄŸinize emin misiniz?')) {
+            if (confirm('Tüm moderasyon loglarını temizlemek istediğinize emin misiniz?')) {
                 try {
                     await apiFetch('/api/logs', { method: 'DELETE' });
                     state.logs = [];
                     renderLogs();
                     renderAllLogs();
-                } catch(e) { alert('Hata oluÅŸtu'); }
+                } catch(e) { alert('Hata oluştu'); }
             }
         });
     }
@@ -1463,7 +1463,7 @@ function setupEventListeners() {
                 updateSystemToggleUI();
             } catch (err) {
                 console.error('System toggle error:', err);
-                alert('Sistem durumu deÄŸiÅŸtirilemedi!');
+                alert('Sistem durumu değiştirilemedi!');
             } finally {
                 el.systemToggleBtn.style.opacity = '1';
                 el.systemToggleBtn.style.pointerEvents = 'auto';
@@ -1483,7 +1483,7 @@ function setupEventListeners() {
     // Modal
     const popularStreamers = ['Eray', 'Elraenn', 'Jahrein', 'KendineMuzisyen', 'Wtcn', 'Unlost', 'AdinRoss', 'xQc'];
     el.addChannelBtn?.addEventListener('click', () => {
-        el.channelInput.placeholder = `Ã–rn: ${popularStreamers[Math.floor(Math.random() * popularStreamers.length)]}`;
+        el.channelInput.placeholder = `Örn: ${popularStreamers[Math.floor(Math.random() * popularStreamers.length)]}`;
         el.addChannelModal.classList.add('open');
         setTimeout(() => el.channelInput.focus(), 150);
     });
@@ -1509,7 +1509,7 @@ function setupEventListeners() {
     el.confirmAddChannel?.addEventListener('click', async () => {
         const slug = el.channelInput.value.trim().toLowerCase();
         if (!slug) return;
-        el.confirmAddChannel.textContent = 'BaÄŸlanÄ±yor...';
+        el.confirmAddChannel.textContent = 'Bağlanıyor...';
         el.confirmAddChannel.disabled = true;
 
         try {
@@ -1526,7 +1526,7 @@ function setupEventListeners() {
                 } catch (e) { console.warn('Frontend kick fetch failed:', e); }
             }
 
-            el.confirmAddChannel.textContent = 'BaÄŸlanÄ±yor...';
+            el.confirmAddChannel.textContent = 'Bağlanıyor...';
 
             const res = await apiFetch('/api/channels', {
                 method: 'POST',
@@ -1540,9 +1540,9 @@ function setupEventListeners() {
             } else {
                 alert('Hata: ' + (data.error || 'Kanal eklenemedi'));
             }
-        } catch (err) { alert('BaÄŸlantÄ± hatasÄ±'); }
+        } catch (err) { alert('Bağlantı hatası'); }
         finally {
-            el.confirmAddChannel.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Kanala BaÄŸlan`;
+            el.confirmAddChannel.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Kanala Bağlan`;
             el.confirmAddChannel.disabled = false;
         }
     });
@@ -1607,7 +1607,7 @@ function setupEventListeners() {
                     alert('Ayarlar kaydedilemedi.');
                 }
             } catch (err) {
-                alert('BaÄŸlantÄ± hatasÄ±.');
+                alert('Bağlantı hatası.');
             }
         });
     }
@@ -1687,10 +1687,10 @@ function setupEventListeners() {
                     el.shareCodeDisplay.textContent = data.shareCode;
                     el.shareWordsModal.classList.add('open');
                 } else {
-                    alert(data.error || 'Kod oluÅŸturulamadÄ±.');
+                    alert(data.error || 'Kod oluşturulamadı.');
                 }
             } catch (e) {
-                alert('BaÄŸlantÄ± hatasÄ±.');
+                alert('Bağlantı hatası.');
             }
         });
         
@@ -1703,10 +1703,10 @@ function setupEventListeners() {
             try {
                 await navigator.clipboard.writeText(code);
                 const originalText = el.copyShareCodeBtn.innerHTML;
-                el.copyShareCodeBtn.innerHTML = '<i class="fa fa-check"></i> KopyalandÄ±!';
+                el.copyShareCodeBtn.innerHTML = '<i class="fa fa-check"></i> Kopyalandı!';
                 setTimeout(() => el.copyShareCodeBtn.innerHTML = originalText, 2000);
             } catch (e) {
-                alert('Panoya kopyalanamadÄ±.');
+                alert('Panoya kopyalanamadı.');
             }
         });
     }
@@ -1758,7 +1758,7 @@ function setupEventListeners() {
             otpInputs.forEach(input => code += input.value.trim());
             
             if (code.length !== 5) {
-                alert('LÃ¼tfen 5 haneli kodu tam girin.');
+                alert('Lütfen 5 haneli kodu tam girin.');
                 return;
             }
 
@@ -1770,15 +1770,15 @@ function setupEventListeners() {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(`BaÅŸarÄ±lÄ±! ${data.importedCount} adet yeni kelime listenize eklendi.`);
+                    alert(`Başarılı! ${data.importedCount} adet yeni kelime listenize eklendi.`);
                     el.importWordsModal.classList.remove('open');
                     await fetchStats(); // Updates state.automodRules
                     fetchCustomWords(); // Renders the list
                 } else {
-                    alert(data.error || 'Ä°Ã§e aktarma baÅŸarÄ±sÄ±z.');
+                    alert(data.error || 'İçe aktarma başarısız.');
                 }
             } catch (e) {
-                alert('BaÄŸlantÄ± hatasÄ±.');
+                alert('Bağlantı hatası.');
             }
         });
     }
@@ -1786,8 +1786,8 @@ function setupEventListeners() {
     if (el.deleteAllWordsBtn) {
         el.deleteAllWordsBtn.addEventListener('click', async () => {
             const confirmed = await window.showConfirm(
-                'TÃ¼m Kelimeleri Sil', 
-                'TÃ¼m Ã¶zel kelimeleri silmek istediÄŸinize emin misiniz? Bu iÅŸlem geri alÄ±namaz!', 
+                'Tüm Kelimeleri Sil', 
+                'Tüm özel kelimeleri silmek istediğinize emin misiniz? Bu işlem geri alınamaz!', 
                 'Evet, Sil', 
                 'background: var(--red); color: #fff; border-color: var(--red); width: 120px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);'
             );
@@ -1801,10 +1801,10 @@ function setupEventListeners() {
                         fetchCustomWords();
                     } else {
                         // Let's use standard alert for errors, or we can use another custom modal. For now standard is fine.
-                        alert('Silme iÅŸlemi baÅŸarÄ±sÄ±z.');
+                        alert('Silme işlemi başarısız.');
                     }
                 } catch (e) {
-                    alert('BaÄŸlantÄ± hatasÄ±.');
+                    alert('Bağlantı hatası.');
                 }
             }
         });
@@ -1813,7 +1813,7 @@ function setupEventListeners() {
     // Add Word Modal logic
     if (el.addWordBtn && el.addWordModal) {
         el.addWordBtn.addEventListener('click', () => {
-            el.wordChannelSelect.innerHTML = '<option value="" disabled selected>Kanal SeÃ§in</option><option value="all">TÃ¼m Kanallar</option>';
+            el.wordChannelSelect.innerHTML = '<option value="" disabled selected>Kanal Seçin</option><option value="all">Tüm Kanallar</option>';
             state.channels.forEach(ch => {
                 const opt = document.createElement('option');
                 opt.value = ch.slug;
@@ -1846,7 +1846,7 @@ function setupEventListeners() {
             const duration = el.wordDurationInput.value;
 
             if (!channel || !word) {
-                alert('LÃ¼tfen kanal seÃ§in ve bir kelime girin.');
+                alert('Lütfen kanal seçin ve bir kelime girin.');
                 return;
             }
 
@@ -1871,10 +1871,10 @@ function setupEventListeners() {
                     await fetchStats(); // Update state.automodRules
                     fetchCustomWords(); // re-render immediately
                 } else {
-                    alert('Kelime eklenirken hata oluÅŸtu');
+                    alert('Kelime eklenirken hata oluştu');
                 }
             } catch (err) {
-                alert('BaÄŸlantÄ± hatasÄ±');
+                alert('Bağlantı hatası');
             } finally {
                 el.confirmAddWord.disabled = false;
                 el.confirmAddWord.textContent = 'Kaydet';
@@ -2058,7 +2058,7 @@ function setupChatControlLogic() {
             
             const activeChannel = state.channels.find(ch => ch.slug === state.chatControlActiveTab);
             if (!activeChannel) {
-                alert('Aktif bir kanal seÃ§in.');
+                alert('Aktif bir kanal seçin.');
                 return;
             }
             
@@ -2076,10 +2076,10 @@ function setupChatControlLogic() {
                     el.chatMessageInput.value = '';
                 } else {
                     const data = await res.json();
-                    alert('Mesaj gÃ¶nderilemedi: ' + (data.error || 'Bilinmeyen hata'));
+                    alert('Mesaj gönderilemedi: ' + (data.error || 'Bilinmeyen hata'));
                 }
             } catch (err) {
-                alert('BaÄŸlantÄ± hatasÄ±');
+                alert('Bağlantı hatası');
             } finally {
                 el.chatSendBtn.disabled = false;
             }
@@ -2106,14 +2106,14 @@ function setupChatControlLogic() {
             btn.classList.add('active');
             
             if (el.chatControlMessages) {
-                el.chatControlMessages.innerHTML = '<div class="chat-welcome">Mesaj geÃ§miÅŸi yÃ¼kleniyor...</div>';
+                el.chatControlMessages.innerHTML = '<div class="chat-welcome">Mesaj geçmişi yükleniyor...</div>';
                 
                 // Load previous messages from server buffer
                 apiFetch(`/api/chat/history?channel=${encodeURIComponent(channel)}`)
                     .then(res => res.ok ? res.json() : [])
                     .then(history => {
                         if (!Array.isArray(history) || history.length === 0) {
-                            el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat baÄŸlandÄ±. Ä°zleniyor...</div>';
+                            el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
                             return;
                         }
                         el.chatControlMessages.innerHTML = '';
@@ -2133,7 +2133,7 @@ function setupChatControlLogic() {
                         el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
                     })
                     .catch(() => {
-                        el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat baÄŸlandÄ±. Ä°zleniyor...</div>';
+                        el.chatControlMessages.innerHTML = '<div class="chat-welcome">Chat bağlandı. İzleniyor...</div>';
                     });
             }
             renderLogs(); // Update the right panels for this tab
@@ -2155,7 +2155,7 @@ function showUserMessageHistory(username, color) {
     
     let historyHtml = '';
     if (msgs.length === 0) {
-        historyHtml = '<div style="color: var(--text-3); text-align: center; padding: 2rem;">Bu kullanÄ±cÄ±dan henÃ¼z mesaj yok.</div>';
+        historyHtml = '<div style="color: var(--text-3); text-align: center; padding: 2rem;">Bu kullanıcıdan henüz mesaj yok.</div>';
     } else {
         msgs.forEach(m => {
             const time = new Date(m.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -2189,15 +2189,15 @@ function showUserMessageHistory(username, color) {
                     Timeout
                 </button>
                 <div id="uhTimeoutMenu" style="display: none; position: absolute; bottom: 100%; left: 0; width: 100%; margin-bottom: 6px; background: var(--bg-elevated); border: 1px solid var(--border-bright); border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.7); overflow: hidden; z-index: 10;">
-                    <div style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-3); border-bottom: 1px solid var(--border); font-weight: 600;">Timeout SÃ¼resi SeÃ§in</div>
+                    <div style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-3); border-bottom: 1px solid var(--border); font-weight: 600;">Timeout Süresi Seçin</div>
                     <button class="uh-timeout-opt" data-dur="1" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">1 Dakika</button>
                     <button class="uh-timeout-opt" data-dur="5" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">5 Dakika</button>
                     <button class="uh-timeout-opt" data-dur="10" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">10 Dakika</button>
                     <button class="uh-timeout-opt" data-dur="30" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">30 Dakika</button>
                     <button class="uh-timeout-opt" data-dur="60" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">1 Saat</button>
                     <button class="uh-timeout-opt" data-dur="360" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">6 Saat</button>
-                    <button class="uh-timeout-opt" data-dur="1440" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">1 GÃ¼n</button>
-                    <button class="uh-timeout-opt" data-dur="4320" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">3 GÃ¼n</button>
+                    <button class="uh-timeout-opt" data-dur="1440" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">1 Gün</button>
+                    <button class="uh-timeout-opt" data-dur="4320" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;border-bottom:1px solid rgba(255,255,255,0.03);">3 Gün</button>
                     <button class="uh-timeout-opt" data-dur="10080" style="width:100%;padding:10px 16px;border:none;background:transparent;color:var(--text-2);text-align:left;cursor:pointer;font-size:0.88rem;">1 Hafta</button>
                 </div>
             </div>
@@ -2241,7 +2241,7 @@ function showUserMessageHistory(username, color) {
 
     // Action handler
     const executeAction = async (action, duration) => {
-        if (!userId) { alert('KullanÄ±cÄ± ID bulunamadÄ±.'); return; }
+        if (!userId) { alert('Kullanıcı ID bulunamadı.'); return; }
         const channelSlug = state.chatControlActiveTab;
         if (!channelSlug) { alert('Aktif kanal yok.'); return; }
 
@@ -2253,24 +2253,24 @@ function showUserMessageHistory(username, color) {
                     userId: userId,
                     duration: duration,
                     channelSlug: channelSlug,
-                    reason: `ModeratÃ¶r tarafÄ±ndan Kickky Ã¼zerinden (${action})`,
+                    reason: `Moderatör tarafından Kickky üzerinden (${action})`,
                     username: username
                 })
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || 'Ä°ÅŸlem baÅŸarÄ±sÄ±z');
+                throw new Error(err.error || 'İşlem başarısız');
             }
             // Success feedback
             const actionsDiv = popup.querySelector('.user-history-actions');
             if (actionsDiv) {
-                const label = action === 'ban' ? 'BanlandÄ±' : `${duration}dk Timeout`;
+                const label = action === 'ban' ? 'Banlandı' : `${duration}dk Timeout`;
                 actionsDiv.innerHTML = `<div style="width:100%;text-align:center;padding:6px;color:var(--green);font-weight:700;font-size:0.95rem;">âœ… ${username} â†’ ${label}</div>`;
             }
             fetchLogs();
             fetchStats();
         } catch (err) {
-            alert('Ä°ÅŸlem baÅŸarÄ±sÄ±z: ' + err.message);
+            alert('İşlem başarısız: ' + err.message);
         }
     };
 
@@ -2284,7 +2284,7 @@ function showUserMessageHistory(username, color) {
 
     // Ban button
     banBtn.addEventListener('click', () => {
-        if (confirm(`${username} kullanÄ±cÄ±sÄ±nÄ± banlamak istediÄŸinize emin misiniz?`)) {
+        if (confirm(`${username} kullanıcısını banlamak istediğinize emin misiniz?`)) {
             executeAction('ban', 0);
         }
     });
@@ -2333,7 +2333,7 @@ window.appendChatMessage = function(msgData) {
 
     if (rawWatched.trim().length > 0) {
         const watchedWords = rawWatched.split(',')
-            .map(w => w.replace(/[^\w\sÄŸÃ¼ÅŸÄ±Ã¶Ã§ÄÃœÅÄ°Ã–Ã‡]/gi, '').trim())
+            .map(w => w.replace(/[^\w\sğüşıöçÄÜÅİÖÇ]/gi, '').trim())
             .filter(w => w.length > 0);
             
         if (watchedWords.length > 0) {
@@ -2354,7 +2354,7 @@ window.appendChatMessage = function(msgData) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z"></path><path d="M9 8h2v9H9zm4 0h2v9h-2z"></path></svg>
             </button>
             <div class="timeout-menu-wrapper">
-                <button class="quick-mod-btn timeout" data-action="timeout" title="Zaman AÅŸÄ±mÄ± (VarsayÄ±lan)">
+                <button class="quick-mod-btn timeout" data-action="timeout" title="Zaman Aşımı (Varsayılan)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6v6l4.5 4.5L6 17v5h12v-5l-4.5-4.5L18 8V2zm-2 4v1.5l-2.5 2.5h-3L8 7.5V6h8zm-8 12v-1.5l2.5-2.5h3l2.5 2.5V18H8z"></path></svg>
                 </button>
                 <div class="timeout-popup">
@@ -2441,7 +2441,7 @@ window.appendChatMessage = function(msgData) {
                     messageId: msgData.message.id,
                     duration: duration,
                     channelSlug: msgData.channel,
-                    reason: 'ModeratÃ¶r tarafÄ±ndan Kickky Ã¼zerinden',
+                    reason: 'Moderatör tarafından Kickky üzerinden',
                     username: msgData.message.sender.username,
                     messageContent: rawContent
                 })
@@ -2449,7 +2449,7 @@ window.appendChatMessage = function(msgData) {
             
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Ä°ÅŸlem sunucu tarafÄ±ndan reddedildi.');
+                throw new Error(errorData.error || 'İşlem sunucu tarafından reddedildi.');
             }
             
             fetchLogs();
@@ -2467,7 +2467,7 @@ window.appendChatMessage = function(msgData) {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z"></path><path d="M9 8h2v9H9zm4 0h2v9h-2z"></path></svg>
                             </button>
                             <div class="timeout-menu-wrapper">
-                                <button class="quick-mod-btn timeout" data-action="timeout" title="Zaman AÅŸÄ±mÄ± (VarsayÄ±lan)">
+                                <button class="quick-mod-btn timeout" data-action="timeout" title="Zaman Aşımı (Varsayılan)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6v6l4.5 4.5L6 17v5h12v-5l-4.5-4.5L18 8V2zm-2 4v1.5l-2.5 2.5h-3L8 7.5V6h8zm-8 12v-1.5l2.5-2.5h3l2.5 2.5V18H8z"></path></svg>
                                 </button>
                                 <div class="timeout-popup">
@@ -2490,7 +2490,7 @@ window.appendChatMessage = function(msgData) {
                     const actionsContainer = msgEl.querySelector('.quick-mod-actions');
                     if (actionsContainer) {
                         actionsContainer.innerHTML = `
-                            <button class="quick-mod-btn unban" data-action="unban" title="YasaÄŸÄ± KaldÄ±r" style="color: var(--green);">
+                            <button class="quick-mod-btn unban" data-action="unban" title="Yasağı Kaldır" style="color: var(--green);">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"></path></svg>
                             </button>
                         `;
@@ -2499,7 +2499,7 @@ window.appendChatMessage = function(msgData) {
             }, 500);
         } catch (err) {
             msgEl.classList.remove('action-feedback');
-            alert('Ä°ÅŸlem baÅŸarÄ±sÄ±z oldu: ' + err.message);
+            alert('İşlem başarısız oldu: ' + err.message);
         }
     });
 

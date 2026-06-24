@@ -429,15 +429,16 @@ apiRouter.get('/chat/history', async (req, res) => {
     const channel = req.query.channel;
     if (!channel) return res.status(400).json({ error: 'Missing channel' });
     
+    // Geçmiş mesajlar artık sunucu kapanıp açılsa bile MongoDB'den Store'a yüklendiği için her zaman dolu gelecek
     let history = store.getChatHistory(channel, 500);
     
-    // If we have very few messages in buffer, try fetching from Kick API
+    // Arkadaşının sitesindeki gibi "eski mesajları direkt çekmeyi" deniyoruz.
+    // Eğer sunucu IP'si Cloudflare'e takılmazsa çalışır, takılırsa MongoDB'deki history'yi gösterir.
     if (history.length < 50) {
         try {
             const dummyClient = createKickClient(null);
             const recent = await dummyClient.getRecentMessages(channel);
             if (recent && recent.length > 0) {
-                // Map to our expected format
                 const mappedRecent = recent.map(msg => ({
                     id: msg.id,
                     content: msg.content,
@@ -447,14 +448,9 @@ apiRouter.get('/chat/history', async (req, res) => {
                     sender: msg.sender
                 }));
                 
-                // Merge without duplicates
                 const existingIds = new Set(history.map(m => m.id));
                 const newMessages = mappedRecent.filter(m => !existingIds.has(m.id));
-                
-                // Add to local store so we don't keep fetching
                 newMessages.forEach(m => store.addChatMessage(channel, m));
-                
-                // Get updated history
                 history = store.getChatHistory(channel, 500);
             }
         } catch (e) {

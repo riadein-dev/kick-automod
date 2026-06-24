@@ -158,14 +158,16 @@ class KickApiClient {
   async sendMessage(chatroomId, content, broadcasterUserId = null) {
     const body = {
       content: content,
-      type: 'message'
+      type: 'user' // 'message' was invalid, Kick API accepts 'user' or 'bot'
     };
-    // API expects broadcaster_user_id for the channel
+    
+    // API expects broadcaster_user_id as an integer
     if (broadcasterUserId) {
       body.broadcaster_user_id = parseInt(broadcasterUserId);
     } else {
-      body.chatroom_id = parseInt(chatroomId);
+      body.chatroom_id = parseInt(chatroomId); // Fallback for older endpoints
     }
+    
     return this.request('/chat', {
       method: 'POST',
       body: JSON.stringify(body)

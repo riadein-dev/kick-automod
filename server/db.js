@@ -57,12 +57,25 @@ const wordPresetSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now, expires: 604800 } // Preset expires in 7 days
 });
 
+// Chat history buffer schema (to survive server restarts)
+const chatMessageSchema = new mongoose.Schema({
+    channelSlug: { type: String, required: true, index: true },
+    messageId: { type: String, required: true },
+    content: { type: String, required: true },
+    username: { type: String },
+    userId: { type: Number },
+    timestamp: { type: String },
+    sender: { type: Object },
+    createdAt: { type: Date, default: Date.now, expires: 604800 } // Messages expire after 1 week
+});
+
 // Models
 const Channel = mongoose.model('Channel', channelSchema);
 const Word = mongoose.model('Word', wordSchema);
 const AutomodRule = mongoose.model('AutomodRule', automodRuleSchema);
 const Visitor = mongoose.model('Visitor', visitorSchema);
 const WordPreset = mongoose.model('WordPreset', wordPresetSchema);
+const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 
 async function connectDB() {
     if (!process.env.MONGODB_URI) {
