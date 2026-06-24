@@ -178,6 +178,50 @@ apiRouter.use((req, res, next) => {
     next();
   });
 
+// Admin check middleware
+const adminOnly = (req, res, next) => {
+    if (!req.session.isAdmin) {
+        return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
+    next();
+};
+
+// Invite Codes Routes (Admin Only)
+apiRouter.get('/invite-codes', adminOnly, async (req, res) => {
+    const { InviteCode } = require('./db');
+    try {
+        const codes = await InviteCode.find().sort({ createdAt: -1 });
+        res.json(codes);
+    } catch (e) {
+        res.status(500).json({ error: 'Kodlar getirilemedi.' });
+    }
+});
+
+apiRouter.post('/invite-codes', adminOnly, async (req, res) => {
+    const { InviteCode } = require('./db');
+    try {
+        const crypto = require('crypto');
+        const code = 'INV-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        const newCode = await InviteCode.create({
+            code: code,
+            createdBy: req.session.userId
+        });
+        res.json(newCode);
+    } catch (e) {
+        res.status(500).json({ error: 'Kod oluşturulamadı.' });
+    }
+});
+
+apiRouter.delete('/invite-codes/:id', adminOnly, async (req, res) => {
+    const { InviteCode } = require('./db');
+    try {
+        await InviteCode.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Kod silinemedi.' });
+    }
+});
+
 // Dashboard stats
 apiRouter.get('/stats', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
@@ -208,13 +252,17 @@ apiRouter.delete('/logs', (req, res) => {
 
 // Update moderation log status (approve/reject/etc)
 apiRouter.patch('/moderation/:id', async (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
   const { id } = req.params;
   const { status, action, duration } = req.body;
   
-  // (Race condition kontrolü iptal edildi, kullanıcı iki moderatörün de işleminin Kick API'ye gönderilmesini istiyor)
   const existingLog = store.getModerationLogs().find(l => l.id === id);
   if (!existingLog) {
     return res.status(404).json({ error: 'Log not found' });
+  }
+  
+  if (existingLog.ownerId !== sessionUserId) {
+    return res.status(403).json({ error: 'Unauthorized to modify this log' });
   }
 
   const updates = { status };
@@ -292,13 +340,12 @@ apiRouter.post('/manual-mod', async (req, res) => {
       const channels = store.getChannels();
       let channel = channels.find(c => c.slug === channelSlug && c.addedBy === sessionUserId);
       
-      // Fallback: Check if channel exists globally (added by someone else)
       if (!channel) {
-          channel = channels.find(c => c.slug === channelSlug);
+          return res.status(403).json({ error: 'You are not authorized to moderate this channel' });
       }
 
-      let chatroomId = channel ? channel.chatroomId : null;
-      let broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
+      let chatroomId = channel.chatroomId;
+      let broadcasterUserId = channel.broadcasterUserId || channel.userId;
 
       // Robust fallback: if any ID is missing, fetch directly from Kick API
       if (!chatroomId || (!broadcasterUserId && action !== 'delete')) {
@@ -410,11 +457,16 @@ apiRouter.post('/chat/send', async (req, res) => {
         // Find broadcaster user ID from channel data
         const channels = store.getChannels();
         const channel = channels.find(c => 
-            String(c.chatroomId) === String(chatroomId) || 
+            (String(c.chatroomId) === String(chatroomId) || 
             String(c.id) === String(chatroomId) ||
-            c.slug === channelSlug
+            c.slug === channelSlug) && c.addedBy === userId
         );
-        const broadcasterUserId = channel?.broadcasterUserId || channel?.userId || null;
+        
+        if (!channel) {
+            return res.status(403).json({ error: 'You are not authorized to send messages to this channel' });
+        }
+        
+        const broadcasterUserId = channel.broadcasterUserId || channel.userId;
         
         await kickClient.sendMessage(parseInt(chatroomId), content, broadcasterUserId);
         res.json({ ok: true });

@@ -43,11 +43,21 @@ const visitorSchema = new mongoose.Schema({
     followers: { type: Number, default: 0 },
     lastLogin: { type: Date, default: Date.now },
     loginCount: { type: Number, default: 1 },
-    accessToken: { type: String }, // NEW: Store access token for background moderation
+    accessToken: { type: String }, // Store access token for background moderation
     refreshToken: { type: String }, // Refresh token for auto-renewal
     tokenExpiry: { type: Number }, // Token expiry timestamp (ms)
     rawData: { type: Object },
-    isBanned: { type: Boolean, default: false }
+    isBanned: { type: Boolean, default: false },
+    hasAccess: { type: Boolean, default: false }, // Access code tracking
+    isAdmin: { type: Boolean, default: false } // NEW: Admin flag
+});
+
+const inviteCodeSchema = new mongoose.Schema({
+    code: { type: String, required: true, unique: true },
+    createdBy: { type: String, required: true },
+    used: { type: Boolean, default: false },
+    usedBy: { type: String },
+    createdAt: { type: Date, default: Date.now }
 });
 
 const wordPresetSchema = new mongoose.Schema({
@@ -69,6 +79,24 @@ const chatMessageSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now, expires: 604800 } // Messages expire after 1 week
 });
 
+const moderationLogSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    channel: { type: String, required: true },
+    chatroomId: { type: String },
+    userId: { type: String, required: true },
+    messageId: { type: String, required: true },
+    username: { type: String, required: true },
+    messageContent: { type: String },
+    ruleName: { type: String, required: true },
+    reason: { type: String },
+    type: { type: String, default: 'auto' }, // auto veya manual
+    action: { type: String }, // delete, timeout, ban
+    duration: { type: Number }, // timeout duration
+    status: { type: String, default: 'pending' }, // pending, applied, rejected, unbanned, error
+    ownerId: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now, expires: 604800 } // Moderation logs expire in 1 week
+});
+
 // Models
 const Channel = mongoose.model('Channel', channelSchema);
 const Word = mongoose.model('Word', wordSchema);
@@ -76,6 +104,8 @@ const AutomodRule = mongoose.model('AutomodRule', automodRuleSchema);
 const Visitor = mongoose.model('Visitor', visitorSchema);
 const WordPreset = mongoose.model('WordPreset', wordPresetSchema);
 const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
+const ModerationLog = mongoose.model('ModerationLog', moderationLogSchema);
+const InviteCode = mongoose.model('InviteCode', inviteCodeSchema);
 
 async function connectDB() {
     if (!process.env.MONGODB_URI) {
@@ -97,6 +127,9 @@ module.exports = {
     Channel,
     Word,
     AutomodRule,
+    ChatMessage,
+    ModerationLog,
     Visitor,
-    WordPreset
+    WordPreset,
+    InviteCode
 };

@@ -178,7 +178,10 @@ router.get('/callback', async (req, res) => {
               req.session.userId = foundName;
               req.session.kickNumericId = numericId;
               
-              store.addVisitor({
+              const adminUsername = (process.env.ADMIN_USERNAME || 'Riadein').toLowerCase();
+              const isUserAdmin = (foundName.toLowerCase() === adminUsername);
+              
+              const visitor = await store.addVisitor({
                   kickId: numericId,
                   username: foundName,
                   ip: clientIp,
@@ -191,8 +194,13 @@ router.get('/callback', async (req, res) => {
                   profilePic: (rawDataObj && rawDataObj.profile_pic) || null,
                   bio: (rawDataObj && rawDataObj.bio) || null,
                   kickCreatedAt: (rawDataObj && rawDataObj.created_at) || null,
-                  followers: (rawDataObj && rawDataObj.followers_count) || 0
+                  followers: (rawDataObj && rawDataObj.followers_count) || 0,
+                  hasAccess: isUserAdmin ? true : undefined,
+                  isAdmin: isUserAdmin ? true : undefined
               });
+              
+              req.session.hasAccess = visitor.hasAccess || isUserAdmin;
+              req.session.isAdmin = visitor.isAdmin || isUserAdmin;
             }
         } catch(e) { console.error('Visitor kaydı başarısız:', e); }
 
@@ -206,7 +214,13 @@ router.get('/callback', async (req, res) => {
     delete req.session.oauthState;
 
     req.session.save((saveErr) => {
-      res.redirect('/dashboard.html');
+      // If ACCESS_CODE is set and user doesn't have access, redirect to code prompt
+      if (process.env.ACCESS_CODE && !req.session.hasAccess) {
+          res.redirect('/access.html');
+      } else {
+          req.session.hasAccess = true; // Auto grant if no ACCESS_CODE is set
+          res.redirect('/dashboard.html');
+      }
     });
   } catch (err) {
     console.error('OAuth callback error:', err);
@@ -298,10 +312,63 @@ router.post('/logout', (req, res) => {
   });
 });
 
+/**
+ * POST /auth/access
+ * Verifies the invite code
+ */
+router.post('/access', async (req, res) => {
+    const { code } = req.body;
+    
+    // Admin check fallback
+    if (req.session.userId) {
+        const adminUsername = (process.env.ADMIN_USERNAME || 'Riadein').toLowerCase();
+        if (req.session.userId.toLowerCase() === adminUsername) {
+            req.session.hasAccess = true;
+            req.session.isAdmin = true;
+            return res.json({ success: true });
+        }
+    }
+    
+    if (!code) {
+        return res.status(400).json({ error: 'Davet kodu gerekli!' });
+    }
+    
+    const { InviteCode } = require('./db');
+    
+    try {
+        const invite = await InviteCode.findOne({ code: code, used: false });
+        
+        if (invite) {
+            // Code is valid
+            invite.used = true;
+            invite.usedBy = req.session.userId || 'Bilinmiyor';
+            await invite.save();
+            
+            req.session.hasAccess = true;
+            
+            // Update DB
+            if (req.session.kickNumericId) {
+                const store = require('./store');
+                await store.addVisitor({ kickId: req.session.kickNumericId, hasAccess: true });
+            }
+            return res.json({ success: true });
+        } else {
+            return res.status(403).json({ error: 'Geçersiz veya kullanılmış davet kodu!' });
+        }
+    } catch (e) {
+        console.error('Invite code error:', e);
+        return res.status(500).json({ error: 'Sunucu hatası' });
+    }
+});
+
 // Middleware to check authentication
 async function requireAuth(req, res, next) {
   if (!req.session.accessToken) {
     return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  if (!req.session.hasAccess && !req.session.isAdmin) {
+    return res.status(403).json({ error: 'Access denied. Valid invite code required.', code: 'ACCESS_DENIED' });
   }
   
   // Auto-fix: if userId is numeric (old bug), replace with username

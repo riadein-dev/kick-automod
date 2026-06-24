@@ -375,9 +375,39 @@
 
         <!-- Admin / Developer View -->
         <div id="adminView" style="display: none;">
+            <!-- Invite Codes Section -->
+            <div class="panel" style="margin-bottom: 2rem;">
+                <div class="panel-header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2>Davet Kodları Yönetimi</h2>
+                        <p style="color: var(--text-2); font-size: 0.85rem; margin-top: 0.3rem;">Sisteme giriş yapabilmesi için yeni moderatörlere vereceğiniz tek kullanımlık kodlar.</p>
+                    </div>
+                    <button class="btn-primary" id="generateInviteBtn" style="background: var(--primary); color: var(--bg-main); font-weight: 600;">
+                        + Yeni Kod Üret
+                    </button>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>KOD</th>
+                                <th>DURUM</th>
+                                <th>KULLANAN</th>
+                                <th>OLUŞTURULMA</th>
+                                <th>İŞLEM</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inviteCodesBody">
+                            <tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-3);">Kodlar yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="panel-header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h2>Geliştirici Paneli</h2>
+                    <h2>Geliştirici Paneli (Ziyaretçiler)</h2>
                     <p style="color: var(--text-2); font-size: 0.85rem; margin-top: 0.3rem;">Sisteme giriş yapan tüm kullanıcıları ve erişilebilir verilerini görüntülüyorsunuz.</p>
                 </div>
                 <button class="btn-primary" id="clearVisitorsBtn" style="background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid var(--red);">

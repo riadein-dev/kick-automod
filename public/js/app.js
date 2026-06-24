@@ -871,6 +871,65 @@ async function fetchCustomWords() {
 }
 
 // ==== Admin Panel ====
+async function fetchInviteCodes() {
+    const tbody = document.getElementById('inviteCodesBody');
+    if (!tbody) return;
+    try {
+        let res = await apiFetch('/api/invite-codes');
+        if (!res.ok) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-3);">Bu alanı sadece yönetici görebilir.</td></tr>`;
+            return;
+        }
+        
+        const codes = await res.json();
+        if (codes.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-3);">Henüz davet kodu üretilmedi.</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = codes.map(c => `
+            <tr>
+                <td style="font-weight: bold; color: var(--primary); letter-spacing: 1px;">${c.code}</td>
+                <td>
+                    ${c.used 
+                        ? '<span style="color: var(--red); background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Kullanıldı</span>' 
+                        : '<span style="color: var(--green); background: rgba(34,197,94,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Geçerli</span>'}
+                </td>
+                <td style="color: var(--text-2);">${c.usedBy || '-'}</td>
+                <td style="color: var(--text-3); font-size: 0.85rem;">${new Date(c.createdAt).toLocaleString('tr-TR')}</td>
+                <td>
+                    <button class="btn-primary" onclick="deleteInviteCode('${c._id}')" style="background: transparent; color: var(--red); padding: 4px; border: none; box-shadow: none;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Invite codes fetch failed:', e);
+    }
+}
+
+window.deleteInviteCode = async function(id) {
+    if (!confirm('Bu kodu silmek istediğinize emin misiniz?')) return;
+    try {
+        await apiFetch(`/api/invite-codes/${id}`, { method: 'DELETE' });
+        fetchInviteCodes();
+    } catch(e) {}
+};
+
+document.getElementById('generateInviteBtn')?.addEventListener('click', async () => {
+    try {
+        const res = await apiFetch('/api/invite-codes', { method: 'POST' });
+        if (res.ok) {
+            fetchInviteCodes();
+        } else {
+            alert('Kod üretilemedi. Yetkiniz olmayabilir.');
+        }
+    } catch(e) {
+        alert('Sunucu hatası');
+    }
+});
+
 async function fetchAdminVisitors() {
     if (!el.visitorsListBody) return;
     try {
@@ -1383,7 +1442,10 @@ function setupEventListeners() {
             localStorage.setItem('activeView', viewName);
             
             if (viewName === 'settings') fetchCustomWords();
-            if (viewName === 'admin') fetchAdminVisitors();
+            if (viewName === 'admin') {
+                fetchAdminVisitors();
+                fetchInviteCodes();
+            }
             if (viewName === 'logs') renderAllLogs();
         }
     }
