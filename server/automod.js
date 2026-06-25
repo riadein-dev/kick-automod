@@ -470,6 +470,7 @@ class AutoModEngine {
     let foundViolations = [];
     
     for (const w of rule.words) {
+      if (w.enabled === false) continue;
       if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue;
       
       let targetWord = w.word.toLowerCase().trim();

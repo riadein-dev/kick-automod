@@ -15,7 +15,8 @@ const wordSchema = new mongoose.Schema({
     exactMatch: { type: Boolean, default: false },
     action: { type: String, default: 'ban' },
     duration: { type: Number, default: 0 },
-    addedBy: { type: String, default: '' }
+    addedBy: { type: String, default: '' },
+    enabled: { type: Boolean, default: true }
 });
 
 const automodRuleSchema = new mongoose.Schema({
@@ -57,6 +58,24 @@ const inviteCodeSchema = new mongoose.Schema({
     createdBy: { type: String, required: true },
     used: { type: Boolean, default: false },
     usedBy: { type: String },
+    createdAt: { type: Date, default: Date.now }
+});
+
+const crossBanChannelSchema = new mongoose.Schema({
+    slug: { type: String, required: true },
+    chatroomId: { type: String, required: true },
+    broadcasterUserId: { type: String },
+    addedBy: { type: String, required: true }
+});
+
+const crossBanLogSchema = new mongoose.Schema({
+    username: { type: String, required: true },
+    userId: { type: String }, // Kick user ID if resolved
+    action: { type: String, required: true }, // ban, timeout, unban
+    duration: { type: Number }, // for timeout
+    reason: { type: String },
+    imageUrl: { type: String },
+    addedBy: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -106,6 +125,8 @@ const WordPreset = mongoose.model('WordPreset', wordPresetSchema);
 const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 const ModerationLog = mongoose.model('ModerationLog', moderationLogSchema);
 const InviteCode = mongoose.model('InviteCode', inviteCodeSchema);
+const CrossBanChannel = mongoose.model('CrossBanChannel', crossBanChannelSchema);
+const CrossBanLog = mongoose.model('CrossBanLog', crossBanLogSchema);
 
 async function connectDB() {
     if (!process.env.MONGODB_URI) {
@@ -131,5 +152,7 @@ module.exports = {
     ModerationLog,
     Visitor,
     WordPreset,
-    InviteCode
+    InviteCode,
+    CrossBanChannel,
+    CrossBanLog
 };

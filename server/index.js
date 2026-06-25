@@ -222,6 +222,148 @@ apiRouter.delete('/invite-codes/:id', adminOnly, async (req, res) => {
     }
 });
 
+// Multer Setup for Cross Ban image uploads
+const multer = require('multer');
+const uploadStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, '../public/uploads/'));
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+    }
+});
+const upload = multer({ 
+    storage: uploadStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) cb(null, true);
+        else cb(new Error('Sadece resim dosyaları yüklenebilir.'));
+    }
+});
+
+// Cross Ban API Routes
+apiRouter.get('/crossban/channels', adminOnly, async (req, res) => {
+    const { CrossBanChannel } = require('./db');
+    try {
+        const channels = await CrossBanChannel.find();
+        res.json(channels);
+    } catch (e) {
+        res.status(500).json({ error: 'Cross Ban kanalları getirilemedi.' });
+    }
+});
+
+apiRouter.post('/crossban/channels', adminOnly, async (req, res) => {
+    const { CrossBanChannel } = require('./db');
+    const { slug } = req.body;
+    if (!slug) return res.status(400).json({ error: 'Kanal adı gerekli.' });
+    
+    try {
+        // Resolve Kick ChatroomId
+        const fetch = require('node-fetch');
+        const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`);
+        if (!kickRes.ok) return res.status(404).json({ error: 'Kanal bulunamadı veya Kick API hatası.' });
+        
+        const data = await kickRes.json();
+        if (!data || !data.chatroom || !data.chatroom.id) return res.status(404).json({ error: 'Sohbet odası ID bulunamadı.' });
+        
+        const newChannel = await CrossBanChannel.create({
+            slug: slug,
+            chatroomId: data.chatroom.id.toString(),
+            broadcasterUserId: data.user_id?.toString() || '',
+            addedBy: req.session.userId
+        });
+        res.json(newChannel);
+    } catch (e) {
+        console.error('Cross ban channel error:', e);
+        res.status(500).json({ error: 'Kanal eklenemedi.' });
+    }
+});
+
+apiRouter.delete('/crossban/channels/:id', adminOnly, async (req, res) => {
+    const { CrossBanChannel } = require('./db');
+    try {
+        await CrossBanChannel.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Kanal silinemedi.' });
+    }
+});
+
+apiRouter.get('/crossban/logs', adminOnly, async (req, res) => {
+    const { CrossBanLog } = require('./db');
+    try {
+        const logs = await CrossBanLog.find().sort({ createdAt: -1 }).limit(100);
+        res.json(logs);
+    } catch (e) {
+        res.status(500).json({ error: 'Geçmiş getirilemedi.' });
+    }
+});
+
+// Using multiple middlewares: auth, adminOnly, and multer upload
+apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req, res) => {
+    const { CrossBanChannel, CrossBanLog } = require('./db');
+    const { username, action, duration, reason } = req.body;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
+
+    if (!username || !action) return res.status(400).json({ error: 'Eksik parametreler.' });
+
+    try {
+        // 1. Resolve Kick User ID from Username
+        const fetch = require('node-fetch');
+        const kickRes = await fetch(`https://kick.com/api/v2/channels/${username}`);
+        let targetUserId = null;
+        if (kickRes.ok) {
+            const data = await kickRes.json();
+            if (data && data.user_id) targetUserId = data.user_id.toString();
+        }
+
+        if (!targetUserId) {
+            return res.status(404).json({ error: 'Kullanıcı ID tespit edilemedi. Nick yanlış olabilir.' });
+        }
+
+        // 2. Log it
+        const log = await CrossBanLog.create({
+            username: username,
+            userId: targetUserId,
+            action: action,
+            duration: duration ? parseInt(duration) : null,
+            reason: reason || '',
+            imageUrl: imageUrl,
+            addedBy: req.session.userId
+        });
+
+        // 3. Execute action on all crossban channels
+        const channels = await CrossBanChannel.find();
+        
+        // Asynchronously perform actions
+        setTimeout(async () => {
+            const callerNumericId = req.session.kickNumericId || '';
+            for (let i = 0; i < channels.length; i++) {
+                const ch = channels[i];
+                try {
+                    // Kick API needs broadcasterUserId, not chatroomId for these endpoints
+                    if (action === 'ban') {
+                        await automod.client.banUser(ch.broadcasterUserId, targetUserId, reason || 'Cross Ban', callerNumericId);
+                    } else if (action === 'timeout') {
+                        await automod.client.timeoutUser(ch.broadcasterUserId, targetUserId, parseInt(duration) || 5, reason || 'Cross Timeout', callerNumericId);
+                    } else if (action === 'unban') {
+                        await automod.client.unbanUser(ch.broadcasterUserId, targetUserId, callerNumericId);
+                    }
+                } catch(err) {
+                    console.error(`CrossBan error on channel ${ch.slug} for ${username}:`, err.message);
+                }
+                // Delay 500ms between each channel
+                await new Promise(r => setTimeout(r, 500));
+            }
+        }, 100);
+
+        res.json({ success: true, log: log });
+    } catch (e) {
+        console.error('Cross ban action error:', e);
+        res.status(500).json({ error: 'İşlem sırasında hata oluştu.' });
+    }
+});
+
 // Dashboard stats
 apiRouter.get('/stats', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
@@ -712,6 +854,17 @@ apiRouter.delete('/words', (req, res) => {
   const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
   store.removeAllCustomWords(sessionUserId);
   res.json({ success: true });
+});
+
+apiRouter.patch('/words/:id', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const { enabled } = req.body;
+  const word = store.toggleCustomWord(sessionUserId, req.params.id, enabled);
+  if (word) {
+      res.json(word);
+  } else {
+      res.status(404).json({ error: 'Kelime bulunamadı' });
+  }
 });
 
 // Word Preset Sharing

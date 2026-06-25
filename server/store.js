@@ -157,7 +157,7 @@ class Store {
           const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id || (cw.word === w.word && cw.action === wordAction));
           if (!exists) {
               rules.rules.bannedWords.words.push({
-                  id: w.id, channel: wordChannel, word: w.word, exactMatch: w.exactMatch || false, action: wordAction, duration: wordDuration, addedBy: w.addedBy
+                  id: w.id, channel: wordChannel, word: w.word, exactMatch: w.exactMatch || false, action: wordAction, duration: wordDuration, addedBy: w.addedBy, enabled: w.enabled !== false
               });
           }
       }
@@ -639,6 +639,21 @@ class Store {
     this.deleteWordDB(wordId); // delete from DB
     this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
     return true;
+  }
+
+  toggleCustomWord(userId, wordId, enabled) {
+    const rules = this.getAutomodRules(userId);
+    const word = rules.rules.bannedWords.words.find(w => w.id === wordId);
+    if (word) {
+      word.enabled = enabled;
+      if (process.env.MONGODB_URI) {
+        const { Word } = require('./db');
+        Word.updateOne({ id: wordId }, { enabled: enabled }).catch(console.error);
+      }
+      this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
+      return word;
+    }
+    return null;
   }
 
   removeAllCustomWords(userId) {

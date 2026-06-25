@@ -77,6 +77,8 @@ const el = {
     adminView: $('#adminView'),
     visitorsListBody: $('#visitorsListBody'),
     clearVisitorsBtn: $('#clearVisitorsBtn'),
+    crossBanNavBtn: $('#crossBanNavBtn'),
+    crossBanView: $('#crossBanView'),
 
     shareWordsBtn: $('#shareWordsBtn'),
     importWordsBtn: $('#importWordsBtn'),
@@ -1054,22 +1056,57 @@ function renderWords() {
 
         const durationStr = w.action === 'timeout' ? `${w.duration}dk` : (w.action === 'ban' ? 'Sınırsız' : '-');
         const wordHtml = w.exactMatch ? `${w.word} <span style="background:var(--green); color:#000; padding: 2px 6px; border-radius:4px; font-size:0.65rem; white-space:nowrap;">Tam Cümle</span>` : w.word;
+        const isEnabled = w.enabled !== false; // Default is true
+        const statusBadge = isEnabled 
+            ? '<span style="color:var(--green); font-weight:600; font-size:0.7rem; background:rgba(34,197,94,0.1); padding:2px 6px; border-radius:4px;">Aktif</span>'
+            : '<span style="color:var(--text-3); font-weight:600; font-size:0.7rem; background:var(--surface-3); padding:2px 6px; border-radius:4px;">Pasif</span>';
 
         tr.innerHTML = `
-            <td><div style="color:#fff; font-family:monospace; background:#222; padding:6px 10px; border-radius:4px; display:inline-flex; align-items:center; gap:8px;">${wordHtml}</div></td>
-            <td style="color:var(--text-2);">${w.channel || 'Tüm Kanallar'}</td>
-            <td>${actionBadge}</td>
-            <td style="color:var(--text-2);">${durationStr}</td>
+            <td>
+                <div style="display:flex; flex-direction: column; gap: 4px;">
+                    <div style="color:${isEnabled ? '#fff' : 'var(--text-3)'}; font-family:monospace; background:#222; padding:6px 10px; border-radius:4px; display:inline-flex; align-items:center; gap:8px;">${wordHtml}</div>
+                    <div>${statusBadge}</div>
+                </div>
+            </td>
+            <td style="color:var(--text-2); opacity: ${isEnabled ? '1' : '0.5'};">${w.channel || 'Tüm Kanallar'}</td>
+            <td style="opacity: ${isEnabled ? '1' : '0.5'};">${actionBadge}</td>
+            <td style="color:var(--text-2); opacity: ${isEnabled ? '1' : '0.5'};">${durationStr}</td>
             <td class="text-right">
-                <button class="action-btn approve edit-word-btn" data-id="${w.id}" title="Düzenle">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                </button>
-                <button class="action-btn reject delete-word-btn" data-id="${w.id}" title="Sil">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                </button>
+                <div style="display: flex; gap: 4px; justify-content: flex-end;">
+                    <button class="action-btn edit toggle-word-btn" data-id="${w.id}" data-enabled="${isEnabled}" title="${isEnabled ? 'Pasife Al' : 'Aktifleştir'}" style="background: ${isEnabled ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)'}; color: ${isEnabled ? 'var(--orange)' : 'var(--green)'}; border-color: ${isEnabled ? 'var(--orange)' : 'var(--green)'};">
+                        ${isEnabled 
+                            ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>' 
+                            : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'}
+                    </button>
+                    <button class="action-btn approve edit-word-btn" data-id="${w.id}" title="Düzenle">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    </button>
+                    <button class="action-btn reject delete-word-btn" data-id="${w.id}" title="Sil">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
             </td>
         `;
         el.wordsListBody.appendChild(tr);
+    });
+
+    // Add toggle listeners
+    document.querySelectorAll('.toggle-word-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.dataset.id;
+            const currentEnabled = e.currentTarget.dataset.enabled === 'true';
+            try {
+                const res = await apiFetch(`/api/words/${id}`, { 
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: !currentEnabled })
+                });
+                if (res.ok) {
+                    await fetchStats();
+                    fetchCustomWords();
+                }
+            } catch(err) { alert('Hata oluştu'); }
+        });
     });
 
     document.querySelectorAll('.delete-word-btn').forEach(btn => {
@@ -1427,7 +1464,8 @@ function setupEventListeners() {
             'channels': { btn: el.channelsNavBtn, view: el.channelsView },
             'settings': { btn: el.settingsNavBtn, view: el.settingsView },
             'logs': { btn: el.logsNavBtn, view: el.logsView },
-            'admin': { btn: el.adminNavBtn, view: el.adminView }
+            'admin': { btn: el.adminNavBtn, view: el.adminView },
+            'crossBan': { btn: el.crossBanNavBtn, view: el.crossBanView }
         };
 
         Object.keys(views).forEach(k => {
@@ -1447,6 +1485,10 @@ function setupEventListeners() {
                 fetchInviteCodes();
             }
             if (viewName === 'logs') renderAllLogs();
+            if (viewName === 'crossBan') {
+                fetchCrossBanChannels();
+                fetchCrossBanLogs();
+            }
         }
     }
 
@@ -1456,6 +1498,7 @@ function setupEventListeners() {
     el.settingsNavBtn?.addEventListener('click', () => { switchView('settings'); closeSidebar(); });
     el.logsNavBtn?.addEventListener('click', () => { switchView('logs'); closeSidebar(); });
     el.adminNavBtn?.addEventListener('click', () => { switchView('admin'); closeSidebar(); });
+    el.crossBanNavBtn?.addEventListener('click', () => { switchView('crossBan'); closeSidebar(); });
     
     if (el.clearVisitorsBtn) {
         el.clearVisitorsBtn.addEventListener('click', async () => {
@@ -2444,16 +2487,21 @@ window.appendChatMessage = function(msgData) {
 
     // Store message in client-side buffer for user history
     if (!window._chatMessageBuffer) window._chatMessageBuffer = [];
-    window._chatMessageBuffer.push({
-        channel: msgData.channel,
-        username: msgData.message.sender.username,
-        userId: msgData.message.sender.id,
-        content: msgData.message.content || rawContent,
-        timestamp: msgData.message.timestamp || new Date().toISOString(),
-        color: color
-    });
-    if (window._chatMessageBuffer.length > 2000) {
-        window._chatMessageBuffer = window._chatMessageBuffer.slice(-1500);
+    const msgId = msgData.message.id;
+    // Check if message already exists in buffer to prevent duplicates
+    if (!msgId || !window._chatMessageBuffer.find(m => m.id === msgId)) {
+        window._chatMessageBuffer.push({
+            id: msgId,
+            channel: msgData.channel,
+            username: msgData.message.sender.username,
+            userId: msgData.message.sender.id,
+            content: msgData.message.content || rawContent,
+            timestamp: msgData.message.timestamp || new Date().toISOString(),
+            color: color
+        });
+        if (window._chatMessageBuffer.length > 2000) {
+            window._chatMessageBuffer = window._chatMessageBuffer.slice(-1500);
+        }
     }
 
     // Username click â†’ show message history
@@ -2565,13 +2613,33 @@ window.appendChatMessage = function(msgData) {
         }
     });
 
+    // Add Hover to pause logic on mod buttons
+    const quickModBtns = msgEl.querySelectorAll('.quick-mod-btn.timeout, .quick-mod-btn.ban, .timeout-popup');
+    quickModBtns.forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+            window._chatIsPaused = true;
+            document.getElementById('resumeChatOverlay').style.display = 'block';
+        });
+        btn.addEventListener('mouseleave', () => {
+            // We do not auto-resume on mouseleave if they scrolled up, 
+            // but we can just leave it paused and let them click "Canlı sohbete dön".
+        });
+    });
+
     const isScrolledToBottom = Math.abs((el.chatContainer.scrollHeight - el.chatContainer.clientHeight) - el.chatContainer.scrollTop) < 50;
 
     el.chatControlMessages.appendChild(msgEl);
     
-    // Auto-scroll
-    if (isScrolledToBottom || el.chatControlMessages.children.length === 1) {
+    // Auto-scroll logic considering pause state
+    if (!window._chatIsPaused && (isScrolledToBottom || el.chatControlMessages.children.length === 1)) {
         el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+        document.getElementById('resumeChatOverlay').style.display = 'none';
+    } else {
+        // If chat receives messages while not at bottom, show the overlay
+        if (el.chatControlMessages.children.length > 1) {
+            document.getElementById('resumeChatOverlay').style.display = 'block';
+            window._chatIsPaused = true;
+        }
     }
 
     // Prune DOM (Max 500 messages)
@@ -2579,6 +2647,166 @@ window.appendChatMessage = function(msgData) {
         el.chatControlMessages.removeChild(el.chatControlMessages.firstChild);
     }
 };
+
+// Handle manual scroll to detect when user scrolls up
+el.chatContainer?.addEventListener('scroll', () => {
+    const isScrolledToBottom = Math.abs((el.chatContainer.scrollHeight - el.chatContainer.clientHeight) - el.chatContainer.scrollTop) < 50;
+    if (!isScrolledToBottom) {
+        window._chatIsPaused = true;
+        document.getElementById('resumeChatOverlay').style.display = 'block';
+    } else {
+        window._chatIsPaused = false;
+        document.getElementById('resumeChatOverlay').style.display = 'none';
+    }
+});
+
+// Resume chat button listener
+document.getElementById('resumeChatBtn')?.addEventListener('click', () => {
+    window._chatIsPaused = false;
+    document.getElementById('resumeChatOverlay').style.display = 'none';
+    el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
+});
+
+// ===== Cross Ban Logic =====
+async function fetchCrossBanChannels() {
+    const tbody = document.getElementById('cbChannelsBody');
+    if (!tbody) return;
+    try {
+        const res = await apiFetch('/api/crossban/channels');
+        if (!res.ok) return;
+        const channels = await res.json();
+        
+        if (channels.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 1rem; color: var(--text-3);">Henüz kanal eklenmedi.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = channels.map(ch => `
+            <tr>
+                <td style="font-weight: 600;">${ch.slug}</td>
+                <td style="color: var(--text-2); font-family: monospace;">${ch.broadcasterUserId || ch.chatroomId}</td>
+                <td>
+                    <button class="action-btn reject" onclick="deleteCrossBanChannel('${ch._id}')" title="Sil">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) { console.error('Fetch cross ban channels failed:', e); }
+}
+
+async function fetchCrossBanLogs() {
+    const tbody = document.getElementById('cbLogsBody');
+    if (!tbody) return;
+    try {
+        const res = await apiFetch('/api/crossban/logs');
+        if (!res.ok) return;
+        const logs = await res.json();
+        
+        if (logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 1rem; color: var(--text-3);">Geçmiş temiz.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = logs.map(l => {
+            let actionBadge = '';
+            if (l.action === 'ban') actionBadge = '<span style="color:var(--red); font-weight:700; font-size:0.75rem; background:rgba(239,68,68,0.1); padding:4px 8px; border-radius:4px;">BAN</span>';
+            else if (l.action === 'timeout') actionBadge = `<span style="color:var(--orange); font-weight:700; font-size:0.75rem; background:rgba(245,158,11,0.1); padding:4px 8px; border-radius:4px;">TIMEOUT (${l.duration}m)</span>`;
+            else if (l.action === 'unban') actionBadge = '<span style="color:var(--green); font-weight:700; font-size:0.75rem; background:rgba(34,197,94,0.1); padding:4px 8px; border-radius:4px;">UNBAN</span>';
+
+            const imgHtml = l.imageUrl ? `<a href="${l.imageUrl}" target="_blank" style="color: var(--primary); text-decoration: underline; font-size: 0.8rem;">Görseli Gör</a>` : '-';
+            
+            return `
+            <tr>
+                <td style="color: var(--text-3); font-size: 0.85rem;">${new Date(l.createdAt).toLocaleString('tr-TR')}</td>
+                <td style="font-weight: 600;">${l.username}</td>
+                <td>${actionBadge}</td>
+                <td style="color: var(--text-2); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${l.reason || ''}">${l.reason || '-'}</td>
+                <td>${imgHtml}</td>
+            </tr>
+            `;
+        }).join('');
+    } catch (e) { console.error('Fetch cross ban logs failed:', e); }
+}
+
+window.deleteCrossBanChannel = async function(id) {
+    if (!confirm('Bu kanalı cross ban listesinden çıkarmak istediğinize emin misiniz?')) return;
+    try {
+        await apiFetch(`/api/crossban/channels/${id}`, { method: 'DELETE' });
+        fetchCrossBanChannels();
+    } catch(e) {}
+};
+
+document.getElementById('cbAddChannelBtn')?.addEventListener('click', async () => {
+    const slug = prompt('Eklenecek kanalın adını (slug) girin:');
+    if (!slug) return;
+    try {
+        const res = await apiFetch('/api/crossban/channels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug })
+        });
+        if (res.ok) fetchCrossBanChannels();
+        else {
+            const data = await res.json();
+            alert(data.error || 'Kanal eklenemedi.');
+        }
+    } catch (e) { alert('Hata oluştu.'); }
+});
+
+document.getElementById('cbAction')?.addEventListener('change', (e) => {
+    const durCont = document.getElementById('cbDurationContainer');
+    if (e.target.value === 'timeout') durCont.style.display = 'block';
+    else durCont.style.display = 'none';
+});
+
+document.getElementById('crossBanForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!confirm('Seçtiğiniz işlemi tüm kanallarda başlatmak istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+
+    const btn = document.getElementById('cbExecuteBtn');
+    btn.disabled = true;
+    btn.innerHTML = 'İşleniyor...';
+
+    const formData = new FormData();
+    formData.append('username', document.getElementById('cbUsername').value);
+    formData.append('action', document.getElementById('cbAction').value);
+    formData.append('reason', document.getElementById('cbReason').value);
+    
+    if (document.getElementById('cbAction').value === 'timeout') {
+        formData.append('duration', document.getElementById('cbDuration').value);
+    }
+    
+    const imageFile = document.getElementById('cbImage').files[0];
+    if (imageFile) formData.append('image', imageFile);
+
+    try {
+        const csrfRes = await fetch('/api/csrf-token');
+        const csrfData = await csrfRes.json();
+        
+        const res = await fetch('/api/crossban/action', {
+            method: 'POST',
+            headers: { 'CSRF-Token': csrfData.csrfToken },
+            body: formData // FormData does not need Content-Type, browser sets it with boundary
+        });
+
+        if (res.ok) {
+            document.getElementById('cbUsername').value = '';
+            document.getElementById('cbReason').value = '';
+            document.getElementById('cbImage').value = '';
+            fetchCrossBanLogs();
+            alert('İşlem başarıyla başlatıldı ve arka planda tüm kanallara uygulanıyor.');
+        } else {
+            const data = await res.json();
+            alert(data.error || 'İşlem başarısız oldu.');
+        }
+    } catch (err) {
+        alert('Sunucu hatası.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'ATEŞLE (ÇALIŞTIR)';
+    }
+});
 
 // ===== Boot =====
 document.addEventListener('DOMContentLoaded', initApp);
