@@ -356,23 +356,62 @@ apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req
         // Asynchronously perform actions
         setTimeout(async () => {
             const callerNumericId = req.session.kickNumericId || '';
+            console.log(`[CrossBan] Starting crossban ${action} on ${targetUserId} (${username}) by caller ${callerNumericId}. Total channels: ${channels.length}`);
             for (let i = 0; i < channels.length; i++) {
                 const ch = channels[i];
+                console.log(`[CrossBan] Processing channel ${i + 1}/${channels.length}: ${ch.slug} (broadcasterUserId: ${ch.broadcasterUserId})`);
                 try {
                     // Kick API needs broadcasterUserId, not chatroomId for these endpoints
-                    if (action === 'ban') {
-                        await kickClient.banUser(ch.broadcasterUserId, targetUserId, reason || 'Cross Ban', callerNumericId);
-                    } else if (action === 'timeout') {
-                        await kickClient.timeoutUser(ch.broadcasterUserId, targetUserId, parseInt(duration) || 5, reason || 'Cross Timeout', callerNumericId);
-                    } else if (action === 'unban') {
-                        await kickClient.unbanUser(ch.broadcasterUserId, targetUserId, callerNumericId);
+                    if (!ch.broadcasterUserId) {
+                        console.error(`[CrossBan] Skipping ${ch.slug} because broadcasterUserId is missing.`);
+                        continue;
                     }
+
+                    if (action === 'ban') {
+                        console.log(`[CrossBan] -> Ban call on ${ch.slug}`);
+                        try {
+                            await kickClient.banUser(ch.broadcasterUserId, targetUserId, reason || 'Cross Ban', callerNumericId);
+                        } catch (err) {
+                            if (err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('403')) {
+                                console.log(`[CrossBan] Ban API yetkisiz, sohbet komutu deneniyor... (${ch.slug})`);
+                                await kickClient.sendMessage(ch.chatroomId, `/ban ${username} ${reason || 'Cross Ban'}`);
+                            } else {
+                                throw err;
+                            }
+                        }
+                    } else if (action === 'timeout') {
+                        console.log(`[CrossBan] -> Timeout call on ${ch.slug}`);
+                        try {
+                            await kickClient.timeoutUser(ch.broadcasterUserId, targetUserId, parseInt(duration) || 5, reason || 'Cross Timeout', callerNumericId);
+                        } catch (err) {
+                            if (err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('403')) {
+                                console.log(`[CrossBan] Timeout API yetkisiz, sohbet komutu deneniyor... (${ch.slug})`);
+                                await kickClient.sendMessage(ch.chatroomId, `/timeout ${username} ${parseInt(duration) || 5} ${reason || 'Cross Timeout'}`);
+                            } else {
+                                throw err;
+                            }
+                        }
+                    } else if (action === 'unban') {
+                        console.log(`[CrossBan] -> Unban call on ${ch.slug}`);
+                        try {
+                            await kickClient.unbanUser(ch.broadcasterUserId, targetUserId, callerNumericId);
+                        } catch (err) {
+                            if (err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('403')) {
+                                console.log(`[CrossBan] Unban API yetkisiz, sohbet komutu deneniyor... (${ch.slug})`);
+                                await kickClient.sendMessage(ch.chatroomId, `/unban ${username}`);
+                            } else {
+                                throw err;
+                            }
+                        }
+                    }
+                    console.log(`[CrossBan] ✅ Success on channel ${ch.slug}`);
                 } catch(err) {
-                    console.error(`CrossBan error on channel ${ch.slug} for ${username}:`, err.message);
+                    console.error(`[CrossBan] ❌ Error on channel ${ch.slug} for ${username}:`, err.message);
                 }
                 // Delay 500ms between each channel
                 await new Promise(r => setTimeout(r, 500));
             }
+            console.log(`[CrossBan] Finished crossban loop for ${username}`);
         }, 100);
 
         res.json({ success: true, log: log });

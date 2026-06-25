@@ -997,7 +997,8 @@ async function fetchAdminVisitors() {
         // Event Listeners for Ban/Unban
         document.querySelectorAll('.ban-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if (confirm('Bu kullanıcının siteye erişimini kalıcı olarak yasaklamak istediğinize emin misiniz?')) {
+                const isConfirmed = await window.showConfirm('Yasakla', 'Bu kullanıcının siteye erişimini kalıcı olarak yasaklamak istediğinize emin misiniz?', 'Evet, Yasakla');
+                if (isConfirmed) {
                     const id = e.currentTarget.dataset.id;
                     try {
                         const res = await apiFetch('/api/admin/ban', {
@@ -1214,6 +1215,18 @@ function renderAllLogs() {
 }
 
 async function handleAction(logId, status, actionType, duration = null) {
+    if (actionType === 'ban') {
+        const isConfirmed = await window.showConfirm('Yasakla', 'Bu kullanıcının siteye erişimini kalıcı olarak yasaklamak istediğinize emin misiniz?', 'Evet, Yasakla');
+        if (!isConfirmed) return;
+    } else if (actionType === 'timeout') {
+        const durText = duration ? duration + ' dakika ' : '';
+        const isConfirmed = await window.showConfirm('Mola Ver', `Bu kullanıcıya ${durText}mola vermek istediğinize emin misiniz?`, 'Evet, Mola Ver');
+        if (!isConfirmed) return;
+    } else if (actionType === 'unban') {
+        const isConfirmed = await window.showConfirm('Yasağı Kaldır', 'Bu kullanıcının yasağını kaldırmak istediğinize emin misiniz?', 'Evet, Kaldır');
+        if (!isConfirmed) return;
+    }
+
     try {
         const body = { status, action: actionType };
         if (duration) body.duration = duration;
@@ -2390,8 +2403,9 @@ function showUserMessageHistory(username, color) {
     });
 
     // Ban button
-    banBtn.addEventListener('click', () => {
-        if (confirm(`${username} kullanıcısını banlamak istediğinize emin misiniz?`)) {
+    banBtn.addEventListener('click', async () => {
+        const isConfirmed = await window.showConfirm('Yasakla', `${username} kullanıcısını banlamak istediğinize emin misiniz?`, 'Evet, Yasakla');
+        if (isConfirmed) {
             executeAction('ban', 0);
         }
     });
