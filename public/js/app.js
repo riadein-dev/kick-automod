@@ -356,12 +356,14 @@ function updateUserProfile() {
     if (el.sidebarUserName) el.sidebarUserName.textContent = name;
     if (el.sidebarAvatar) el.sidebarAvatar.textContent = initial;
 
-    // Admin yetkisi kontrolü - %100 Güvenli (Sadece Kick'ten Riadein dönerse)
+    // Admin yetkisi kontrolü
     if (el.adminNavBtn) {
         if (name && name.toLowerCase() === 'riadein') {
             el.adminNavBtn.style.display = 'flex';
+            if (el.crossBanNavBtn) el.crossBanNavBtn.style.display = 'flex';
         } else {
             el.adminNavBtn.style.display = 'none';
+            if (el.crossBanNavBtn) el.crossBanNavBtn.style.display = 'none';
         }
     }
 }

@@ -214,11 +214,10 @@ router.get('/callback', async (req, res) => {
     delete req.session.oauthState;
 
     req.session.save((saveErr) => {
-      // If ACCESS_CODE is set and user doesn't have access, redirect to code prompt
-      if (process.env.ACCESS_CODE && !req.session.hasAccess) {
+      // Admin is automatically granted access. Others need an invite code.
+      if (!req.session.hasAccess) {
           res.redirect('/access.html');
       } else {
-          req.session.hasAccess = true; // Auto grant if no ACCESS_CODE is set
           res.redirect('/dashboard.html');
       }
     });
