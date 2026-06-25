@@ -259,7 +259,6 @@ apiRouter.post('/crossban/channels', adminOnly, async (req, res) => {
     
     try {
         // Resolve Kick ChatroomId
-        const fetch = require('node-fetch');
         const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`, {
             headers: {
                 'Accept': 'application/json',
@@ -314,8 +313,12 @@ apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req
 
     try {
         // 1. Resolve Kick User ID from Username
-        const fetch = require('node-fetch');
-        const kickRes = await fetch(`https://kick.com/api/v2/channels/${username}`);
+        const kickRes = await fetch(`https://kick.com/api/v2/channels/${username}`, {
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
         let targetUserId = null;
         if (kickRes.ok) {
             const data = await kickRes.json();
