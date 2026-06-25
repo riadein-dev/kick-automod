@@ -2743,7 +2743,7 @@ window.deleteCrossBanChannel = async function(id) {
 const cbAddModal = document.getElementById('cbAddChannelModal');
 const cbInput = document.getElementById('cbChannelInput');
 
-document.getElementById('cbOpenAddModalBtn')?.addEventListener('click', () => {
+document.getElementById('cbAddChannelBtn')?.addEventListener('click', () => {
     if (cbAddModal) cbAddModal.classList.add('show');
     if (cbInput) cbInput.focus();
 });
