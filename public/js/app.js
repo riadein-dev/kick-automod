@@ -2778,13 +2778,43 @@ document.getElementById('cbConfirmAddBtn')?.addEventListener('click', async () =
     }
 });
 
-// Resim seçildiğinde label metnini güncelle
+// Resim seçildiğinde önizleme göster
 document.getElementById('cbImage')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
-    const span = document.querySelector('#cbImageLabel span');
-    if (span) {
-        if (file) span.textContent = file.name;
-        else span.textContent = 'Görsel Seç (Dosya Seçilmedi)';
+    const preview = document.getElementById('cbImagePreview');
+    const placeholder = document.getElementById('cbImagePlaceholder');
+    const clearBtn = document.getElementById('cbImageClearBtn');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (preview) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            if (placeholder) placeholder.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        if (preview) {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+        if (placeholder) placeholder.style.display = 'flex';
+        if (clearBtn) clearBtn.style.display = 'none';
+    }
+});
+
+// Görseli Temizle Butonu
+document.getElementById('cbImageClearBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const input = document.getElementById('cbImage');
+    if (input) {
+        input.value = '';
+        input.dispatchEvent(new Event('change'));
     }
 });
 
@@ -2833,7 +2863,11 @@ document.getElementById('crossBanForm')?.addEventListener('submit', async (e) =>
         if (res.ok) {
             document.getElementById('cbUsername').value = '';
             document.getElementById('cbReason').value = '';
-            document.getElementById('cbImage').value = '';
+            const cbImage = document.getElementById('cbImage');
+            if (cbImage) {
+                cbImage.value = '';
+                cbImage.dispatchEvent(new Event('change'));
+            }
             fetchCrossBanLogs();
             alert('İşlem başarıyla başlatıldı ve arka planda tüm kanallara uygulanıyor.');
         } else {
