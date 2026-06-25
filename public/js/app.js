@@ -2921,7 +2921,7 @@ document.getElementById('crossBanForm')?.addEventListener('submit', async (e) =>
         alert('Sunucu hatası.');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = 'ATEŞLE (ÇALIŞTIR)';
+        btn.innerHTML = 'BAN';
     }
 });
 

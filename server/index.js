@@ -1027,6 +1027,200 @@ apiRouter.get('/stream', (req, res) => {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive'
+res.json(result);
+});
+
+apiRouter.patch('/rules/:ruleName', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const { ruleName } = req.params;
+  res.json(store.updateRule(sessionUserId, ruleName, req.body));
+});
+
+// Custom Words Management
+apiRouter.post('/words', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const wordData = req.body;
+
+  // Check for exact duplicates to prevent double-click bugs
+  const currentRules = store.getAutomodRules(sessionUserId);
+  const exists = currentRules.rules.bannedWords.words.find(w => 
+    w.word.toLowerCase() === wordData.word.toLowerCase() && 
+    w.exactMatch === (wordData.exactMatch || false)
+  );
+  
+  if (exists) {
+      return res.json(exists);
+  }
+
+  const word = store.addCustomWord(sessionUserId, wordData);
+  res.json(word);
+});
+
+apiRouter.delete('/words/:id', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  store.removeCustomWord(sessionUserId, req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.delete('/words', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  store.removeAllCustomWords(sessionUserId);
+  res.json({ success: true });
+});
+
+apiRouter.patch('/words/:id', (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const { enabled } = req.body;
+  const word = store.toggleCustomWord(sessionUserId, req.params.id, enabled);
+  if (word) {
+      res.json(word);
+  } else {
+      res.status(404).json({ error: 'Kelime bulunamadı' });
+  }
+});
+
+// Word Preset Sharing
+apiRouter.post('/words/share', async (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  const rules = store.getAutomodRules(sessionUserId);
+  const words = rules.rules.bannedWords.words || [];
+  
+  if (words.length === 0) {
+      return res.status(400).json({ error: 'Paylaşılacak kelime bulunamadı.' });
+  }
+
+  // Generate a random 5-character alphanumeric code
+  const shareCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+  
+  if (process.env.MONGODB_URI) {
+      const { WordPreset } = require('./db');
+      try {
+          await WordPreset.create({
+              shareCode,
+              ownerId: sessionUserId,
+              words: words.map(w => ({
+                  word: w.word,
+                  exactMatch: w.exactMatch,
+                  action: w.action,
+                  duration: w.duration
+              }))
+          });
+      } catch (err) {
+          console.error('[WordPreset] Paylaşım kodu oluşturulamadı:', err);
+          return res.status(500).json({ error: 'Paylaşım kodu oluşturulamadı.' });
+      }
+  } else {
+      return res.status(500).json({ error: 'Veritabanı bağlı değil, paylaşım özelliği kullanılamaz.' });
+  }
+
+  res.json({ success: true, shareCode });
+});
+
+apiRouter.post('/words/import', async (req, res) => {
+  const sessionUserId = req.session.userId || req.session.user?.name || req.sessionID;
+  let { shareCode } = req.body;
+  
+  if (!shareCode) return res.status(400).json({ error: 'Paylaşım kodu gerekli.' });
+  shareCode = shareCode.toUpperCase().trim();
+
+  if (!process.env.MONGODB_URI) {
+      return res.status(500).json({ error: 'Veritabanı bağlı değil.' });
+  }
+
+  const { WordPreset } = require('./db');
+  try {
+      const preset = await WordPreset.findOne({ shareCode });
+      if (!preset) {
+          return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş kod.' });
+      }
+
+      const rules = store.getAutomodRules(sessionUserId);
+      const currentWords = rules.rules.bannedWords.words || [];
+      let importedCount = 0;
+
+      for (const w of preset.words) {
+          // Check if word already exists with the exact same settings
+          const exists = currentWords.some(cw => 
+              cw.word.toLowerCase() === w.word.toLowerCase() &&
+              cw.action === w.action &&
+              String(cw.duration) === String(w.duration) &&
+              Boolean(cw.exactMatch) === Boolean(w.exactMatch)
+          );
+          
+          if (!exists) {
+              // If word text exists but settings are different, we still add it.
+              // (If you prefer to overwrite instead of add duplicate texts, we can change this logic).
+              store.addCustomWord(sessionUserId, {
+                  word: w.word,
+                  exactMatch: w.exactMatch || false,
+                  action: w.action || 'ban',
+                  duration: w.duration || 0,
+                  channel: 'all' // Imported words apply to all channels by default
+              });
+              importedCount++;
+          }
+      }
+
+      res.json({ success: true, importedCount });
+  } catch (err) {
+      console.error('[WordPreset] İçe aktarma hatası:', err);
+      return res.status(500).json({ error: 'İçe aktarma sırasında bir hata oluştu.' });
+  }
+});
+
+// ==== ADMIN PANEL ====
+const requireAdmin = (req, res, next) => {
+    // Sadece Kick API'den gelen ve doğrulanmış isim Riadein ise
+    if (req.session.user && req.session.user.name && req.session.user.name.toLowerCase() === 'riadein') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Bu alana sadece geliştirici (Riadein) erişebilir.' });
+    }
+};
+
+apiRouter.get('/admin/visitors', requireAdmin, (req, res) => {
+    res.json(store.getVisitors());
+});
+
+apiRouter.post('/admin/ban', requireAdmin, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'Kullanıcı kimliği belirtilmedi.' });
+    
+    const visitor = await store.banVisitor(userId);
+    if (!visitor) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    
+    // Disable automod system for this user immediately
+    store.updateAutomodRules(userId, { enabled: false });
+    
+    res.json({ success: true, message: 'Kullanıcı yasaklandı ve sistemi durduruldu.' });
+});
+
+apiRouter.post('/admin/unban', requireAdmin, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'Kullanıcı kimliği belirtilmedi.' });
+    
+    const visitor = await store.unbanVisitor(userId);
+    if (!visitor) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    
+    res.json({ success: true, message: 'Kullanıcının yasağı kaldırıldı.' });
+});
+
+apiRouter.delete('/admin/visitors', requireAdmin, async (req, res) => {
+    store.visitors = [];
+    if (process.env.MONGODB_URI) {
+        const { Visitor } = require('./db');
+        await Visitor.deleteMany({});
+    }
+    res.json({ success: true });
+});
+// =====================
+
+// Server-Sent Events (SSE) stream for real-time updates to frontend
+apiRouter.get('/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
   });
 
   // Send initial data
@@ -1059,7 +1253,10 @@ app.use((err, req, res, next) => {
         console.warn('Geçersiz CSRF Token Yakalandı:', req.ip);
         return res.status(403).json({ error: 'Geçersiz güvenlik sertifikası (CSRF). Lütfen sayfayı yenileyin.' });
     }
-    console.error('Kritik Sunucu Hatası Yakalandı:', err);
+    console.error('Unhandled Server Error:', err.stack || err);
+    try {
+        require('fs').writeFileSync(require('path').join(__dirname, '../lasterror.txt'), err.stack || err.toString());
+    } catch(e) {}
     res.status(500).json({ error: 'Sunucuda beklenmeyen bir hata oluştu ancak sistem güvenle çalışmaya devam ediyor.' });
 });
 
