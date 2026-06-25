@@ -61,24 +61,6 @@ const inviteCodeSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-const crossBanChannelSchema = new mongoose.Schema({
-    slug: { type: String, required: true },
-    chatroomId: { type: String, required: true },
-    broadcasterUserId: { type: String },
-    addedBy: { type: String, required: true }
-});
-
-const crossBanLogSchema = new mongoose.Schema({
-    username: { type: String, required: true },
-    userId: { type: String }, // Kick user ID if resolved
-    action: { type: String, required: true }, // ban, timeout, unban
-    duration: { type: Number }, // for timeout
-    reason: { type: String },
-    imageUrl: { type: String },
-    addedBy: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-});
-
 const wordPresetSchema = new mongoose.Schema({
     shareCode: { type: String, required: true, unique: true },
     ownerId: { type: String, required: true },
@@ -125,8 +107,6 @@ const WordPreset = mongoose.model('WordPreset', wordPresetSchema);
 const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 const ModerationLog = mongoose.model('ModerationLog', moderationLogSchema);
 const InviteCode = mongoose.model('InviteCode', inviteCodeSchema);
-const CrossBanChannel = mongoose.model('CrossBanChannel', crossBanChannelSchema);
-const CrossBanLog = mongoose.model('CrossBanLog', crossBanLogSchema);
 
 async function connectDB() {
     if (!process.env.MONGODB_URI) {
@@ -153,6 +133,4 @@ module.exports = {
     Visitor,
     WordPreset,
     InviteCode,
-    CrossBanChannel,
-    CrossBanLog
 };
