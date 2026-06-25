@@ -2739,27 +2739,65 @@ window.deleteCrossBanChannel = async function(id) {
     } catch(e) {}
 };
 
-document.getElementById('cbAddChannelBtn')?.addEventListener('click', async () => {
-    const slug = prompt('Eklenecek kanalın adını (slug) girin:');
+// Cross Ban Kanal Ekleme Modal İşlemleri
+const cbAddModal = document.getElementById('cbAddChannelModal');
+const cbInput = document.getElementById('cbChannelInput');
+
+document.getElementById('cbOpenAddModalBtn')?.addEventListener('click', () => {
+    if (cbAddModal) cbAddModal.classList.add('show');
+    if (cbInput) cbInput.focus();
+});
+
+document.getElementById('cbCloseModalBtn')?.addEventListener('click', () => {
+    if (cbAddModal) cbAddModal.classList.remove('show');
+    if (cbInput) cbInput.value = '';
+});
+
+document.getElementById('cbConfirmAddBtn')?.addEventListener('click', async () => {
+    const slug = cbInput?.value.trim();
     if (!slug) return;
+    
+    document.getElementById('cbConfirmAddBtn').disabled = true;
     try {
         const res = await apiFetch('/api/crossban/channels', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug })
         });
-        if (res.ok) fetchCrossBanChannels();
-        else {
+        if (res.ok) {
+            fetchCrossBanChannels();
+            if (cbAddModal) cbAddModal.classList.remove('show');
+            if (cbInput) cbInput.value = '';
+        } else {
             const data = await res.json();
             alert(data.error || 'Kanal eklenemedi.');
         }
     } catch (e) { alert('Hata oluştu.'); }
+    finally {
+        document.getElementById('cbConfirmAddBtn').disabled = false;
+    }
+});
+
+// Resim seçildiğinde label metnini güncelle
+document.getElementById('cbImage')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    const span = document.querySelector('#cbImageLabel span');
+    if (span) {
+        if (file) span.textContent = file.name;
+        else span.textContent = 'Görsel Seç (Dosya Seçilmedi)';
+    }
 });
 
 document.getElementById('cbAction')?.addEventListener('change', (e) => {
     const durCont = document.getElementById('cbDurationContainer');
-    if (e.target.value === 'timeout') durCont.style.display = 'block';
-    else durCont.style.display = 'none';
+    const space = document.getElementById('cbEmptySpace');
+    if (e.target.value === 'timeout') {
+        durCont.style.display = 'flex';
+        if (space) space.style.display = 'none';
+    } else {
+        durCont.style.display = 'none';
+        if (space) space.style.display = 'block';
+    }
 });
 
 document.getElementById('crossBanForm')?.addEventListener('submit', async (e) => {
