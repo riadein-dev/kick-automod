@@ -2743,14 +2743,14 @@ window.deleteCrossBanChannel = async function(id) {
 document.getElementById('cbAddChannelBtn')?.addEventListener('click', () => {
     const cbAddModal = document.getElementById('cbAddChannelModal');
     const cbInput = document.getElementById('cbChannelInput');
-    if (cbAddModal) cbAddModal.classList.add('show');
+    if (cbAddModal) cbAddModal.classList.add('open');
     if (cbInput) cbInput.focus();
 });
 
 document.getElementById('cbCloseModalBtn')?.addEventListener('click', () => {
     const cbAddModal = document.getElementById('cbAddChannelModal');
     const cbInput = document.getElementById('cbChannelInput');
-    if (cbAddModal) cbAddModal.classList.remove('show');
+    if (cbAddModal) cbAddModal.classList.remove('open');
     if (cbInput) cbInput.value = '';
 });
 
@@ -2769,7 +2769,7 @@ document.getElementById('cbConfirmAddBtn')?.addEventListener('click', async () =
         });
         if (res.ok) {
             fetchCrossBanChannels();
-            if (cbAddModal) cbAddModal.classList.remove('show');
+            if (cbAddModal) cbAddModal.classList.remove('open');
             if (cbInput) cbInput.value = '';
         } else {
             const data = await res.json();
