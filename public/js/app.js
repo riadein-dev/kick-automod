@@ -2771,6 +2771,7 @@ document.getElementById('cbConfirmAddBtn')?.addEventListener('click', async () =
             fetchCrossBanChannels();
             if (cbAddModal) cbAddModal.classList.remove('open');
             if (cbInput) cbInput.value = '';
+            document.getElementById('cbConfirmAddBtn').disabled = false;
         } else {
             const data = await res.json();
             alert(data.error || 'Kanal eklenemedi.');

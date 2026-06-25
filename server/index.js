@@ -260,8 +260,13 @@ apiRouter.post('/crossban/channels', adminOnly, async (req, res) => {
     try {
         // Resolve Kick ChatroomId
         const fetch = require('node-fetch');
-        const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`);
-        if (!kickRes.ok) return res.status(404).json({ error: 'Kanal bulunamadı veya Kick API hatası.' });
+        const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`, {
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+        if (!kickRes.ok) return res.status(404).json({ error: 'Kanal bulunamadı veya Kick API hatası. HTTP: ' + kickRes.status });
         
         const data = await kickRes.json();
         if (!data || !data.chatroom || !data.chatroom.id) return res.status(404).json({ error: 'Sohbet odası ID bulunamadı.' });
@@ -270,12 +275,12 @@ apiRouter.post('/crossban/channels', adminOnly, async (req, res) => {
             slug: slug,
             chatroomId: data.chatroom.id.toString(),
             broadcasterUserId: data.user_id?.toString() || '',
-            addedBy: req.session.userId
+            addedBy: req.session.userId || 'Bilinmiyor'
         });
         res.json(newChannel);
     } catch (e) {
         console.error('Cross ban channel error:', e);
-        res.status(500).json({ error: 'Kanal eklenemedi.' });
+        res.status(500).json({ error: 'Kanal eklenemedi: ' + e.message });
     }
 });
 
