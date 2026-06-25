@@ -319,12 +319,13 @@ apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req
     if (!username || !action) return res.status(400).json({ error: 'Eksik parametreler.' });
 
     try {
+        const { createKickClient } = require('./kickApi');
+        const kickClient = createKickClient(req.session.accessToken || null);
+
         // 1. Resolve Kick User ID from Username
         let targetUserId = req.body.targetUserId;
         
         if (!targetUserId) {
-            const { createKickClient } = require('./kickApi');
-            const kickClient = createKickClient(req.session.accessToken || null);
             try {
                 const data = await kickClient.getChannel(username);
                 if (data && data.user_id) targetUserId = data.user_id.toString();
@@ -346,7 +347,7 @@ apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req
             duration: duration ? parseInt(duration) : null,
             reason: reason || '',
             imageUrl: imageUrl,
-            addedBy: req.session.userId
+            addedBy: req.session.userId || 'Bilinmiyor'
         });
 
         // 3. Execute action on all crossban channels
@@ -360,11 +361,11 @@ apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req
                 try {
                     // Kick API needs broadcasterUserId, not chatroomId for these endpoints
                     if (action === 'ban') {
-                        await automod.client.banUser(ch.broadcasterUserId, targetUserId, reason || 'Cross Ban', callerNumericId);
+                        await kickClient.banUser(ch.broadcasterUserId, targetUserId, reason || 'Cross Ban', callerNumericId);
                     } else if (action === 'timeout') {
-                        await automod.client.timeoutUser(ch.broadcasterUserId, targetUserId, parseInt(duration) || 5, reason || 'Cross Timeout', callerNumericId);
+                        await kickClient.timeoutUser(ch.broadcasterUserId, targetUserId, parseInt(duration) || 5, reason || 'Cross Timeout', callerNumericId);
                     } else if (action === 'unban') {
-                        await automod.client.unbanUser(ch.broadcasterUserId, targetUserId, callerNumericId);
+                        await kickClient.unbanUser(ch.broadcasterUserId, targetUserId, callerNumericId);
                     }
                 } catch(err) {
                     console.error(`CrossBan error on channel ${ch.slug} for ${username}:`, err.message);

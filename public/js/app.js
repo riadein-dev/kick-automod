@@ -2860,7 +2860,12 @@ document.getElementById('crossBanForm')?.addEventListener('submit', async (e) =>
         return;
     }
 
-    if (!confirm('Seçtiğiniz işlemi tüm kanallarda başlatmak istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+    const isConfirmed = await window.showConfirm(
+        'Emin misiniz?',
+        'Seçtiğiniz işlemi tüm kanallarda başlatmak istediğinize emin misiniz? Bu işlem geri alınamaz!',
+        'Evet, Başlat'
+    );
+    if (!isConfirmed) return;
 
     const btn = document.getElementById('cbExecuteBtn');
     btn.disabled = true;
