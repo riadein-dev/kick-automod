@@ -465,7 +465,7 @@ class AutoModEngine {
   // ============ Rule Checks ============
 
   checkBannedWords(message, rule) {
-    const content = (message.content || message.message || '').toLowerCase();
+    const content = (message.content || message.message || '').toLocaleLowerCase('tr-TR');
     const channelName = message.channel || message.chatroom_slug;
     let foundViolations = [];
     
@@ -473,7 +473,7 @@ class AutoModEngine {
       if (w.enabled === false) continue;
       if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue;
       
-      let targetWord = w.word.toLowerCase().trim();
+      let targetWord = w.word.toLocaleLowerCase('tr-TR').trim();
       if (!targetWord) continue;
 
       let matched = false;

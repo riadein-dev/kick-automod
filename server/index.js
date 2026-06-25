@@ -722,7 +722,7 @@ apiRouter.post('/words', (req, res) => {
   // Check for exact duplicates to prevent double-click bugs
   const currentRules = store.getAutomodRules(sessionUserId);
   const exists = currentRules.rules.bannedWords.words.find(w => 
-    w.word.toLowerCase() === wordData.word.toLowerCase() && 
+    w.word.toLocaleLowerCase('tr-TR') === wordData.word.toLocaleLowerCase('tr-TR') && 
     w.exactMatch === (wordData.exactMatch || false)
   );
   
@@ -819,7 +819,7 @@ apiRouter.post('/words/import', async (req, res) => {
       for (const w of preset.words) {
           // Check if word already exists with the exact same settings
           const exists = currentWords.some(cw => 
-              cw.word.toLowerCase() === w.word.toLowerCase() &&
+              cw.word.toLocaleLowerCase('tr-TR') === w.word.toLocaleLowerCase('tr-TR') &&
               cw.action === w.action &&
               String(cw.duration) === String(w.duration) &&
               Boolean(cw.exactMatch) === Boolean(w.exactMatch)

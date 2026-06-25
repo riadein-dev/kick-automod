@@ -997,11 +997,9 @@ async function fetchAdminVisitors() {
         // Event Listeners for Ban/Unban
         document.querySelectorAll('.ban-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const isConfirmed = await window.showConfirm('Yasakla', 'Bu kullanıcının siteye erişimini kalıcı olarak yasaklamak istediğinize emin misiniz?', 'Evet, Yasakla');
-                if (isConfirmed) {
-                    const id = e.currentTarget.dataset.id;
-                    try {
-                        const res = await apiFetch('/api/admin/ban', {
+                const id = e.currentTarget.dataset.id;
+                try {
+                    const res = await apiFetch('/api/admin/ban', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ userId: id })
@@ -1010,16 +1008,14 @@ async function fetchAdminVisitors() {
                         if (res.ok) fetchAdminVisitors();
                         else alert(data.error || 'Hata oluştu');
                     } catch(err) { alert('Hata oluştu'); }
-                }
             });
         });
         
         document.querySelectorAll('.unban-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if (confirm('Bu kullanıcının yasağını kaldırmak istediğinize emin misiniz?')) {
-                    const id = e.currentTarget.dataset.id;
-                    try {
-                        const res = await apiFetch('/api/admin/unban', {
+                const id = e.currentTarget.dataset.id;
+                try {
+                    const res = await apiFetch('/api/admin/unban', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ userId: id })
@@ -1028,7 +1024,6 @@ async function fetchAdminVisitors() {
                         if (res.ok) fetchAdminVisitors();
                         else alert(data.error || 'Hata oluştu');
                     } catch(err) { alert('Hata oluştu'); }
-                }
             });
         });
     } catch (e) {
@@ -1215,17 +1210,6 @@ function renderAllLogs() {
 }
 
 async function handleAction(logId, status, actionType, duration = null) {
-    if (actionType === 'ban') {
-        const isConfirmed = await window.showConfirm('Yasakla', 'Bu kullanıcının siteye erişimini kalıcı olarak yasaklamak istediğinize emin misiniz?', 'Evet, Yasakla');
-        if (!isConfirmed) return;
-    } else if (actionType === 'timeout') {
-        const durText = duration ? duration + ' dakika ' : '';
-        const isConfirmed = await window.showConfirm('Mola Ver', `Bu kullanıcıya ${durText}mola vermek istediğinize emin misiniz?`, 'Evet, Mola Ver');
-        if (!isConfirmed) return;
-    } else if (actionType === 'unban') {
-        const isConfirmed = await window.showConfirm('Yasağı Kaldır', 'Bu kullanıcının yasağını kaldırmak istediğinize emin misiniz?', 'Evet, Kaldır');
-        if (!isConfirmed) return;
-    }
 
     try {
         const body = { status, action: actionType };
@@ -2404,10 +2388,7 @@ function showUserMessageHistory(username, color) {
 
     // Ban button
     banBtn.addEventListener('click', async () => {
-        const isConfirmed = await window.showConfirm('Yasakla', `${username} kullanıcısını banlamak istediğinize emin misiniz?`, 'Evet, Yasakla');
-        if (isConfirmed) {
-            executeAction('ban', 0);
-        }
+        executeAction('ban', 0);
     });
 }
 
