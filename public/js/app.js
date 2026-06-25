@@ -2759,13 +2759,24 @@ document.getElementById('cbConfirmAddBtn')?.addEventListener('click', async () =
     const cbInput = document.getElementById('cbChannelInput');
     const slug = cbInput?.value.trim();
     if (!slug) return;
-    
     document.getElementById('cbConfirmAddBtn').disabled = true;
+    
+    let chatroomId = null;
+    let userId = null;
+    try {
+        const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`);
+        if (kickRes.ok) {
+            const d = await kickRes.json();
+            if (d && d.chatroom && d.chatroom.id) chatroomId = d.chatroom.id.toString();
+            if (d && d.user_id) userId = d.user_id.toString();
+        }
+    } catch (e) { console.warn('Frontend kick fetch failed:', e); }
+
     try {
         const res = await apiFetch('/api/crossban/channels', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug })
+            body: JSON.stringify({ slug, chatroomId, userId })
         });
         if (res.ok) {
             fetchCrossBanChannels();
@@ -2836,14 +2847,37 @@ document.getElementById('cbAction')?.addEventListener('change', (e) => {
 
 document.getElementById('crossBanForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const username = document.getElementById('cbUsername').value;
+    const cbAction = document.getElementById('cbAction').value;
+    const cbReason = document.getElementById('cbReason').value;
+    const cbDuration = document.getElementById('cbDuration').value;
+    const cbImageFile = document.getElementById('cbImage').files[0];
+
+    if (!cbAction || !username) {
+        alert('İşlem tipi ve kullanıcı adı zorunludur.');
+        document.getElementById('cbExecuteBtn').disabled = false;
+        return;
+    }
+
     if (!confirm('Seçtiğiniz işlemi tüm kanallarda başlatmak istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
 
     const btn = document.getElementById('cbExecuteBtn');
     btn.disabled = true;
     btn.innerHTML = 'İşleniyor...';
 
+    let targetUserId = null;
+    try {
+        const kickRes = await fetch(`https://kick.com/api/v2/channels/${username}`);
+        if (kickRes.ok) {
+            const d = await kickRes.json();
+            if (d && d.user_id) targetUserId = d.user_id.toString();
+        }
+    } catch (e) { console.warn('Frontend kick fetch failed:', e); }
+
     const formData = new FormData();
     formData.append('username', document.getElementById('cbUsername').value);
+    if (targetUserId) formData.append('targetUserId', targetUserId);
     formData.append('action', document.getElementById('cbAction').value);
     formData.append('reason', document.getElementById('cbReason').value);
     
