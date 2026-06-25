@@ -254,21 +254,33 @@ apiRouter.get('/crossban/channels', adminOnly, async (req, res) => {
 
 apiRouter.post('/crossban/channels', adminOnly, async (req, res) => {
     const { CrossBanChannel } = require('./db');
-    const { slug } = req.body;
+    const { slug, chatroomId, userId } = req.body;
     if (!slug) return res.status(400).json({ error: 'Kanal adı gerekli.' });
     
     try {
-        // Resolve Kick ChatroomId using the existing client
-        const { createKickClient } = require('./kickApi');
-        const kickClient = createKickClient(req.session.accessToken || null);
-        const data = await kickClient.getChannel(slug);
-        
-        if (!data || !data.chatroom || !data.chatroom.id) return res.status(404).json({ error: 'Kanal bulunamadı veya Kick API hatası.' });
+        let finalChatroomId = chatroomId;
+        let finalUserId = userId;
+
+        if (!finalChatroomId || !finalUserId) {
+            const { createKickClient } = require('./kickApi');
+            const kickClient = createKickClient(req.session.accessToken || null);
+            let data = null;
+            try {
+                data = await kickClient.getChannel(slug);
+            } catch (err) {
+                return res.status(404).json({ error: err.message });
+            }
+            
+            if (!data || !data.chatroom || !data.chatroom.id) return res.status(404).json({ error: 'Kanal bulunamadı veya Kick API hatası.' });
+            
+            if (!finalChatroomId) finalChatroomId = data.chatroom.id.toString();
+            if (!finalUserId) finalUserId = data.user_id?.toString() || '';
+        }
         
         const newChannel = await CrossBanChannel.create({
             slug: slug,
-            chatroomId: data.chatroom.id.toString(),
-            broadcasterUserId: data.user_id?.toString() || '',
+            chatroomId: finalChatroomId,
+            broadcasterUserId: finalUserId || '',
             addedBy: req.session.userId || 'Bilinmiyor'
         });
         res.json(newChannel);
@@ -308,12 +320,19 @@ apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req
 
     try {
         // 1. Resolve Kick User ID from Username
-        const { createKickClient } = require('./kickApi');
-        const kickClient = createKickClient(req.session.accessToken || null);
-        const data = await kickClient.getChannel(username);
+        let targetUserId = req.body.targetUserId;
         
-        let targetUserId = null;
-        if (data && data.user_id) targetUserId = data.user_id.toString();
+        if (!targetUserId) {
+            const { createKickClient } = require('./kickApi');
+            const kickClient = createKickClient(req.session.accessToken || null);
+            try {
+                const data = await kickClient.getChannel(username);
+                if (data && data.user_id) targetUserId = data.user_id.toString();
+            } catch (err) {
+                console.warn('[CrossBan Execute] Fallback getChannel failed:', err.message);
+                // We'll let the next if(!targetUserId) catch the failure
+            }
+        }
 
         if (!targetUserId) {
             return res.status(404).json({ error: 'Kullanıcı ID tespit edilemedi. Nick yanlış olabilir.' });
