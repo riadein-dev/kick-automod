@@ -2740,20 +2740,23 @@ window.deleteCrossBanChannel = async function(id) {
 };
 
 // Cross Ban Kanal Ekleme Modal İşlemleri
-const cbAddModal = document.getElementById('cbAddChannelModal');
-const cbInput = document.getElementById('cbChannelInput');
-
 document.getElementById('cbAddChannelBtn')?.addEventListener('click', () => {
+    const cbAddModal = document.getElementById('cbAddChannelModal');
+    const cbInput = document.getElementById('cbChannelInput');
     if (cbAddModal) cbAddModal.classList.add('show');
     if (cbInput) cbInput.focus();
 });
 
 document.getElementById('cbCloseModalBtn')?.addEventListener('click', () => {
+    const cbAddModal = document.getElementById('cbAddChannelModal');
+    const cbInput = document.getElementById('cbChannelInput');
     if (cbAddModal) cbAddModal.classList.remove('show');
     if (cbInput) cbInput.value = '';
 });
 
 document.getElementById('cbConfirmAddBtn')?.addEventListener('click', async () => {
+    const cbAddModal = document.getElementById('cbAddChannelModal');
+    const cbInput = document.getElementById('cbChannelInput');
     const slug = cbInput?.value.trim();
     if (!slug) return;
     
