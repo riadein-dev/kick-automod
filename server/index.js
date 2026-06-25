@@ -258,17 +258,12 @@ apiRouter.post('/crossban/channels', adminOnly, async (req, res) => {
     if (!slug) return res.status(400).json({ error: 'Kanal adı gerekli.' });
     
     try {
-        // Resolve Kick ChatroomId
-        const kickRes = await fetch(`https://kick.com/api/v2/channels/${slug}`, {
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-        });
-        if (!kickRes.ok) return res.status(404).json({ error: 'Kanal bulunamadı veya Kick API hatası. HTTP: ' + kickRes.status });
+        // Resolve Kick ChatroomId using the existing client
+        const { createKickClient } = require('./kickApi');
+        const kickClient = createKickClient(req.session.accessToken || null);
+        const data = await kickClient.getChannel(slug);
         
-        const data = await kickRes.json();
-        if (!data || !data.chatroom || !data.chatroom.id) return res.status(404).json({ error: 'Sohbet odası ID bulunamadı.' });
+        if (!data || !data.chatroom || !data.chatroom.id) return res.status(404).json({ error: 'Kanal bulunamadı veya Kick API hatası.' });
         
         const newChannel = await CrossBanChannel.create({
             slug: slug,
@@ -313,17 +308,12 @@ apiRouter.post('/crossban/action', adminOnly, upload.single('image'), async (req
 
     try {
         // 1. Resolve Kick User ID from Username
-        const kickRes = await fetch(`https://kick.com/api/v2/channels/${username}`, {
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-        });
+        const { createKickClient } = require('./kickApi');
+        const kickClient = createKickClient(req.session.accessToken || null);
+        const data = await kickClient.getChannel(username);
+        
         let targetUserId = null;
-        if (kickRes.ok) {
-            const data = await kickRes.json();
-            if (data && data.user_id) targetUserId = data.user_id.toString();
-        }
+        if (data && data.user_id) targetUserId = data.user_id.toString();
 
         if (!targetUserId) {
             return res.status(404).json({ error: 'Kullanıcı ID tespit edilemedi. Nick yanlış olabilir.' });
