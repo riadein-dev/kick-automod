@@ -2,7 +2,7 @@
  * Kick AutoMod Dashboard - In-Memory Store & MongoDB Persistence
  * Moderasyon logları, kanal durumları ve konfigürasyon
  */
-const { Channel, Word, AutomodRule, Visitor, ChatMessage } = require('./db');
+const { Channel, Word, AutomodRule, Visitor, ChatMessage, ModerationLog } = require('./db');
 
 class Store {
   constructor() {
