@@ -231,7 +231,31 @@ class WebSocketManager {
    */
   handleUserBanned(data, channelSlug) {
     console.log(`[WebSocket] User banned in ${channelSlug}:`, data);
-    store.broadcast('userBanned', { channel: channelSlug, data });
+    
+    // Find ownerId from channelSlug
+    const channels = store.getChannels();
+    const channel = channels.find(c => c.slug === channelSlug);
+    const ownerId = channel ? channel.addedBy : null;
+    
+    if (ownerId) {
+        store.addModerationLog({
+            channel: channelSlug,
+            chatroomId: channel.id,
+            userId: data.user?.id || data.id || 'Unknown',
+            username: data.user?.username || data.username || 'Unknown',
+            messageContent: 'Kick üzerinden harici işlem (T.O / Ban)',
+            ruleName: 'externalAction',
+            reason: data.reason || 'Dışarıdan müdahale',
+            type: 'manual',
+            action: data.duration ? 'timeout' : 'ban',
+            duration: data.duration || 0,
+            status: 'applied',
+            ownerId: ownerId,
+            messageId: 'external_' + Date.now()
+        });
+    } else {
+        store.broadcast('userBanned', { channel: channelSlug, data });
+    }
   }
 
   /**

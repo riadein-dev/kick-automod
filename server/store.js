@@ -191,8 +191,30 @@ class Store {
       } catch (e) {
           console.error('[Store] ChatMessage load error:', e);
       }
+      const dbLogs = await ModerationLog.find({}).sort({ createdAt: -1 }).limit(500);
+      this.moderationLogs = dbLogs.map(l => ({
+          id: l.id,
+          channel: l.channel,
+          chatroomId: l.chatroomId,
+          userId: l.userId,
+          messageId: l.messageId,
+          username: l.username,
+          messageContent: l.messageContent,
+          ruleName: l.ruleName,
+          reason: l.reason,
+          type: l.type,
+          action: l.action,
+          duration: l.duration,
+          status: l.status,
+          ownerId: l.ownerId,
+          createdAt: l.createdAt
+      }));
       
-      console.log('[Store] Veritabanından veriler başarıyla yüklendi.');
+      this.stats.totalModeration = this.moderationLogs.length;
+      this.stats.applied = this.moderationLogs.filter(l => l.status === 'applied').length;
+      this.stats.pending = this.moderationLogs.filter(l => l.status === 'pending').length;
+
+      console.log(`[Store] Veritabanından veriler başarıyla yüklendi. (Logs: ${this.moderationLogs.length})`);
     } catch (err) {
       console.error('[Store] DB yükleme hatası:', err);
     }
@@ -471,6 +493,20 @@ class Store {
           existing.action = log.action || existing.action;
           existing.createdAt = new Date().toISOString();
           
+          if (process.env.MONGODB_URI) {
+              ModerationLog.updateOne(
+                  { id: existing.id }, 
+                  { $set: { 
+                      spamCount: existing.spamCount, 
+                      status: existing.status, 
+                      action: existing.action, 
+                      createdAt: existing.createdAt 
+                  } }
+              ).catch(err => {
+                  console.error('[Store] Failed to update spam log in DB:', err.message);
+              });
+          }
+          
           if (existing.ownerId) {
               this.broadcastToUser(existing.ownerId, 'updateModeration', { log: existing, stats: this.stats });
           } else {
@@ -491,6 +527,13 @@ class Store {
     if (entry.status === 'pending') this.stats.pending++;
     if (entry.status === 'applied') this.stats.applied++;
     
+    // Save to DB
+    if (process.env.MONGODB_URI) {
+        ModerationLog.create(entry).catch(err => {
+            console.error('[Store] Failed to save moderation log to DB:', err.message);
+        });
+    }
+    
     // Keep only last 500 entries
     if (this.moderationLogs.length > 500) {
       this.moderationLogs = this.moderationLogs.slice(0, 500);
@@ -509,6 +552,12 @@ class Store {
     if (log) {
       const oldStatus = log.status;
       Object.assign(log, updates);
+      
+      if (process.env.MONGODB_URI) {
+          ModerationLog.updateOne({ id: logId }, { $set: updates }).catch(err => {
+              console.error('[Store] Failed to update moderation log in DB:', err.message);
+          });
+      }
       
       // Temporary debug: Dump to disk if error
       if (updates.status === 'error') {

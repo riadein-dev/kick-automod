@@ -411,22 +411,8 @@ class AutoModEngine {
           break;
         case 'timeout':
           if (broadcasterUserId && logEntry.userId) {
-              try {
-                await client.timeoutUser(
-                  broadcasterUserId,
-                  logEntry.userId,
-                  logEntry.duration || 5,
-                  logEntry.reason,
-                  numericOwnerId || ownerId
-                );
-              } catch (err) {
-                if (err.message.includes('401') || err.message.includes('Unauthorized')) {
-                  console.log(`[AutoMod] Timeout API yetkisiz (401), sohbet komutu deneniyor... (${logEntry.username})`);
-                  await client.sendMessage(logEntry.chatroomId, `/timeout ${logEntry.username} ${logEntry.duration || 5} ${logEntry.reason || 'AutoMod'}`);
-                } else {
-                  throw err;
-                }
-              }
+              console.log(`[AutoMod] Kick API timeout bug bypassed. Sohbet komutu kullanılıyor... (${logEntry.username})`);
+              await client.sendMessage(logEntry.chatroomId, `/timeout ${logEntry.username} ${logEntry.duration || 5} ${logEntry.reason || 'AutoMod'}`);
           } else {
             throw new Error(`Missing data for timeout: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }
