@@ -411,8 +411,13 @@ class AutoModEngine {
           break;
         case 'timeout':
           if (broadcasterUserId && logEntry.userId) {
-              console.log(`[AutoMod] Kick API timeout bug bypassed. Sohbet komutu kullanılıyor... (${logEntry.username})`);
-              await client.sendMessage(logEntry.chatroomId, `/timeout ${logEntry.username} ${logEntry.duration || 5} ${logEntry.reason || 'AutoMod'}`);
+              console.log(`[AutoMod] Timeout via API (no moderator_user_id to prevent double): ${logEntry.username}`);
+              await client.timeoutUser(
+                broadcasterUserId,
+                logEntry.userId,
+                logEntry.duration || 5,
+                logEntry.reason
+              );
           } else {
             throw new Error(`Missing data for timeout: broadcasterUserId=${broadcasterUserId}, userId=${logEntry.userId}`);
           }

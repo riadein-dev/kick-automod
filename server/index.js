@@ -407,8 +407,7 @@ apiRouter.post('/manual-mod', async (req, res) => {
                 throw new Error("Message ID is required for delete action");
             }
         } else if (action === 'timeout') {
-            console.log(`[ModAction] Kick API timeout bug bypassed. Sohbet komutu kullanılıyor... (${username})`);
-            await kickClient.sendMessage(chatroomId, `/timeout ${username} ${duration || 5} ${reason || 'Manuel moderasyon'}`); 
+            await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon'); 
             if (messageId && chatroomId) {
                await kickClient.deleteMessage(messageId).catch(() => {});
             }
