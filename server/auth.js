@@ -195,8 +195,7 @@ router.get('/callback', async (req, res) => {
                   bio: (rawDataObj && rawDataObj.bio) || null,
                   kickCreatedAt: (rawDataObj && rawDataObj.created_at) || null,
                   followers: (rawDataObj && rawDataObj.followers_count) || 0,
-                  hasAccess: isUserAdmin ? true : undefined,
-                  isAdmin: isUserAdmin ? true : undefined
+                  ...(isUserAdmin ? { hasAccess: true, isAdmin: true } : {})
               });
               
               req.session.hasAccess = visitor.hasAccess || isUserAdmin;
