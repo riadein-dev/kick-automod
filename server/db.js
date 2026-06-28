@@ -47,7 +47,7 @@ const visitorSchema = new mongoose.Schema({
     accessToken: { type: String }, // Store access token for background moderation
     refreshToken: { type: String }, // Refresh token for auto-renewal
     tokenExpiry: { type: Number }, // Token expiry timestamp (ms)
-    rawData: { type: Object },
+    // rawData removed - was bloating DB (461MB alert)
     isBanned: { type: Boolean, default: false },
     hasAccess: { type: Boolean, default: false }, // Access code tracking
     isAdmin: { type: Boolean, default: false } // NEW: Admin flag
@@ -77,7 +77,7 @@ const chatMessageSchema = new mongoose.Schema({
     userId: { type: Number },
     timestamp: { type: String },
     sender: { type: Object },
-    createdAt: { type: Date, default: Date.now, expires: 604800 } // Messages expire after 1 week
+    createdAt: { type: Date, default: Date.now, expires: 259200 } // Messages expire after 3 days (was 7, reduced for DB size)
 });
 
 const moderationLogSchema = new mongoose.Schema({
@@ -95,7 +95,7 @@ const moderationLogSchema = new mongoose.Schema({
     duration: { type: Number }, // timeout duration
     status: { type: String, default: 'pending' }, // pending, applied, rejected, unbanned, error
     ownerId: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now, expires: 604800 } // Moderation logs expire in 1 week
+    createdAt: { type: Date, default: Date.now, expires: 432000 } // Moderation logs expire in 5 days (was 7, reduced for DB size)
 });
 
 // Models

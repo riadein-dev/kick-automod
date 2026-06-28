@@ -326,33 +326,14 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
       if (action === 'delete') {
           await kickClient.deleteMessage(log.messageId);
       } else if (action === 'timeout') {
-          try {
-              await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, req.session.kickNumericId);
-          } catch (err) {
-              if (err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('403')) {
-                  console.log(`[ModAction] Timeout API yetkisiz, sohbet komutu deneniyor... (${log.channel})`);
-                  await kickClient.sendMessage(log.chatroomId, `/timeout ${log.username} ${log.duration || 5} ${log.reason || 'Mod Action'}`);
-              } else throw err;
-          }
+          console.log(`[ModAction] Timeout: broadcaster=${broadcasterUserId}, user=${log.userId}, duration=${log.duration || 5}`);
+          await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason);
       } else if (action === 'ban') {
-          try {
-              await kickClient.banUser(broadcasterUserId, log.userId, log.reason, req.session.kickNumericId);
-          } catch (err) {
-              if (err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('403')) {
-                  console.log(`[ModAction] Ban API yetkisiz, sohbet komutu deneniyor... (${log.channel})`);
-                  await kickClient.sendMessage(log.chatroomId, `/ban ${log.username} ${log.reason || 'Mod Action'}`);
-              } else throw err;
-          }
+          console.log(`[ModAction] Ban: broadcaster=${broadcasterUserId}, user=${log.userId}`);
+          await kickClient.banUser(broadcasterUserId, log.userId, log.reason);
       } else if (action === 'unban') {
-          try {
-              console.log(`[ModAction] Attempting UNBAN: broadcaster=${broadcasterUserId}, targetUser=${log.userId}, caller=${req.session.kickNumericId}`);
-              await kickClient.unbanUser(broadcasterUserId, log.userId, req.session.kickNumericId);
-          } catch (err) {
-              if (err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('403')) {
-                  console.log(`[ModAction] Unban API yetkisiz, sohbet komutu deneniyor... (${log.channel})`);
-                  await kickClient.sendMessage(log.chatroomId, `/unban ${log.username}`);
-              } else throw err;
-          }
+          console.log(`[ModAction] Unban: broadcaster=${broadcasterUserId}, user=${log.userId}`);
+          await kickClient.unbanUser(broadcasterUserId, log.userId);
       }
       
       console.log(`[ModAction] ✅ ${action} applied successfully on user ${log.userId} by caller ${req.session.userId}`);

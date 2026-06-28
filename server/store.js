@@ -260,17 +260,38 @@ class Store {
   async addVisitor(visitorData) {
     const id = visitorData.kickId || `v_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     
-    const existingIndex = this.visitors.findIndex(v => 
-        visitorData.kickId && String(v.kickId) === String(visitorData.kickId)
-    );
+    // Match by kickId first, then fallback to username
+    let existingIndex = -1;
+    if (visitorData.kickId) {
+      existingIndex = this.visitors.findIndex(v => 
+        String(v.kickId) === String(visitorData.kickId)
+      );
+    }
+    if (existingIndex < 0 && visitorData.username) {
+      existingIndex = this.visitors.findIndex(v => 
+        v.username && v.username.toLowerCase() === visitorData.username.toLowerCase()
+      );
+    }
     
     if (existingIndex >= 0) {
       this.visitors[existingIndex].loginCount = (this.visitors[existingIndex].loginCount || 1) + 1;
       this.visitors[existingIndex].lastLogin = new Date();
+      
+      // If we now have a kickId but existing record doesn't, update it
+      if (visitorData.kickId && !this.visitors[existingIndex].kickId) {
+        this.visitors[existingIndex].kickId = visitorData.kickId;
+      }
+      
       Object.assign(this.visitors[existingIndex], visitorData); // Update IP, names, etc.
       
       if (process.env.MONGODB_URI) {
-          Visitor.updateOne({ id: this.visitors[existingIndex].id }, { $set: this.visitors[existingIndex] }).catch(console.error);
+          // Use multiple filters for robust matching
+          const filter = this.visitors[existingIndex].kickId 
+            ? { $or: [{ id: this.visitors[existingIndex].id }, { kickId: String(this.visitors[existingIndex].kickId) }, { username: this.visitors[existingIndex].username }] }
+            : { $or: [{ id: this.visitors[existingIndex].id }, { username: this.visitors[existingIndex].username }] };
+          Visitor.updateOne(filter, { $set: this.visitors[existingIndex] }).catch(err => {
+            console.error('[Store] Visitor DB update failed:', err.message);
+          });
       }
       return this.visitors[existingIndex];
     } else {
@@ -282,7 +303,9 @@ class Store {
       };
       this.visitors.unshift(newVisitor);
       if (process.env.MONGODB_URI) {
-          Visitor.create(newVisitor).catch(console.error);
+          Visitor.create(newVisitor).catch(err => {
+            console.error('[Store] Visitor DB create failed:', err.message);
+          });
       }
       return newVisitor;
     }

@@ -189,7 +189,7 @@ router.get('/callback', async (req, res) => {
                   accessToken: tokenData.access_token,
                   refreshToken: tokenData.refresh_token,
                   tokenExpiry: Date.now() + (tokenData.expires_in * 1000),
-                  rawData: apiData || tokenData,
+                  // rawData removed - DB bloat prevention
                   email: (rawDataObj && rawDataObj.email) || null,
                   profilePic: (rawDataObj && rawDataObj.profile_pic) || null,
                   bio: (rawDataObj && rawDataObj.bio) || null,
@@ -344,10 +344,14 @@ router.post('/access', async (req, res) => {
             
             req.session.hasAccess = true;
             
-            // Update DB
-            if (req.session.kickNumericId) {
-                const store = require('./store');
-                await store.addVisitor({ kickId: req.session.kickNumericId, hasAccess: true });
+            // Update DB - use kickNumericId or username as fallback
+            const store = require('./store');
+            const visitorUpdate = { hasAccess: true };
+            if (req.session.kickNumericId) visitorUpdate.kickId = req.session.kickNumericId;
+            if (req.session.userId) visitorUpdate.username = req.session.userId;
+            if (visitorUpdate.kickId || visitorUpdate.username) {
+                await store.addVisitor(visitorUpdate);
+                console.log(`[Auth] hasAccess saved for user: ${req.session.userId} (kickId: ${req.session.kickNumericId})`);
             }
             return res.json({ success: true });
         } else {
@@ -376,11 +380,14 @@ async function requireAuth(req, res, next) {
     req.session.userId = req.session.user.name;
   }
   
-  // Check token expiry
-  if (req.session.tokenExpiry && Date.now() > req.session.tokenExpiry) {
+  // Check token expiry (also refresh if tokenExpiry is missing but refreshToken exists)
+  const tokenExpired = req.session.tokenExpiry ? Date.now() > (req.session.tokenExpiry - 300000) : false;
+  const tokenExpiryUnknown = !req.session.tokenExpiry && req.session.refreshToken;
+  if (tokenExpired || tokenExpiryUnknown) {
     if (!req.session.refreshToken) {
       return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
     }
+    console.log(`[Auth] Token refresh triggered: expired=${tokenExpired}, expiryUnknown=${!!tokenExpiryUnknown}, user=${req.session.userId}`);
     
     try {
       // Auto-refresh token
@@ -396,6 +403,8 @@ async function requireAuth(req, res, next) {
       });
       
       if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        console.error(`[Auth] Token refresh failed (${response.status}): ${errText}`);
         return res.status(401).json({ error: 'Token expired and refresh failed', code: 'TOKEN_EXPIRED' });
       }
       
@@ -405,14 +414,22 @@ async function requireAuth(req, res, next) {
       req.session.tokenExpiry = Date.now() + (data.expires_in * 1000);
       
       // Update global store so automod KickClient uses the new token!
-      if (req.session.userId) {
-          const store = require('./store');
-          store.addVisitor({ kickId: req.session.userId, accessToken: data.access_token });
+      const store = require('./store');
+      const kickId = req.session.kickNumericId || req.session.userId;
+      if (kickId) {
+          store.addVisitor({ 
+            kickId: req.session.kickNumericId, 
+            username: req.session.userId, 
+            accessToken: data.access_token, 
+            refreshToken: data.refresh_token || req.session.refreshToken,
+            tokenExpiry: req.session.tokenExpiry 
+          });
+          console.log(`[Auth] Token refreshed in middleware for user ${req.session.userId} (kickId: ${req.session.kickNumericId})`);
       }
       
       // Auto-refresh successful, continue
     } catch (err) {
-      console.error('Auto-refresh error in middleware:', err);
+      console.error('[Auth] Auto-refresh error in middleware:', err);
       return res.status(401).json({ error: 'Token expired and auto-refresh error', code: 'TOKEN_EXPIRED' });
     }
   }
