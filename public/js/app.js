@@ -95,6 +95,7 @@ const el = {
     confirmImportWords: $('#confirmImportWords'),
     wordChannelSelect: $('#wordChannelSelect'),
     wordInput: $('#wordInput'),
+    wordTargetUsername: $('#wordTargetUsername'),
     wordExactMatch: $('#wordExactMatch'),
     wordActionSelect: $('#wordActionSelect'),
     wordDurationGroup: $('#wordDurationGroup'),
@@ -521,13 +522,18 @@ async function loadChannelWords(slug) {
             el.channelWordsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color: var(--text-3);">Henüz kelime eklenmedi</td></tr>';
             return;
         }
-        el.channelWordsBody.innerHTML = words.map(w => `
+        el.channelWordsBody.innerHTML = words.map(w => {
+            const displayWord = w.word && w.word.startsWith('[user:') ? '' : w.word;
+            const targetTag = w.targetUsername ? `<span style="color:#a855f7; font-weight:600;">👤 @${w.targetUsername}</span> ` : '';
+            const wordDisplay = targetTag + (displayWord || (w.targetUsername ? '<span style="color:var(--text-3)">tüm mesajlar</span>' : ''));
+            const actionColor = w.action==='ban'?'rgba(239,68,68,0.12);color:var(--red)':w.action==='timeout'?'rgba(255,140,0,0.12);color:var(--orange)':w.action==='delete'?'rgba(168,85,247,0.12);color:#a855f7':'rgba(59,130,246,0.12);color:var(--blue)';
+            return `
             <tr>
-                <td style="font-weight:600;">${w.word}</td>
-                <td><span style="padding:3px 10px; border-radius:6px; font-size:0.72rem; font-weight:600; background:${w.action==='ban'?'rgba(239,68,68,0.12);color:var(--red)':w.action==='timeout'?'rgba(255,140,0,0.12);color:var(--orange)':'rgba(59,130,246,0.12);color:var(--blue)'}">${w.action}</span></td>
+                <td style="font-weight:600;">${wordDisplay}</td>
+                <td><span style="padding:3px 10px; border-radius:6px; font-size:0.72rem; font-weight:600; background:${actionColor}">${w.action === 'delete' ? 'SİL' : w.action}</span></td>
                 <td class="text-right"><button class="ch-action-btn delete" data-word-id="${w.id}" title="Sil"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
         el.channelWordsBody.querySelectorAll('.ch-action-btn.delete').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const wordId = btn.dataset.wordId;
@@ -1049,12 +1055,15 @@ function renderWords() {
         let actionBadge = '';
         if (w.action === 'ban') actionBadge = '<span style="color:var(--red); font-weight:700; font-size:0.75rem; background:rgba(239,68,68,0.1); padding:4px 8px; border-radius:4px;">BAN</span>';
         else if (w.action === 'timeout') actionBadge = '<span style="color:var(--orange); font-weight:700; font-size:0.75rem; background:rgba(245,158,11,0.1); padding:4px 8px; border-radius:4px;">TIMEOUT</span>';
+        else if (w.action === 'delete') actionBadge = '<span style="color:var(--purple, #a855f7); font-weight:700; font-size:0.75rem; background:rgba(168,85,247,0.1); padding:4px 8px; border-radius:4px;">SİL</span>';
         else if (w.action === 'warn') actionBadge = '<span style="color:var(--blue); font-weight:700; font-size:0.75rem; background:rgba(59,130,246,0.1); padding:4px 8px; border-radius:4px;">UYARI</span>';
         else if (w.action === 'whitelist') actionBadge = '<span style="color:var(--green); font-weight:700; font-size:0.75rem; background:rgba(83,252,24,0.1); padding:4px 8px; border-radius:4px;">WHITELIST</span>';
 
         const durationStr = w.action === 'timeout' ? `${w.duration}dk` : (w.action === 'ban' ? 'Sınırsız' : '-');
-        const wordHtml = w.exactMatch ? `${w.word} <span style="background:var(--green); color:#000; padding: 2px 6px; border-radius:4px; font-size:0.65rem; white-space:nowrap;">Tam Cümle</span>` : w.word;
-        const isEnabled = w.enabled !== false; // Default is true
+        const displayWord = w.word && w.word.startsWith('[user:') ? '' : w.word;
+        const wordHtml = w.exactMatch ? `${displayWord} <span style="background:var(--green); color:#000; padding: 2px 6px; border-radius:4px; font-size:0.65rem; white-space:nowrap;">Tam Cümle</span>` : displayWord;
+        const targetBadge = w.targetUsername ? `<span style="background:rgba(168,85,247,0.15); color:#a855f7; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:600;">👤 @${w.targetUsername}</span>` : '';
+        const isEnabled = w.enabled !== false;
         const statusBadge = isEnabled 
             ? '<span style="color:var(--green); font-weight:600; font-size:0.7rem; background:rgba(34,197,94,0.1); padding:2px 6px; border-radius:4px;">Aktif</span>'
             : '<span style="color:var(--text-3); font-weight:600; font-size:0.7rem; background:var(--surface-3); padding:2px 6px; border-radius:4px;">Pasif</span>';
@@ -1062,7 +1071,9 @@ function renderWords() {
         tr.innerHTML = `
             <td>
                 <div style="display:flex; flex-direction: column; gap: 4px;">
-                    <div style="color:${isEnabled ? '#fff' : 'var(--text-3)'}; font-family:monospace; background:#222; padding:6px 10px; border-radius:4px; display:inline-flex; align-items:center; gap:8px;">${wordHtml}</div>
+                    ${targetBadge ? `<div>${targetBadge}</div>` : ''}
+                    ${wordHtml ? `<div style="color:${isEnabled ? '#fff' : 'var(--text-3)'}; font-family:monospace; background:#222; padding:6px 10px; border-radius:4px; display:inline-flex; align-items:center; gap:8px;">${wordHtml}</div>` : ''}
+                    ${!wordHtml && targetBadge ? '<div style="color:var(--text-3); font-size:0.75rem;">Tüm mesajlar</div>' : ''}
                     <div>${statusBadge}</div>
                 </div>
             </td>
@@ -1134,7 +1145,8 @@ function renderWords() {
                 el.wordChannelSelect.appendChild(opt);
             });
             el.wordChannelSelect.value = w.channel || '';
-            el.wordInput.value = w.word;
+            el.wordInput.value = (w.word && w.word.startsWith('[user:')) ? '' : w.word;
+            if (el.wordTargetUsername) el.wordTargetUsername.value = w.targetUsername || '';
             el.wordExactMatch.checked = w.exactMatch;
             el.wordActionSelect.value = w.action;
             if (w.action === 'timeout') {
@@ -1925,6 +1937,7 @@ function setupEventListeners() {
                 el.wordChannelSelect.appendChild(opt);
             });
             el.wordInput.value = '';
+            if (el.wordTargetUsername) el.wordTargetUsername.value = '';
             el.wordExactMatch.checked = false;
             el.wordActionSelect.value = 'ban';
             el.wordDurationGroup.style.display = 'none';
@@ -1945,14 +1958,18 @@ function setupEventListeners() {
         el.confirmAddWord.addEventListener('click', async () => {
             const channel = el.wordChannelSelect.value;
             const word = el.wordInput.value.trim();
+            const targetUsername = el.wordTargetUsername ? el.wordTargetUsername.value.trim() : '';
             const action = el.wordActionSelect.value;
             const exactMatch = el.wordExactMatch.checked;
             const duration = el.wordDurationInput.value;
 
-            if (!channel || !word) {
-                alert('Lütfen kanal seçin ve bir kelime girin.');
+            if (!channel || (!word && !targetUsername)) {
+                alert('Lütfen kanal seçin ve bir kelime veya kullanıcı adı girin.');
                 return;
             }
+
+            // If targetUsername is set but no word, use a wildcard marker
+            const finalWord = word || `[user:${targetUsername}]`;
 
             try {
                 el.confirmAddWord.disabled = true;
@@ -1963,7 +1980,7 @@ function setupEventListeners() {
                     await apiFetch(`/api/words/${editId}`, { method: 'DELETE' });
                 }
 
-                const payload = { channel, word, action, exactMatch, duration: parseInt(duration, 10) };
+                const payload = { channel, word: finalWord, action, exactMatch, duration: parseInt(duration, 10), targetUsername };
                 const res = await apiFetch('/api/words', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

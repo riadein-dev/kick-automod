@@ -298,7 +298,7 @@ class AutoModEngine {
             
             const finalStatus = (isAuto && violation.action !== 'warn') ? 'applied' : 'pending';
 
-            const shouldLog = ['ban', 'timeout'].includes(violation.action) || 
+            const shouldLog = ['ban', 'timeout', 'delete'].includes(violation.action) || 
                               ['spamDetection', 'bannedWords', 'emoteSpam'].includes(violation.ruleName);
 
             if (!shouldLog) {
@@ -458,14 +458,40 @@ class AutoModEngine {
   checkBannedWords(message, rule) {
     const content = (message.content || message.message || '').toLocaleLowerCase('tr-TR');
     const channelName = message.channel || message.chatroom_slug;
+    const senderUsername = (message.sender?.username || message.username || '').toLowerCase();
     let foundViolations = [];
     
     for (const w of rule.words) {
       if (w.enabled === false) continue;
       if (w.channel && w.channel !== 'all' && w.channel !== channelName) continue;
       
+      // --- targetUsername check: if set, match by sender username ---
+      if (w.targetUsername && w.targetUsername.trim()) {
+        const targetLower = w.targetUsername.toLowerCase().trim();
+        if (senderUsername === targetLower) {
+          // Username matched - check if there's also a word filter or if it's any-message
+          const hasWordFilter = w.word && !w.word.startsWith('[user:');
+          if (hasWordFilter) {
+            // Both username AND word must match
+            let targetWord = w.word.toLocaleLowerCase('tr-TR').trim();
+            if (!content.includes(targetWord)) continue; // word didn't match, skip
+          }
+          // Match found (username matched, and word matched or no word filter)
+          console.log(`[AutoMod] TARGET USER MATCH: "${senderUsername}" (word: "${w.word}") in channel=${channelName}`);
+          foundViolations.push({
+            ruleName: 'bannedWords',
+            reason: `Hedef kullanıcı tespit edildi: @${w.targetUsername}${hasWordFilter ? ` (kelime: "${w.word}")` : ' (tüm mesajlar)'}`,
+            matchedWord: w.targetUsername,
+            action: w.action,
+            duration: w.duration
+          });
+        }
+        continue; // targetUsername set but didn't match this sender, skip
+      }
+      
+      // --- Normal word matching (no targetUsername) ---
       let targetWord = w.word.toLocaleLowerCase('tr-TR').trim();
-      if (!targetWord) continue;
+      if (!targetWord || targetWord.startsWith('[user:')) continue;
 
       let matched = false;
       
@@ -474,8 +500,7 @@ class AutoModEngine {
         const escaped = targetWord.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         
         // Simple boundary check: target word must not be surrounded by letters/numbers
-        // Check start boundary
-        const idx = content.indexOf(escaped.toLowerCase !== undefined ? targetWord : targetWord);
+        const idx = content.indexOf(targetWord);
         if (idx !== -1) {
           const before = idx > 0 ? content[idx - 1] : ' ';
           const after = idx + targetWord.length < content.length ? content[idx + targetWord.length] : ' ';
@@ -484,13 +509,12 @@ class AutoModEngine {
             matched = true;
           }
         }
-        // If indexOf didn't match (e.g. complex patterns), also try regex as backup
+        // If indexOf didn't match, also try regex as backup
         if (!matched) {
           try {
             const re = new RegExp('(?:^|[^a-zA-Z0-9\\u00C0-\\u024F\\u0400-\\u04FF])(' + escaped + ')(?:$|[^a-zA-Z0-9\\u00C0-\\u024F\\u0400-\\u04FF])', 'i');
             matched = re.test(content);
           } catch(e) {
-            // If even this fails, do simple includes
             matched = content.includes(targetWord);
           }
         }

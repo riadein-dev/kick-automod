@@ -560,15 +560,20 @@
                 <label class="input-label" style="margin-top: 1rem;">Kelime veya Cümle</label>
                 <input type="text" class="input-field" id="wordInput" placeholder="Örn: salak" autocomplete="off">
 
+                <label class="input-label" style="margin-top: 1rem;">Hedef Kullanıcı <span style="color:var(--text-3); font-weight:400;">(opsiyonel)</span></label>
+                <input type="text" class="input-field" id="wordTargetUsername" placeholder="Kullanıcı adı yazın (boş = herkese uygulanır)" autocomplete="off">
+                <span style="font-size: 0.75rem; color: var(--text-3); margin-top: 0.25rem; display: block;">Kullanıcı adı yazarsanız, bu kişi herhangi bir mesaj yazdığında aksiyon uygulanır.</span>
+
                 <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; color: var(--text-2); font-size: 0.85rem; cursor: pointer;">
                     <input type="checkbox" id="wordExactMatch" style="accent-color: var(--green);">
                     Sadece tam cümle eşleştiğinde algıla
                 </label>
 
                 <label class="input-label" style="margin-top: 1rem;">Aksiyon</label>
-                <select class="input-field" id="wordActionSelect" style="appearance: none; background: #1a1a1a url('data:image/svg+xml;utf8,<svg fill=\"%23888\" height=\"24\" viewBox=\"0 0 24 24\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M7 10l5 5 5-5z\"/></svg>') no-repeat right 10px center; padding-right: 30px;">
+                <select class="input-field" id="wordActionSelect" style="appearance: none; background: #1a1a1a url('data:image/svg+xml;utf8,<svg fill=&quot;%23888&quot; height=&quot;24&quot; viewBox=&quot;0 0 24 24&quot; width=&quot;24&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;><path d=&quot;M7 10l5 5 5-5z&quot;/></svg>') no-repeat right 10px center; padding-right: 30px;">
                     <option value="ban">Ban (Kalıcı Yasaklama)</option>
                     <option value="timeout">Timeout (Süreli Susturma)</option>
+                    <option value="delete">Mesaj Sil (Sadece Mesajı Sil)</option>
                     <option value="whitelist">Whitelist (Sadece Algıla, Loga Düşürme)</option>
                     <option value="warn">Sadece Uyarı (Ban atmaz)</option>
                 </select>

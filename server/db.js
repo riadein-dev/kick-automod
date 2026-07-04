@@ -16,7 +16,8 @@ const wordSchema = new mongoose.Schema({
     action: { type: String, default: 'ban' },
     duration: { type: Number, default: 0 },
     addedBy: { type: String, default: '' },
-    enabled: { type: Boolean, default: true }
+    enabled: { type: Boolean, default: true },
+    targetUsername: { type: String, default: '' } // When set, rule only applies to this user
 });
 
 const automodRuleSchema = new mongoose.Schema({
