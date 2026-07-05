@@ -154,10 +154,10 @@ class Store {
           const wordChannel = w.channel || 'all';
           
           // Hem ID hem de kelime içeriği bazında duplicate kontrolü
-          const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id || (cw.word === w.word && cw.action === wordAction));
+          const exists = rules.rules.bannedWords.words.some(cw => cw.id === w.id || (cw.word === w.word && cw.action === wordAction && (cw.targetUsername || '') === (w.targetUsername || '')));
           if (!exists) {
               rules.rules.bannedWords.words.push({
-                  id: w.id, channel: wordChannel, word: w.word, exactMatch: w.exactMatch || false, action: wordAction, duration: wordDuration, addedBy: w.addedBy, enabled: w.enabled !== false
+                  id: w.id, channel: wordChannel, word: w.word, exactMatch: w.exactMatch || false, action: wordAction, duration: wordDuration, addedBy: w.addedBy, enabled: w.enabled !== false, targetUsername: w.targetUsername || ''
               });
           }
       }
@@ -232,7 +232,7 @@ class Store {
 
   saveWord(word) {
     if (!process.env.MONGODB_URI) return;
-    Word.create({ id: word.id, channel: word.channel, word: word.word, exactMatch: word.exactMatch, action: word.action, duration: word.duration, addedBy: word.addedBy || '' }).catch(console.error);
+    Word.create({ id: word.id, channel: word.channel, word: word.word, exactMatch: word.exactMatch, action: word.action, duration: word.duration, addedBy: word.addedBy || '', targetUsername: word.targetUsername || '' }).catch(console.error);
   }
 
   deleteWordDB(id) {
@@ -688,7 +688,7 @@ class Store {
     const rules = this.getAutomodRules(userId);
     
     // Aynı kelime zaten varsa ekleme
-    const duplicate = rules.rules.bannedWords.words.some(w => w.word === wordData.word && w.action === wordData.action);
+    const duplicate = rules.rules.bannedWords.words.some(w => w.word === wordData.word && w.action === wordData.action && (w.targetUsername || '') === (wordData.targetUsername || ''));
     if (duplicate) {
       this.broadcastToUser(userId, 'rulesUpdate', { rules: rules });
       return null;
