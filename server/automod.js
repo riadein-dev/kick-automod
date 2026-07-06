@@ -257,6 +257,12 @@ class AutoModEngine {
           continue;
         }
         
+        // CRITICAL: Skip if user is not online (browser/site closed)
+        if (!store.isUserOnline(userId)) {
+          console.log(`[AutoMod] DEBUG: User ${userId} is OFFLINE (site closed). Skipping their rules.`);
+          continue;
+        }
+        
         let violations = [];
 
         if (rules.rules.bannedWords.enabled) {

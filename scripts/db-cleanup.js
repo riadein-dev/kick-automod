@@ -4,58 +4,61 @@ const mongoose = require('mongoose');
 async function cleanup() {
   await mongoose.connect(process.env.MONGODB_URI);
   const db = mongoose.connection.db;
-  
-  console.log('=== MEVCUT DURUM ===');
-  const collections = await db.listCollections().toArray();
-  for (const col of collections) {
-    const count = await db.collection(col.name).countDocuments();
-    console.log(`  ${col.name}: ${count} docs`);
-  }
 
-  // SADECE geçici/buffer verileri temizle
-  // Kullanıcı verilerine (visitors, channels, words, automodrules) DOKUNMA
+  console.log('=== GÜVENLİ TEMİZLİK BAŞLIYOR ===\n');
 
-  // 1. Chat mesajları - sadece buffer, son 12 saati tut
-  console.log('\n[1/3] Chat mesajları temizleniyor (son 12 saat korunuyor)...');
-  const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  // Tarihler STRING olarak saklandığı için ISO string ile karşılaştır
+  const chatCutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(); // 3 gün
+  const modCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();  // 7 gün
+
+  // 1. Chat mesajları - 3 günden eski (string karşılaştırma)
+  const chatBefore = await db.collection('chatmessages').countDocuments();
   const chatResult = await db.collection('chatmessages').deleteMany({
-    $or: [
-      { createdAt: { $lt: twelveHoursAgo } },
-      { createdAt: { $exists: false } }  // TTL indexi olmayan eski kayıtlar
-    ]
+    timestamp: { $lt: chatCutoff }
   });
-  console.log(`  ✅ ${chatResult.deletedCount} eski chat mesajı silindi`);
+  const chatAfter = await db.collection('chatmessages').countDocuments();
+  console.log(`[Chat] ${chatBefore} -> ${chatAfter} (${chatResult.deletedCount} silindi)`);
 
-  // 2. Moderasyon logları - son 3 günü tut
-  console.log('\n[2/3] Eski moderasyon logları temizleniyor (son 3 gün korunuyor)...');
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  // 2. Mod logları - 7 günden eski
+  const modBefore = await db.collection('moderationlogs').countDocuments();
   const modResult = await db.collection('moderationlogs').deleteMany({
-    $or: [
-      { createdAt: { $lt: threeDaysAgo } },
-      { createdAt: { $exists: false } }
-    ]
+    createdAt: { $lt: modCutoff }
   });
-  console.log(`  ✅ ${modResult.deletedCount} eski moderasyon logu silindi`);
+  const modAfter = await db.collection('moderationlogs').countDocuments();
+  console.log(`[ModLog] ${modBefore} -> ${modAfter} (${modResult.deletedCount} silindi)`);
 
-  // 3. Expired word presets (7 günden eski)
-  console.log('\n[3/3] Süresi dolmuş preset\'ler temizleniyor...');
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const presetResult = await db.collection('wordpresets').deleteMany({
-    createdAt: { $lt: sevenDaysAgo }
-  });
-  console.log(`  ✅ ${presetResult.deletedCount} eski preset silindi`);
-
-  console.log('\n=== TEMİZLİK SONRASI ===');
-  for (const col of collections) {
-    try {
-      const count = await db.collection(col.name).countDocuments();
-      console.log(`  ${col.name}: ${count} docs`);
-    } catch(e) { console.log(`  ${col.name}: hata`); }
+  // 3. Duplicate kelimeler (aynı word+action+channel+addedBy)
+  const allWords = await db.collection('words').find({}).toArray();
+  const seen = new Map();
+  const dupIds = [];
+  for (const w of allWords) {
+    const key = `${(w.word||'').toLowerCase()}|${w.action}|${w.channel}|${w.addedBy}`;
+    if (seen.has(key)) {
+      dupIds.push(w._id);
+    } else {
+      seen.set(key, w);
+    }
   }
+  if (dupIds.length > 0) {
+    await db.collection('words').deleteMany({ _id: { $in: dupIds } });
+  }
+  const wordsAfter = await db.collection('words').countDocuments();
+  console.log(`[Words] ${allWords.length} -> ${wordsAfter} (${dupIds.length} duplicate silindi)`);
 
-  console.log('\n⚠️  DOKUNULMAYAN VERİLER: visitors, channels, words, automodrules, invitecodes');
+  // SONUÇ
+  console.log('\n=== KORUNAN VERİLER ===');
+  console.log(`visitors: ${await db.collection('visitors').countDocuments()}`);
+  console.log(`channels: ${await db.collection('channels').countDocuments()}`);
+  console.log(`automodrules: ${await db.collection('automodrules').countDocuments()}`);
+  console.log(`words: ${wordsAfter}`);
+  console.log(`invitecodes: ${await db.collection('invitecodes').countDocuments()}`);
+  console.log(`wordpresets: ${await db.collection('wordpresets').countDocuments()}`);
+
+  const dbStats = await db.command({ dbStats: 1 });
+  console.log(`\nData Size: ${(dbStats.dataSize / 1024 / 1024).toFixed(2)} MB`);
+  console.log(`Storage Size: ${(dbStats.storageSize / 1024 / 1024).toFixed(2)} MB`);
+  console.log('\n✅ Temizlik tamamlandı!');
   await mongoose.disconnect();
-  console.log('Bitti!');
 }
 
 cleanup().catch(e => { console.error(e); process.exit(1); });
