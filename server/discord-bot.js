@@ -46,8 +46,8 @@ class DiscordBot {
           case 'keyolustur':
             await this.handleKeyOlustur(interaction);
             break;
-          case 'duyuru':
-            await this.handleDuyuru(interaction);
+          case 'otoduyuru':
+            await this.handleOtoDuyuru(interaction);
             break;
           default:
             break;
@@ -92,17 +92,15 @@ class DiscordBot {
         .toJSON(),
         
       new SlashCommandBuilder()
-        .setName('duyuru')
-        .setDescription('📢 Sunucuya şık bir duyuru gönder (Admin)')
+        .setName('otoduyuru')
+        .setDescription('🤖 Yapay Zeka ile otomatik yama notu oluştur (Admin)')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addStringOption(option =>
-          option.setName('baslik')
-            .setDescription('Duyurunun başlığı')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('mesaj')
-            .setDescription('Duyurunun içeriği (Alt satıra geçmek için \\n kullanabilirsiniz)')
-            .setRequired(true))
+        .addIntegerOption(option =>
+          option.setName('commit')
+            .setDescription('Kaç adet son güncellemeyi (commit) okusun?')
+            .setRequired(false)
+            .setMinValue(1)
+            .setMaxValue(15))
         .addChannelOption(option =>
           option.setName('kanal')
             .setDescription('Duyurunun gönderileceği kanal')
@@ -254,28 +252,86 @@ class DiscordBot {
     console.log(`[Discord] Admin ${interaction.user.username} ${adet} key oluşturdu:`, createdCodes);
   }
 
-  // /duyuru - Manual Announcement
-  async handleDuyuru(interaction) {
+  // /otoduyuru - AI Powered Announcement (Using Groq)
+  async handleOtoDuyuru(interaction) {
+    // Mesajı defer ile bekletiyoruz çünkü API cevabı ve git log uzun sürebilir
     await interaction.deferReply({ ephemeral: true });
 
-    const baslik = interaction.options.getString('baslik');
-    // Mesaj içeriğindeki \n karakterlerini gerçek satır atlamasına çevir
-    const mesaj = interaction.options.getString('mesaj').replace(/\\n/g, '\n');
+    const commitSayisi = interaction.options.getInteger('commit') || 5;
     const targetChannel = interaction.options.getChannel('kanal') || interaction.channel;
 
+    if (!process.env.GROQ_API_KEY) {
+      return interaction.editReply({ content: '❌ Sistemde GROQ_API_KEY bulunamadı. Lütfen .env dosyasına ekle.' });
+    }
+
     try {
+      // 1. Git loglarını al
+      let gitLogs = '';
+      try {
+        const { stdout } = await execPromise(`git log -n ${commitSayisi} --pretty=format:"%s"`);
+        gitLogs = stdout.trim();
+      } catch (cmdError) {
+        // Fallback
+        const fs = require('fs');
+        const path = require('path');
+        try {
+          const logContent = fs.readFileSync(path.join(process.cwd(), '.git', 'logs', 'HEAD'), 'utf8');
+          const lines = logContent.trim().split('\n');
+          const recentLines = lines.slice(-commitSayisi);
+          gitLogs = recentLines.map(line => {
+            const parts = line.split('\t');
+            let msg = parts.length > 1 ? parts[1] : line;
+            return msg.replace(/^commit.*?: /, '');
+          }).join('\n');
+        } catch (fsError) {
+          return interaction.editReply({ content: '❌ Git geçmişi okunamadı. (Git yüklü değil veya .git bulunamadı)' });
+        }
+      }
+
+      if (!gitLogs || gitLogs.trim() === '') {
+        return interaction.editReply({ content: '❌ Git geçmişinde okunacak commit bulunamadı.' });
+      }
+
+      // 2. Groq AI çağrısı yap (Native fetch)
+      const prompt = `Sen "Kick AutoMod" adlı profesyonel bir Discord/Kick moderasyon sisteminin baş geliştiricisisin. 
+Aşağıda, sisteme yeni eklenen teknik kod güncellemelerinin listesi var. 
+Görevin bu teknik maddeleri okuyup, sıradan üyelerin anlayabileceği, heyecan verici, bol emojili bir yama notuna (Patch Notes) çevirmek.
+Direkt mesajın kendisini yaz, başka açıklama yapma. Kapanışta teşekkür et.
+Güncellemeler:
+${gitLogs}`;
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192',
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Groq API Hatası: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const aiText = data.choices[0].message.content;
+
+      // 3. Mesajı tasarla ve kanala gönder
       const embed = new EmbedBuilder()
-        .setTitle(`📢 ${baslik}`)
-        .setDescription(mesaj)
-        .setColor(0x00FFD1) // Şık bir cyan
+        .setTitle('🚀 Yeni Güncelleme Yayında! (Patch Notes)')
+        .setDescription(aiText)
+        .setColor(0x00FFD1) 
         .setFooter({ text: 'Kick AutoMod Geliştirici Ekibi', iconURL: this.client.user.displayAvatarURL() })
         .setTimestamp();
 
       await targetChannel.send({ embeds: [embed] });
-      await interaction.editReply({ content: `✅ Duyuru başarıyla <#${targetChannel.id}> kanalına gönderildi!` });
+      await interaction.editReply({ content: `✅ AI Duyuru başarıyla <#${targetChannel.id}> kanalına gönderildi!` });
 
     } catch (error) {
-      console.error('[Discord] Duyuru Hatası:', error);
+      console.error('[Discord] OtoDuyuru Hatası:', error);
       await interaction.editReply({ content: '❌ Duyuru oluşturulurken bir hata meydana geldi: ' + error.message });
     }
   }
