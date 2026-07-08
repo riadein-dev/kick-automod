@@ -46,8 +46,8 @@ class DiscordBot {
           case 'keyolustur':
             await this.handleKeyOlustur(interaction);
             break;
-          case 'otoduyuru':
-            await this.handleOtoDuyuru(interaction);
+          case 'duyuru':
+            await this.handleDuyuru(interaction);
             break;
           default:
             break;
@@ -92,15 +92,17 @@ class DiscordBot {
         .toJSON(),
         
       new SlashCommandBuilder()
-        .setName('otoduyuru')
-        .setDescription('🤖 Yapay Zeka ile otomatik yama notu (patch notes) oluştur (Admin)')
+        .setName('duyuru')
+        .setDescription('📢 Sunucuya şık bir duyuru gönder (Admin)')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addIntegerOption(option =>
-          option.setName('commit')
-            .setDescription('Kaç adet son güncellemeyi (commit) okusun?')
-            .setRequired(false)
-            .setMinValue(1)
-            .setMaxValue(15))
+        .addStringOption(option =>
+          option.setName('baslik')
+            .setDescription('Duyurunun başlığı')
+            .setRequired(true))
+        .addStringOption(option =>
+          option.setName('mesaj')
+            .setDescription('Duyurunun içeriği (Alt satıra geçmek için \\n kullanabilirsiniz)')
+            .setRequired(true))
         .addChannelOption(option =>
           option.setName('kanal')
             .setDescription('Duyurunun gönderileceği kanal')
@@ -252,73 +254,19 @@ class DiscordBot {
     console.log(`[Discord] Admin ${interaction.user.username} ${adet} key oluşturdu:`, createdCodes);
   }
 
-  // /otoduyuru - AI Powered Announcement
-  async handleOtoDuyuru(interaction) {
-    // Mesajı defer ile bekletiyoruz çünkü API cevabı ve git log uzun sürebilir
+  // /duyuru - Manual Announcement
+  async handleDuyuru(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const commitSayisi = interaction.options.getInteger('commit') || 5;
+    const baslik = interaction.options.getString('baslik');
+    // Mesaj içeriğindeki \n karakterlerini gerçek satır atlamasına çevir
+    const mesaj = interaction.options.getString('mesaj').replace(/\\n/g, '\n');
     const targetChannel = interaction.options.getChannel('kanal') || interaction.channel;
 
-    if (!process.env.GEMINI_API_KEY) {
-      return interaction.editReply({ content: '❌ Sistemde GEMINI_API_KEY bulunamadı.' });
-    }
-
     try {
-      // 1. Git loglarını al
-      let gitLogs = '';
-      try {
-        // Sunucu ortamında (Render vb.) veya Git yüklü sistemlerde normal komut
-        const { stdout } = await execPromise(`git log -n ${commitSayisi} --pretty=format:"%s"`);
-        gitLogs = stdout.trim();
-      } catch (cmdError) {
-        // GitHub Desktop kullanan Windows kullanıcıları için manuel dosya okuma (Fallback)
-        const fs = require('fs');
-        const path = require('path');
-        try {
-          const logContent = fs.readFileSync(path.join(process.cwd(), '.git', 'logs', 'HEAD'), 'utf8');
-          const lines = logContent.trim().split('\n');
-          const recentLines = lines.slice(-commitSayisi);
-          gitLogs = recentLines.map(line => {
-            const parts = line.split('\t');
-            // 'commit: Yaptığım değişiklik' veya 'commit (initial): İlk yükleme' gibi kısımları temizle
-            let msg = parts.length > 1 ? parts[1] : line;
-            msg = msg.replace(/^commit.*?: /, '');
-            return msg;
-          }).join('\n');
-        } catch (fsError) {
-          return interaction.editReply({ content: '❌ Git geçmişi okunamadı. (Git yüklü değil veya .git klasörü bulunamadı)' });
-        }
-      }
-
-      if (!gitLogs || gitLogs.trim() === '') {
-        return interaction.editReply({ content: '❌ Git geçmişinde okunacak commit bulunamadı.' });
-      }
-
-      // 2. Gemini API çağrısı yap
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
-
-      const prompt = `Sen "Kick AutoMod" adlı popüler ve profesyonel bir Discord/Kick moderasyon sisteminin baş geliştiricisisin. 
-Aşağıda, sisteme yeni eklenen teknik kod güncellemelerinin (git log) listesi var. 
-Görevin bu teknik ve sıkıcı maddeleri okuyup, sıradan Discord üyelerinin ve oyuncuların çok rahat anlayabileceği, heyecan verici, bol emojili profesyonel bir yama notuna (Patch Notes) çevirmek.
-Lütfen direkt olarak mesajın kendisini yaz (başka bir açıklama yapma). 
-Format şu şekilde olsun:
-- Güzel bir karşılama
-- Yenilikler (Maddeler halinde, basit dille, ilgili emojilerle)
-- Kapanış / Teşekkür
-
-İşte kod güncellemeleri:
-${gitLogs}`;
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let aiText = response.text();
-
-      // 3. Mesajı tasarla ve kanala gönder
       const embed = new EmbedBuilder()
-        .setTitle('🚀 Yeni Güncelleme Yayında! (Patch Notes)')
-        .setDescription(aiText)
+        .setTitle(`📢 ${baslik}`)
+        .setDescription(mesaj)
         .setColor(0x00FFD1) // Şık bir cyan
         .setFooter({ text: 'Kick AutoMod Geliştirici Ekibi', iconURL: this.client.user.displayAvatarURL() })
         .setTimestamp();
@@ -327,7 +275,7 @@ ${gitLogs}`;
       await interaction.editReply({ content: `✅ Duyuru başarıyla <#${targetChannel.id}> kanalına gönderildi!` });
 
     } catch (error) {
-      console.error('[Discord] OtoDuyuru Hatası:', error);
+      console.error('[Discord] Duyuru Hatası:', error);
       await interaction.editReply({ content: '❌ Duyuru oluşturulurken bir hata meydana geldi: ' + error.message });
     }
   }
