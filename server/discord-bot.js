@@ -293,10 +293,15 @@ class DiscordBot {
       }
 
       // 2. Groq AI çağrısı yap (Native fetch)
-      const prompt = `Sen "Kick AutoMod" adlı profesyonel bir Discord/Kick moderasyon sisteminin baş geliştiricisisin. 
-Aşağıda, sisteme yeni eklenen teknik kod güncellemelerinin listesi var. 
-Görevin bu teknik maddeleri okuyup, sıradan üyelerin anlayabileceği, heyecan verici, bol emojili bir yama notuna (Patch Notes) çevirmek.
-Direkt mesajın kendisini yaz, başka açıklama yapma. Kapanışta teşekkür et.
+      const prompt = `Sen "Kick AutoMod" sisteminin baş geliştiricisisin.
+Görevin aşağıdaki sıkıcı teknik Git güncellemelerini, Discord üyelerinin okumaktan keyif alacağı, heyecanlı, bol emojili ve samimi bir "Yama Notları" (Patch Notes) metnine çevirmek.
+
+KURALLAR:
+1. ÇOK DOĞAL ve akıcı bir Türkçe kullan (Asla çeviri gibi veya robotik konuşma).
+2. Yazılımsal/Teknik terimleri havalı bir oyuncu/topluluk diline çevir (Örn: "bug fixed" -> "Sinir bozucu bir hata ezildi! 🐛").
+3. SADECE DUYURU METNİNİ YAZ. Kesinlikle "İşte metin:" veya "Tabii ki, şöyle yazabilirsin:" gibi ekstra cümleler ekleme. Sadece içeriği ver.
+4. Bol bol emoji kullan ve satır aralıkları bırakarak şık bir görünüm sağla.
+
 Güncellemeler:
 ${gitLogs}`;
 
@@ -307,7 +312,7 @@ ${gitLogs}`;
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'llama-3.1-70b-versatile',
           messages: [{ role: 'user', content: prompt }]
         })
       });
