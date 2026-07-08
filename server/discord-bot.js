@@ -307,13 +307,14 @@ ${gitLogs}`;
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama3-8b-8192',
+          model: 'llama-3.1-8b-instant',
           messages: [{ role: 'user', content: prompt }]
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Groq API Hatası: ${response.statusText}`);
+        const errText = await response.text();
+        throw new Error(`Groq API Hatası: ${response.status} ${errText}`);
       }
 
       const data = await response.json();
