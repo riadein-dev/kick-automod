@@ -59,6 +59,8 @@ const inviteCodeSchema = new mongoose.Schema({
     createdBy: { type: String, required: true },
     used: { type: Boolean, default: false },
     usedBy: { type: String },
+    discordUserId: { type: String },
+    discordUsername: { type: String },
     createdAt: { type: Date, default: Date.now }
 });
 

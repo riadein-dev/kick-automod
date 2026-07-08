@@ -47,6 +47,7 @@ const store = require('./store');
 const { createKickClient } = require('./kickApi');
 const wsManager = require('./websocket');
 const automod = require('./automod');
+const discordBot = require('./discord-bot');
 
 // Güvenlik Kütüphaneleri
 const helmet = require('helmet');
@@ -148,6 +149,9 @@ async function startServer() {
     
     // Start automatic token refresh (refreshes all expired tokens on startup + every 30 min)
     automod.startTokenRefreshInterval();
+    
+    // Start Discord Bot
+    discordBot.start().catch(err => console.error('[Discord] Bot başlatma hatası:', err));
     
     // Setup Routes
 app.use('/auth', auth.router);
