@@ -297,7 +297,7 @@ class DiscordBot {
 
       // 2. Gemini API çağrısı yap
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
       const prompt = `Sen "Kick AutoMod" adlı popüler ve profesyonel bir Discord/Kick moderasyon sisteminin baş geliştiricisisin. 
 Aşağıda, sisteme yeni eklenen teknik kod güncellemelerinin (git log) listesi var. 
