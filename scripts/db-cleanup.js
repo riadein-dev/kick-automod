@@ -1,64 +1,39 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-async function cleanup() {
-  await mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI).then(async () => {
   const db = mongoose.connection.db;
 
-  console.log('=== GÜVENLİ TEMİZLİK BAŞLIYOR ===\n');
+  // 1. Chat mesajlarini temizle (son 24 saat haric)
+  const oneDayAgo = new Date(Date.now() - 24*60*60*1000);
+  const chat = await db.collection('chatmessages').deleteMany({ createdAt: { $lt: oneDayAgo } });
+  console.log('Chat mesajlari silindi:', chat.deletedCount);
 
-  // Tarihler STRING olarak saklandığı için ISO string ile karşılaştır
-  const chatCutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(); // 3 gün
-  const modCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();  // 7 gün
+  // 2. Eski mod loglarini temizle (3 gunlukten eski)
+  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
+  const logs = await db.collection('moderationlogs').deleteMany({ createdAt: { $lt: threeDaysAgo } });
+  console.log('Eski mod loglari silindi:', logs.deletedCount);
 
-  // 1. Chat mesajları - 3 günden eski (string karşılaştırma)
-  const chatBefore = await db.collection('chatmessages').countDocuments();
-  const chatResult = await db.collection('chatmessages').deleteMany({
-    timestamp: { $lt: chatCutoff }
-  });
-  const chatAfter = await db.collection('chatmessages').countDocuments();
-  console.log(`[Chat] ${chatBefore} -> ${chatAfter} (${chatResult.deletedCount} silindi)`);
+  // 3. Eski presetleri temizle
+  const presets = await db.collection('wordpresets').deleteMany({ createdAt: { $lt: threeDaysAgo } });
+  console.log('Eski presetler silindi:', presets.deletedCount);
 
-  // 2. Mod logları - 7 günden eski
-  const modBefore = await db.collection('moderationlogs').countDocuments();
-  const modResult = await db.collection('moderationlogs').deleteMany({
-    createdAt: { $lt: modCutoff }
-  });
-  const modAfter = await db.collection('moderationlogs').countDocuments();
-  console.log(`[ModLog] ${modBefore} -> ${modAfter} (${modResult.deletedCount} silindi)`);
+  // 4. Crossban loglarini temizle
+  const crossban = await db.collection('crossbanlogs').deleteMany({});
+  console.log('Crossban loglari silindi:', crossban.deletedCount);
 
-  // 3. Duplicate kelimeler (aynı word+action+channel+addedBy)
-  const allWords = await db.collection('words').find({}).toArray();
-  const seen = new Map();
-  const dupIds = [];
-  for (const w of allWords) {
-    const key = `${(w.word||'').toLowerCase()}|${w.action}|${w.channel}|${w.addedBy}`;
-    if (seen.has(key)) {
-      dupIds.push(w._id);
-    } else {
-      seen.set(key, w);
-    }
+  // Sonuc
+  const stats = await db.stats();
+  console.log('\n--- TEMIZLIK SONRASI ---');
+  console.log('DB Boyutu:', (stats.dataSize / 1024 / 1024).toFixed(2), 'MB');
+  console.log('Storage:', (stats.storageSize / 1024 / 1024).toFixed(2), 'MB');
+
+  // Koleksiyon bazinda kontrol
+  const cols = await db.listCollections().toArray();
+  for (const c of cols) {
+    const count = await db.collection(c.name).countDocuments();
+    console.log(c.name, ':', count, 'doc');
   }
-  if (dupIds.length > 0) {
-    await db.collection('words').deleteMany({ _id: { $in: dupIds } });
-  }
-  const wordsAfter = await db.collection('words').countDocuments();
-  console.log(`[Words] ${allWords.length} -> ${wordsAfter} (${dupIds.length} duplicate silindi)`);
 
-  // SONUÇ
-  console.log('\n=== KORUNAN VERİLER ===');
-  console.log(`visitors: ${await db.collection('visitors').countDocuments()}`);
-  console.log(`channels: ${await db.collection('channels').countDocuments()}`);
-  console.log(`automodrules: ${await db.collection('automodrules').countDocuments()}`);
-  console.log(`words: ${wordsAfter}`);
-  console.log(`invitecodes: ${await db.collection('invitecodes').countDocuments()}`);
-  console.log(`wordpresets: ${await db.collection('wordpresets').countDocuments()}`);
-
-  const dbStats = await db.command({ dbStats: 1 });
-  console.log(`\nData Size: ${(dbStats.dataSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`Storage Size: ${(dbStats.storageSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log('\n✅ Temizlik tamamlandı!');
-  await mongoose.disconnect();
-}
-
-cleanup().catch(e => { console.error(e); process.exit(1); });
+  process.exit(0);
+}).catch(e => { console.error(e.message); process.exit(1); });
