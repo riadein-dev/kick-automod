@@ -331,9 +331,11 @@ apiRouter.patch('/moderation/:id', async (req, res) => {
           await kickClient.deleteMessage(log.messageId);
       } else if (action === 'timeout') {
           console.log(`[ModAction] Timeout: broadcaster=${broadcasterUserId}, user=${log.userId}, duration=${log.duration || 5}`);
+          wsManager.registerSiteAction(log.userId);
           await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason);
       } else if (action === 'ban') {
           console.log(`[ModAction] Ban: broadcaster=${broadcasterUserId}, user=${log.userId}`);
+          wsManager.registerSiteAction(log.userId);
           await kickClient.banUser(broadcasterUserId, log.userId, log.reason);
       } else if (action === 'unban') {
           console.log(`[ModAction] Unban: broadcaster=${broadcasterUserId}, user=${log.userId}`);
@@ -392,12 +394,14 @@ apiRouter.post('/manual-mod', async (req, res) => {
                 throw new Error("Message ID is required for delete action");
             }
         } else if (action === 'timeout') {
+            wsManager.registerSiteAction(userId);
             await kickClient.timeoutUser(broadcasterUserId, userId, duration || 5, reason || 'Manuel moderasyon'); 
             if (messageId && chatroomId) {
                await kickClient.deleteMessage(messageId).catch(() => {});
             }
         } else if (action === 'ban') {
             try {
+                wsManager.registerSiteAction(userId);
                 await kickClient.banUser(broadcasterUserId, userId, reason || 'Manuel moderasyon', req.session.kickNumericId);
             } catch (err) {
                 if (err.message.includes('401') || err.message.includes('Unauthorized')) {
@@ -529,21 +533,53 @@ apiRouter.get('/chat/history', async (req, res) => {
     res.json(history);
 });
 
-// User Settings (per-user, server-side persistence)
-apiRouter.get('/user-settings', (req, res) => {
+// User Settings (per-user, server-side persistence via MongoDB)
+apiRouter.get('/user-settings', async (req, res) => {
     const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     
-    const settings = store.getUserSettings(userId);
+    // Önce hafızadan dene
+    let settings = store.getUserSettings(userId);
+    
+    // Hafızada yoksa MongoDB'den yükle
+    if (!settings || Object.keys(settings).length === 0) {
+        try {
+            const { UserSettings } = require('./db');
+            const dbSettings = await UserSettings.findOne({ userId: String(userId) });
+            if (dbSettings) {
+                settings = {
+                    chatWatchedWords: dbSettings.chatWatchedWords || '',
+                    chatDefaultTimeout: dbSettings.chatDefaultTimeout || 5
+                };
+                store.updateUserSettings(userId, settings);
+            }
+        } catch (e) {
+            console.error('[UserSettings] MongoDB okuma hatası:', e.message);
+        }
+    }
+    
     res.json(settings || {});
 });
 
-apiRouter.patch('/user-settings', (req, res) => {
+apiRouter.patch('/user-settings', async (req, res) => {
     const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     
     const updates = req.body;
     store.updateUserSettings(userId, updates);
+    
+    // MongoDB'ye de kalıcı olarak kaydet
+    try {
+        const { UserSettings } = require('./db');
+        await UserSettings.findOneAndUpdate(
+            { userId: String(userId) },
+            { ...updates, updatedAt: new Date() },
+            { upsert: true, new: true }
+        );
+    } catch (e) {
+        console.error('[UserSettings] MongoDB kayıt hatası:', e.message);
+    }
+    
     res.json({ ok: true });
 });
 
@@ -680,6 +716,7 @@ apiRouter.patch('/rules', async (req, res) => {
         );
           const broadcasterUserId = channel ? (channel.broadcasterUserId || channel.userId) : null;
           if (broadcasterUserId) {
+            wsManager.registerSiteAction(log.userId);
             await kickClient.timeoutUser(broadcasterUserId, log.userId, log.duration || 5, log.reason, sessionUserId);
             store.updateModerationLog(log.id, { status: 'applied', action: 'timeout', duration: log.duration || 5 });
           }

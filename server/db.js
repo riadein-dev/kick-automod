@@ -101,7 +101,13 @@ const moderationLogSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now, expires: 432000 } // Moderation logs expire in 5 days (was 7, reduced for DB size)
 });
 
-// Models
+const userSettingsSchema = new mongoose.Schema({
+    userId: { type: String, required: true, unique: true },
+    chatWatchedWords: { type: String, default: '' },
+    chatDefaultTimeout: { type: Number, default: 5 },
+    updatedAt: { type: Date, default: Date.now }
+});
+
 const Channel = mongoose.model('Channel', channelSchema);
 const Word = mongoose.model('Word', wordSchema);
 const AutomodRule = mongoose.model('AutomodRule', automodRuleSchema);
@@ -110,6 +116,7 @@ const WordPreset = mongoose.model('WordPreset', wordPresetSchema);
 const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 const ModerationLog = mongoose.model('ModerationLog', moderationLogSchema);
 const InviteCode = mongoose.model('InviteCode', inviteCodeSchema);
+const UserSettings = mongoose.model('UserSettings', userSettingsSchema);
 
 async function connectDB() {
     if (!process.env.MONGODB_URI) {
@@ -136,4 +143,5 @@ module.exports = {
     Visitor,
     WordPreset,
     InviteCode,
+    UserSettings,
 };

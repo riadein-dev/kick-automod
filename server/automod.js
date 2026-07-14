@@ -418,6 +418,7 @@ class AutoModEngine {
         case 'timeout':
           if (broadcasterUserId && logEntry.userId) {
               console.log(`[AutoMod] Timeout via API (no moderator_user_id to prevent double): ${logEntry.username}`);
+              require('./websocket').registerSiteAction(logEntry.userId);
               await client.timeoutUser(
                 broadcasterUserId,
                 logEntry.userId,
@@ -431,6 +432,7 @@ class AutoModEngine {
         case 'ban':
           if (broadcasterUserId && logEntry.userId) {
               try {
+                require('./websocket').registerSiteAction(logEntry.userId);
                 await client.banUser(
                   broadcasterUserId,
                   logEntry.userId,

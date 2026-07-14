@@ -2066,12 +2066,21 @@ function setupChatControlLogic() {
             const res = await apiFetch('/api/user-settings');
             if (res.ok) {
                 const settings = await res.json();
-                if (el.chatWatchedWords && settings.chatWatchedWords) {
-                    el.chatWatchedWords.value = settings.chatWatchedWords;
-                    localStorage.setItem('chatWatchedWords', settings.chatWatchedWords);
+                
+                if (el.chatWatchedWords) {
+                    if (settings.chatWatchedWords !== undefined && settings.chatWatchedWords !== null && settings.chatWatchedWords !== '') {
+                        el.chatWatchedWords.value = settings.chatWatchedWords;
+                        localStorage.setItem('chatWatchedWords', settings.chatWatchedWords);
+                    } else {
+                        // Fallback to local storage
+                        el.chatWatchedWords.value = localStorage.getItem('chatWatchedWords') || '';
+                    }
                 }
-                if (settings.chatDefaultTimeout && el.chatDefaultTimeout) {
-                    el.chatDefaultTimeout.value = settings.chatDefaultTimeout;
+                
+                if (el.chatDefaultTimeout) {
+                    if (settings.chatDefaultTimeout) {
+                        el.chatDefaultTimeout.value = settings.chatDefaultTimeout;
+                    }
                 }
             }
         } catch (e) {

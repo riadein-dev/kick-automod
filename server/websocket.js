@@ -13,6 +13,19 @@ class WebSocketManager {
     this.pusher = null;
     this.subscribedChannels = new Map(); // channelId -> pusherChannel
     this.connected = false;
+    this.recentSiteActions = new Map(); // "userId" -> timestamp (siteden yapılan işlemleri takip eder)
+  }
+
+  /**
+   * Siteden yapılan bir ban/timeout işlemini kaydet
+   * Bu sayede Kick WebSocket'ten aynı event geldiğinde çift log düşmez
+   */
+  registerSiteAction(userId) {
+    this.recentSiteActions.set(String(userId), Date.now());
+    // 30 saniye sonra otomatik temizle
+    setTimeout(() => this.recentSiteActions.delete(String(userId)), 30000);
+    // Map çok büyürse temizle
+    if (this.recentSiteActions.size > 1000) this.recentSiteActions.clear();
   }
 
   /**
@@ -232,6 +245,16 @@ class WebSocketManager {
   handleUserBanned(data, channelSlug) {
     console.log(`[WebSocket] User banned in ${channelSlug}:`, data);
     
+    const bannedUserId = String(data.user?.id || data.id || '');
+    
+    // Siteden yapılan işlemse çift log düşürme, sadece broadcast et
+    if (bannedUserId && this.recentSiteActions.has(bannedUserId)) {
+      console.log(`[WebSocket] Skipping duplicate log for user ${bannedUserId} (site-initiated action)`);
+      this.recentSiteActions.delete(bannedUserId);
+      store.broadcast('userBanned', { channel: channelSlug, data });
+      return;
+    }
+    
     // Find ownerId from channelSlug
     const channels = store.getChannels();
     const channel = channels.find(c => c.slug === channelSlug);
@@ -241,7 +264,7 @@ class WebSocketManager {
         store.addModerationLog({
             channel: channelSlug,
             chatroomId: channel.id,
-            userId: data.user?.id || data.id || 'Unknown',
+            userId: bannedUserId || 'Unknown',
             username: data.user?.username || data.username || 'Unknown',
             messageContent: 'Kick üzerinden harici işlem (T.O / Ban)',
             ruleName: 'externalAction',
