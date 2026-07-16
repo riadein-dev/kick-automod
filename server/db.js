@@ -80,7 +80,7 @@ const chatMessageSchema = new mongoose.Schema({
     userId: { type: Number },
     timestamp: { type: String },
     sender: { type: Object },
-    createdAt: { type: Date, default: Date.now, expires: 259200 } // Messages expire after 3 days (was 7, reduced for DB size)
+    createdAt: { type: Date, default: Date.now, expires: 86400 } // Messages expire after 1 day (was 3 days)
 });
 
 const moderationLogSchema = new mongoose.Schema({
@@ -98,7 +98,7 @@ const moderationLogSchema = new mongoose.Schema({
     duration: { type: Number }, // timeout duration
     status: { type: String, default: 'pending' }, // pending, applied, rejected, unbanned, error
     ownerId: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now, expires: 432000 } // Moderation logs expire in 5 days (was 7, reduced for DB size)
+    createdAt: { type: Date, default: Date.now, expires: 86400 } // Moderation logs expire in 1 day (was 3 days)
 });
 
 const userSettingsSchema = new mongoose.Schema({

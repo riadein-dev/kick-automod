@@ -9,11 +9,11 @@ mongoose.connect(process.env.MONGODB_URI).then(async () => {
   const chat = await db.collection('chatmessages').deleteMany({ createdAt: { $lt: oneDayAgo } });
   console.log('Chat mesajlari silindi:', chat.deletedCount);
 
-  // 2. Eski mod loglarini temizle (3 gunlukten eski)
-  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
-  const logs = await db.collection('moderationlogs').deleteMany({ createdAt: { $lt: threeDaysAgo } });
+  // 2. Eski mod loglarini temizle (1 gunlukten eski)
+  const logs = await db.collection('moderationlogs').deleteMany({ createdAt: { $lt: oneDayAgo } });
   console.log('Eski mod loglari silindi:', logs.deletedCount);
 
+  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
   // 3. Eski presetleri temizle
   const presets = await db.collection('wordpresets').deleteMany({ createdAt: { $lt: threeDaysAgo } });
   console.log('Eski presetler silindi:', presets.deletedCount);
