@@ -4,13 +4,13 @@ const mongoose = require('mongoose');
 mongoose.connect(process.env.MONGODB_URI).then(async () => {
   const db = mongoose.connection.db;
 
-  // 1. Chat mesajlarini temizle (son 24 saat haric)
-  const oneDayAgo = new Date(Date.now() - 24*60*60*1000);
-  const chat = await db.collection('chatmessages').deleteMany({ createdAt: { $lt: oneDayAgo } });
+  // 1. Chat mesajlarini temizle (son 5 saat haric)
+  const fiveHoursAgo = new Date(Date.now() - 5*60*60*1000);
+  const chat = await db.collection('chatmessages').deleteMany({ createdAt: { $lt: fiveHoursAgo } });
   console.log('Chat mesajlari silindi:', chat.deletedCount);
 
-  // 2. Eski mod loglarini temizle (1 gunlukten eski)
-  const logs = await db.collection('moderationlogs').deleteMany({ createdAt: { $lt: oneDayAgo } });
+  // 2. Eski mod loglarini temizle (5 saatten eski)
+  const logs = await db.collection('moderationlogs').deleteMany({ createdAt: { $lt: fiveHoursAgo } });
   console.log('Eski mod loglari silindi:', logs.deletedCount);
 
   const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
