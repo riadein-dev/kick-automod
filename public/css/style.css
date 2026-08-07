@@ -159,6 +159,10 @@ input, select { font-family: inherit; outline: none; }
     0%, 100% { opacity: 0.5; }
     50% { opacity: 1; }
 }
+@keyframes timedMsgPulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(88, 221, 102, 0.3); }
+    50% { box-shadow: 0 0 14px rgba(88, 221, 102, 0.6); }
+}
 
 /* ═══════════════════════════════════════════════════
    HEADER (FLOATING GLASS)

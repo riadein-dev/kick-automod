@@ -2269,6 +2269,168 @@ function setupChatControlLogic() {
             renderLogs(); // Update the right panels for this tab
         });
     }
+
+    // ========== TIMED MESSAGE FEATURE ==========
+    const timedMessageBtn = document.getElementById('timedMessageBtn');
+    const timedMessageModal = document.getElementById('timedMessageModal');
+    const closeTimedMessageModal = document.getElementById('closeTimedMessageModal');
+    const cancelTimedMessageBtn = document.getElementById('cancelTimedMessageBtn');
+    const startTimedMessageBtn = document.getElementById('startTimedMessageBtn');
+    const stopTimedMessageBtn = document.getElementById('stopTimedMessageBtn');
+    const timedMessageContent = document.getElementById('timedMessageContent');
+    const timedMessageInterval = document.getElementById('timedMessageInterval');
+    const timedMessageStatus = document.getElementById('timedMessageStatus');
+
+    let timedMessageTimer = null;
+    let timedMessageCountdown = null;
+    let timedMessageSentCount = 0;
+
+    function openTimedMessageModal() {
+        if (timedMessageModal) timedMessageModal.classList.add('open');
+        updateTimedMessageUI();
+    }
+    function closeTimedMsgModal() {
+        if (timedMessageModal) timedMessageModal.classList.remove('open');
+    }
+
+    function updateTimedMessageUI() {
+        if (timedMessageTimer) {
+            // Timer is running
+            if (startTimedMessageBtn) startTimedMessageBtn.style.display = 'none';
+            if (stopTimedMessageBtn) stopTimedMessageBtn.style.display = 'flex';
+            if (timedMessageContent) timedMessageContent.disabled = true;
+            if (timedMessageInterval) timedMessageInterval.disabled = true;
+            if (timedMessageStatus) {
+                timedMessageStatus.style.display = 'flex';
+                timedMessageStatus.style.background = 'rgba(88, 221, 102, 0.1)';
+                timedMessageStatus.style.border = '1px solid rgba(88, 221, 102, 0.3)';
+                timedMessageStatus.style.color = 'var(--green)';
+            }
+            // Add pulsing glow to icon button
+            if (timedMessageBtn) {
+                timedMessageBtn.style.color = 'var(--green)';
+                timedMessageBtn.style.background = 'rgba(88, 221, 102, 0.15)';
+                timedMessageBtn.style.borderColor = 'rgba(88, 221, 102, 0.4)';
+                timedMessageBtn.style.animation = 'timedMsgPulse 2s ease-in-out infinite';
+            }
+        } else {
+            // Timer is stopped
+            if (startTimedMessageBtn) startTimedMessageBtn.style.display = 'flex';
+            if (stopTimedMessageBtn) stopTimedMessageBtn.style.display = 'none';
+            if (timedMessageContent) timedMessageContent.disabled = false;
+            if (timedMessageInterval) timedMessageInterval.disabled = false;
+            if (timedMessageStatus) timedMessageStatus.style.display = 'none';
+            // Reset icon button
+            if (timedMessageBtn) {
+                timedMessageBtn.style.color = '';
+                timedMessageBtn.style.background = '';
+                timedMessageBtn.style.borderColor = '';
+                timedMessageBtn.style.animation = '';
+            }
+        }
+    }
+
+    function updateCountdownDisplay(remaining) {
+        if (!timedMessageStatus) return;
+        timedMessageStatus.innerHTML = `
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <div>
+                <div style="font-weight: 600;">Zamanlamalı mesaj aktif</div>
+                <div style="font-size: 0.8rem; opacity: 0.8;">Sonraki gönderim: ${remaining}s · Toplam gönderildi: ${timedMessageSentCount}</div>
+            </div>
+        `;
+    }
+
+    async function sendTimedMessage() {
+        const content = timedMessageContent ? timedMessageContent.value.trim() : '';
+        if (!content) return;
+
+        const activeChannel = state.channels.find(ch => ch.slug === state.chatControlActiveTab);
+        if (!activeChannel) {
+            console.error('[TimedMsg] No active channel');
+            return;
+        }
+
+        const chatroomId = activeChannel.chatroomId || activeChannel.id;
+        try {
+            const res = await apiFetch('/api/chat/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatroomId, content, channelSlug: activeChannel.slug })
+            });
+            if (res.ok) {
+                timedMessageSentCount++;
+                updateTimedMessageUI();
+                console.log(`[TimedMsg] Message sent #${timedMessageSentCount}`);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                console.error('[TimedMsg] Send error:', err.error || res.status);
+            }
+        } catch (e) {
+            console.error('[TimedMsg] Network error:', e.message);
+        }
+    }
+
+    function startTimedMessage() {
+        const content = timedMessageContent ? timedMessageContent.value.trim() : '';
+        const intervalSec = parseInt(timedMessageInterval ? timedMessageInterval.value : '60');
+
+        if (!content) {
+            alert('Lütfen bir mesaj yazın!');
+            return;
+        }
+        if (!intervalSec || intervalSec < 10) {
+            alert('Süre en az 10 saniye olmalıdır!');
+            return;
+        }
+        if (!state.chatControlActiveTab) {
+            alert('Lütfen önce bir kanal seçin!');
+            return;
+        }
+
+        timedMessageSentCount = 0;
+        let remaining = intervalSec;
+
+        // Send immediately first time
+        sendTimedMessage();
+
+        // Countdown ticker (every 1 second)
+        updateCountdownDisplay(remaining);
+        timedMessageCountdown = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) remaining = intervalSec;
+            updateCountdownDisplay(remaining);
+        }, 1000);
+
+        // Actual message sender
+        timedMessageTimer = setInterval(() => {
+            sendTimedMessage();
+            remaining = intervalSec;
+        }, intervalSec * 1000);
+
+        updateTimedMessageUI();
+    }
+
+    function stopTimedMessage() {
+        if (timedMessageTimer) { clearInterval(timedMessageTimer); timedMessageTimer = null; }
+        if (timedMessageCountdown) { clearInterval(timedMessageCountdown); timedMessageCountdown = null; }
+        timedMessageSentCount = 0;
+        updateTimedMessageUI();
+    }
+
+    // Event listeners
+    if (timedMessageBtn) timedMessageBtn.addEventListener('click', openTimedMessageModal);
+    if (closeTimedMessageModal) closeTimedMessageModal.addEventListener('click', closeTimedMsgModal);
+    if (cancelTimedMessageBtn) cancelTimedMessageBtn.addEventListener('click', closeTimedMsgModal);
+    if (startTimedMessageBtn) startTimedMessageBtn.addEventListener('click', startTimedMessage);
+    if (stopTimedMessageBtn) stopTimedMessageBtn.addEventListener('click', stopTimedMessage);
+
+    // Close on overlay click
+    if (timedMessageModal) {
+        timedMessageModal.addEventListener('click', (e) => {
+            if (e.target === timedMessageModal) closeTimedMsgModal();
+        });
+    }
 }
 state.chatControlActiveTab = null;
 if (!window._chatMessageBuffer) window._chatMessageBuffer = [];
