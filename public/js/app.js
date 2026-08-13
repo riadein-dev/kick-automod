@@ -123,6 +123,9 @@ const el = {
     dashboardView: $('#dashboardView'),
     channelsView: $('#channelsView'),
     chatControlView: $('#chatControlView'),
+    // Multi-Kick
+    multiKickNavBtn: $('#multiKickNavBtn'),
+    multiKickView: $('#multiKickView'),
     
     // Chat Control specific
     chatControlNavBtn: $('#chatControlNavBtn'),
@@ -224,6 +227,7 @@ async function initApp() {
                 else if (savedView === 'channels' && el.channelsNavBtn) el.channelsNavBtn.click();
                 else if (savedView === 'settings' && el.settingsNavBtn) el.settingsNavBtn.click();
                 else if (savedView === 'admin' && el.adminNavBtn && el.adminNavBtn.style.display !== 'none') el.adminNavBtn.click();
+                else if (savedView === 'multiKick' && el.multiKickNavBtn) el.multiKickNavBtn.click();
             }, 50);
         }
         
@@ -1476,7 +1480,8 @@ function setupEventListeners() {
             'settings': { btn: el.settingsNavBtn, view: el.settingsView },
             'logs': { btn: el.logsNavBtn, view: el.logsView },
             'admin': { btn: el.adminNavBtn, view: el.adminView },
-            'crossBan': { btn: el.crossBanNavBtn, view: el.crossBanView }
+            'crossBan': { btn: el.crossBanNavBtn, view: el.crossBanView },
+            'multiKick': { btn: el.multiKickNavBtn, view: el.multiKickView }
         };
 
         Object.keys(views).forEach(k => {
@@ -1510,6 +1515,7 @@ function setupEventListeners() {
     el.logsNavBtn?.addEventListener('click', () => { switchView('logs'); closeSidebar(); });
     el.adminNavBtn?.addEventListener('click', () => { switchView('admin'); closeSidebar(); });
     el.crossBanNavBtn?.addEventListener('click', () => { switchView('crossBan'); closeSidebar(); });
+    el.multiKickNavBtn?.addEventListener('click', () => { switchView('multiKick'); closeSidebar(); initMultiKick(); });
     
     if (el.clearVisitorsBtn) {
         el.clearVisitorsBtn.addEventListener('click', async () => {
@@ -2279,11 +2285,40 @@ function setupChatControlLogic() {
     const stopTimedMessageBtn = document.getElementById('stopTimedMessageBtn');
     const timedMessageContent = document.getElementById('timedMessageContent');
     const timedMessageInterval = document.getElementById('timedMessageInterval');
+    const timedMessageMsgCount = document.getElementById('timedMessageMsgCount');
     const timedMessageStatus = document.getElementById('timedMessageStatus');
+    const timedModeTimeBtn = document.getElementById('timedModeTime');
+    const timedModeCountBtn = document.getElementById('timedModeCount');
+    const timedModeTimeInput = document.getElementById('timedModeTimeInput');
+    const timedModeCountInput = document.getElementById('timedModeCountInput');
 
     let timedMessageTimer = null;
     let timedMessageCountdown = null;
     let timedMessageSentCount = 0;
+    let timedMessageMode = 'time'; // 'time' or 'count'
+
+    // Global message counter for count mode
+    window._timedMsgCounter = 0;
+    window._timedMsgCountTarget = 0;
+    window._timedMsgCountActive = false;
+
+    // Mode toggle
+    function setTimedMode(mode) {
+        timedMessageMode = mode;
+        if (mode === 'time') {
+            if (timedModeTimeBtn) { timedModeTimeBtn.style.background = 'rgba(88, 221, 102, 0.15)'; timedModeTimeBtn.style.color = 'var(--green)'; }
+            if (timedModeCountBtn) { timedModeCountBtn.style.background = 'rgba(255,255,255,0.03)'; timedModeCountBtn.style.color = 'var(--text-3)'; }
+            if (timedModeTimeInput) timedModeTimeInput.style.display = 'block';
+            if (timedModeCountInput) timedModeCountInput.style.display = 'none';
+        } else {
+            if (timedModeCountBtn) { timedModeCountBtn.style.background = 'rgba(88, 221, 102, 0.15)'; timedModeCountBtn.style.color = 'var(--green)'; }
+            if (timedModeTimeBtn) { timedModeTimeBtn.style.background = 'rgba(255,255,255,0.03)'; timedModeTimeBtn.style.color = 'var(--text-3)'; }
+            if (timedModeCountInput) timedModeCountInput.style.display = 'block';
+            if (timedModeTimeInput) timedModeTimeInput.style.display = 'none';
+        }
+    }
+    if (timedModeTimeBtn) timedModeTimeBtn.addEventListener('click', () => setTimedMode('time'));
+    if (timedModeCountBtn) timedModeCountBtn.addEventListener('click', () => setTimedMode('count'));
 
     function openTimedMessageModal() {
         if (timedMessageModal) timedMessageModal.classList.add('open');
@@ -2293,20 +2328,25 @@ function setupChatControlLogic() {
         if (timedMessageModal) timedMessageModal.classList.remove('open');
     }
 
+    function isTimedActive() {
+        return timedMessageTimer || window._timedMsgCountActive;
+    }
+
     function updateTimedMessageUI() {
-        if (timedMessageTimer) {
-            // Timer is running
+        if (isTimedActive()) {
             if (startTimedMessageBtn) startTimedMessageBtn.style.display = 'none';
             if (stopTimedMessageBtn) stopTimedMessageBtn.style.display = 'flex';
             if (timedMessageContent) timedMessageContent.disabled = true;
             if (timedMessageInterval) timedMessageInterval.disabled = true;
+            if (timedMessageMsgCount) timedMessageMsgCount.disabled = true;
+            if (timedModeTimeBtn) timedModeTimeBtn.disabled = true;
+            if (timedModeCountBtn) timedModeCountBtn.disabled = true;
             if (timedMessageStatus) {
                 timedMessageStatus.style.display = 'flex';
                 timedMessageStatus.style.background = 'rgba(88, 221, 102, 0.1)';
                 timedMessageStatus.style.border = '1px solid rgba(88, 221, 102, 0.3)';
                 timedMessageStatus.style.color = 'var(--green)';
             }
-            // Add pulsing glow to icon button
             if (timedMessageBtn) {
                 timedMessageBtn.style.color = 'var(--green)';
                 timedMessageBtn.style.background = 'rgba(88, 221, 102, 0.15)';
@@ -2314,13 +2354,14 @@ function setupChatControlLogic() {
                 timedMessageBtn.style.animation = 'timedMsgPulse 2s ease-in-out infinite';
             }
         } else {
-            // Timer is stopped
             if (startTimedMessageBtn) startTimedMessageBtn.style.display = 'flex';
             if (stopTimedMessageBtn) stopTimedMessageBtn.style.display = 'none';
             if (timedMessageContent) timedMessageContent.disabled = false;
             if (timedMessageInterval) timedMessageInterval.disabled = false;
+            if (timedMessageMsgCount) timedMessageMsgCount.disabled = false;
+            if (timedModeTimeBtn) timedModeTimeBtn.disabled = false;
+            if (timedModeCountBtn) timedModeCountBtn.disabled = false;
             if (timedMessageStatus) timedMessageStatus.style.display = 'none';
-            // Reset icon button
             if (timedMessageBtn) {
                 timedMessageBtn.style.color = '';
                 timedMessageBtn.style.background = '';
@@ -2332,13 +2373,23 @@ function setupChatControlLogic() {
 
     function updateCountdownDisplay(remaining) {
         if (!timedMessageStatus) return;
-        timedMessageStatus.innerHTML = `
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <div>
-                <div style="font-weight: 600;">Zamanlamalı mesaj aktif</div>
-                <div style="font-size: 0.8rem; opacity: 0.8;">Sonraki gönderim: ${remaining}s · Toplam gönderildi: ${timedMessageSentCount}</div>
-            </div>
-        `;
+        if (timedMessageMode === 'time') {
+            timedMessageStatus.innerHTML = `
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <div>
+                    <div style="font-weight: 600;">Süreye göre aktif</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8;">Sonraki gönderim: ${remaining}s · Gönderildi: ${timedMessageSentCount}</div>
+                </div>
+            `;
+        } else {
+            timedMessageStatus.innerHTML = `
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <div>
+                    <div style="font-weight: 600;">Mesaj sayısına göre aktif</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8;">Sayaç: ${window._timedMsgCounter}/${window._timedMsgCountTarget} · Gönderildi: ${timedMessageSentCount}</div>
+                </div>
+            `;
+        }
     }
 
     async function sendTimedMessage() {
@@ -2361,6 +2412,7 @@ function setupChatControlLogic() {
             if (res.ok) {
                 timedMessageSentCount++;
                 updateTimedMessageUI();
+                updateCountdownDisplay(timedMessageMode === 'time' ? 0 : window._timedMsgCounter);
                 console.log(`[TimedMsg] Message sent #${timedMessageSentCount}`);
             } else {
                 const err = await res.json().catch(() => ({}));
@@ -2370,43 +2422,45 @@ function setupChatControlLogic() {
             console.error('[TimedMsg] Network error:', e.message);
         }
     }
+    window.sendTimedMessage = sendTimedMessage;
 
     function startTimedMessage() {
         const content = timedMessageContent ? timedMessageContent.value.trim() : '';
-        const intervalSec = parseInt(timedMessageInterval ? timedMessageInterval.value : '60');
-
-        if (!content) {
-            alert('Lütfen bir mesaj yazın!');
-            return;
-        }
-        if (!intervalSec || intervalSec < 10) {
-            alert('Süre en az 10 saniye olmalıdır!');
-            return;
-        }
-        if (!state.chatControlActiveTab) {
-            alert('Lütfen önce bir kanal seçin!');
-            return;
-        }
+        if (!content) { alert('Lütfen bir mesaj yazın!'); return; }
+        if (!state.chatControlActiveTab) { alert('Lütfen önce bir kanal seçin!'); return; }
 
         timedMessageSentCount = 0;
-        let remaining = intervalSec;
 
-        // Send immediately first time
-        sendTimedMessage();
+        if (timedMessageMode === 'time') {
+            // TIME MODE
+            const intervalSec = parseInt(timedMessageInterval ? timedMessageInterval.value : '60');
+            if (!intervalSec || intervalSec < 10) { alert('Süre en az 10 saniye olmalıdır!'); return; }
 
-        // Countdown ticker (every 1 second)
-        updateCountdownDisplay(remaining);
-        timedMessageCountdown = setInterval(() => {
-            remaining--;
-            if (remaining <= 0) remaining = intervalSec;
-            updateCountdownDisplay(remaining);
-        }, 1000);
-
-        // Actual message sender
-        timedMessageTimer = setInterval(() => {
+            let remaining = intervalSec;
             sendTimedMessage();
-            remaining = intervalSec;
-        }, intervalSec * 1000);
+            updateCountdownDisplay(remaining);
+
+            timedMessageCountdown = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) remaining = intervalSec;
+                updateCountdownDisplay(remaining);
+            }, 1000);
+
+            timedMessageTimer = setInterval(() => {
+                sendTimedMessage();
+                remaining = intervalSec;
+            }, intervalSec * 1000);
+
+        } else {
+            // MESSAGE COUNT MODE
+            const msgTarget = parseInt(timedMessageMsgCount ? timedMessageMsgCount.value : '100');
+            if (!msgTarget || msgTarget < 50) { alert('Mesaj sayısı en az 50 olmalıdır!'); return; }
+
+            window._timedMsgCounter = 0;
+            window._timedMsgCountTarget = msgTarget;
+            window._timedMsgCountActive = true;
+            updateCountdownDisplay(0);
+        }
 
         updateTimedMessageUI();
     }
@@ -2414,6 +2468,8 @@ function setupChatControlLogic() {
     function stopTimedMessage() {
         if (timedMessageTimer) { clearInterval(timedMessageTimer); timedMessageTimer = null; }
         if (timedMessageCountdown) { clearInterval(timedMessageCountdown); timedMessageCountdown = null; }
+        window._timedMsgCountActive = false;
+        window._timedMsgCounter = 0;
         timedMessageSentCount = 0;
         updateTimedMessageUI();
     }
@@ -2431,6 +2487,134 @@ function setupChatControlLogic() {
             if (e.target === timedMessageModal) closeTimedMsgModal();
         });
     }
+
+    // ========== AUTO REPLY FEATURE ==========
+    const autoReplyBtn = document.getElementById('autoReplyBtn');
+    const autoReplyModal = document.getElementById('autoReplyModal');
+    const closeAutoReplyModal = document.getElementById('closeAutoReplyModal');
+    const cancelAutoReplyBtn = document.getElementById('cancelAutoReplyBtn');
+    const saveAutoReplyBtn = document.getElementById('saveAutoReplyBtn');
+    const addAutoReplyRowBtn = document.getElementById('addAutoReplyRowBtn');
+    const autoReplyRows = document.getElementById('autoReplyRows');
+    const autoReplyStatusText = document.getElementById('autoReplyStatusText');
+
+    // Global auto-reply rules array
+    if (!window._autoReplyRules) window._autoReplyRules = [];
+
+    function createAutoReplyRow(trigger = '', response = '') {
+        const row = document.createElement('div');
+        row.className = 'auto-reply-row';
+        row.style.cssText = 'display: flex; gap: 12px; align-items: center;';
+        row.innerHTML = `
+            <input type="text" class="input-field auto-reply-trigger" placeholder="örn: selam" value="${trigger.replace(/"/g, '&quot;')}" style="flex: 1; height: 42px; font-size: 0.9rem;">
+            <input type="text" class="input-field auto-reply-response" placeholder="örn: Hoş geldin!" value="${response.replace(/"/g, '&quot;')}" style="flex: 1; height: 42px; font-size: 0.9rem;">
+            <button class="auto-reply-remove-btn" title="Sil" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); color: var(--red); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        `;
+        // Remove button handler
+        row.querySelector('.auto-reply-remove-btn').addEventListener('click', () => {
+            row.style.transition = 'all 0.2s';
+            row.style.opacity = '0';
+            row.style.transform = 'translateX(-10px)';
+            setTimeout(() => row.remove(), 200);
+        });
+        return row;
+    }
+
+    function loadAutoReplyRules() {
+        try {
+            const saved = localStorage.getItem('autoReplyRules');
+            if (saved) {
+                window._autoReplyRules = JSON.parse(saved);
+            }
+        } catch (e) { window._autoReplyRules = []; }
+    }
+
+    function saveAutoReplyRules() {
+        // Collect from DOM
+        const rows = autoReplyRows.querySelectorAll('.auto-reply-row');
+        const rules = [];
+        rows.forEach(row => {
+            const trigger = row.querySelector('.auto-reply-trigger').value.trim();
+            const response = row.querySelector('.auto-reply-response').value.trim();
+            if (trigger && response) {
+                rules.push({ trigger, response });
+            }
+        });
+        window._autoReplyRules = rules;
+        localStorage.setItem('autoReplyRules', JSON.stringify(rules));
+        updateAutoReplyStatus();
+    }
+
+    function updateAutoReplyStatus() {
+        const count = window._autoReplyRules.length;
+        if (autoReplyStatusText) {
+            autoReplyStatusText.textContent = count > 0 ? `${count} kural aktif` : '';
+        }
+        // Update icon button appearance
+        if (autoReplyBtn) {
+            if (count > 0) {
+                autoReplyBtn.style.color = 'var(--blue, #60a5fa)';
+                autoReplyBtn.style.background = 'rgba(96, 165, 250, 0.12)';
+                autoReplyBtn.style.borderColor = 'rgba(96, 165, 250, 0.3)';
+            } else {
+                autoReplyBtn.style.color = '';
+                autoReplyBtn.style.background = '';
+                autoReplyBtn.style.borderColor = '';
+            }
+        }
+    }
+
+    function openAutoReplyModal() {
+        if (!autoReplyModal) return;
+        autoReplyModal.classList.add('open');
+        // Populate rows from saved rules
+        autoReplyRows.innerHTML = '';
+        loadAutoReplyRules();
+        if (window._autoReplyRules.length === 0) {
+            // Add one empty row by default
+            autoReplyRows.appendChild(createAutoReplyRow());
+        } else {
+            window._autoReplyRules.forEach(rule => {
+                autoReplyRows.appendChild(createAutoReplyRow(rule.trigger, rule.response));
+            });
+        }
+        updateAutoReplyStatus();
+    }
+
+    function closeAutoReplyMdl() {
+        if (autoReplyModal) autoReplyModal.classList.remove('open');
+    }
+
+    // Event listeners
+    if (autoReplyBtn) autoReplyBtn.addEventListener('click', openAutoReplyModal);
+    if (closeAutoReplyModal) closeAutoReplyModal.addEventListener('click', closeAutoReplyMdl);
+    if (cancelAutoReplyBtn) cancelAutoReplyBtn.addEventListener('click', closeAutoReplyMdl);
+    if (addAutoReplyRowBtn) {
+        addAutoReplyRowBtn.addEventListener('click', () => {
+            const newRow = createAutoReplyRow();
+            autoReplyRows.appendChild(newRow);
+            newRow.querySelector('.auto-reply-trigger').focus();
+            // Scroll to bottom of rows
+            autoReplyRows.scrollTop = autoReplyRows.scrollHeight;
+        });
+    }
+    if (saveAutoReplyBtn) {
+        saveAutoReplyBtn.addEventListener('click', () => {
+            saveAutoReplyRules();
+            closeAutoReplyMdl();
+        });
+    }
+    if (autoReplyModal) {
+        autoReplyModal.addEventListener('click', (e) => {
+            if (e.target === autoReplyModal) closeAutoReplyMdl();
+        });
+    }
+
+    // Load rules on init
+    loadAutoReplyRules();
+    updateAutoReplyStatus();
 }
 state.chatControlActiveTab = null;
 if (!window._chatMessageBuffer) window._chatMessageBuffer = [];
@@ -2581,10 +2765,68 @@ function showUserMessageHistory(username, color) {
 }
 
 window.appendChatMessage = function(msgData) {
+    // Route to Multi-Kick panels (always, regardless of active tab)
+    if (typeof appendMkChatMessage === 'function') {
+        appendMkChatMessage(msgData);
+    }
+
+    // Timed Message: Count mode - increment counter on every incoming message
+    if (window._timedMsgCountActive && window._timedMsgCountTarget > 0) {
+        window._timedMsgCounter++;
+        if (window._timedMsgCounter >= window._timedMsgCountTarget) {
+            window._timedMsgCounter = 0;
+            // Trigger the timed message send
+            if (typeof window.sendTimedMessage === 'function') window.sendTimedMessage();
+        }
+        // Update status display
+        const statusEl = document.getElementById('timedMessageStatus');
+        if (statusEl && statusEl.style.display !== 'none') {
+            const sentCount = window._timedMsgSentCount || 0;
+            statusEl.innerHTML = `
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <div>
+                    <div style="font-weight: 600;">Mesaj sayısına göre aktif</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8;">Sayaç: ${window._timedMsgCounter}/${window._timedMsgCountTarget} · Gönderildi: ${sentCount}</div>
+                </div>
+            `;
+        }
+    }
+
     if (!el.chatControlMessages) return;
     
     // Filter by active tab
     if (state.chatControlActiveTab !== msgData.channel) return;
+
+    // ===== AUTO REPLY CHECK =====
+    if (window._autoReplyRules && window._autoReplyRules.length > 0) {
+        const msgContent = (msgData.message.content || '').toLowerCase().trim();
+        if (msgContent) {
+            for (const rule of window._autoReplyRules) {
+                const trigger = rule.trigger.toLowerCase().trim();
+                if (msgContent.includes(trigger)) {
+                    // Find active channel to send reply
+                    const activeChannel = state.channels.find(ch => ch.slug === msgData.channel);
+                    if (activeChannel) {
+                        const chatroomId = activeChannel.chatroomId || activeChannel.id;
+                        // Debounce: don't reply to the same trigger within 3 seconds
+                        const now = Date.now();
+                        const lastKey = `_autoReplyLast_${trigger}`;
+                        if (!window[lastKey] || (now - window[lastKey]) > 3000) {
+                            window[lastKey] = now;
+                            apiFetch('/api/chat/send', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ chatroomId, content: rule.response, channelSlug: msgData.channel })
+                            }).then(res => {
+                                if (res.ok) console.log(`[AutoReply] Replied to "${trigger}" with "${rule.response}"`);
+                            }).catch(e => console.error('[AutoReply] Error:', e.message));
+                        }
+                    }
+                    break; // Only first matching rule
+                }
+            }
+        }
+    }
 
     // Remove welcome message
     const welcome = el.chatControlMessages.querySelector('.chat-welcome');
@@ -2852,6 +3094,208 @@ document.getElementById('resumeChatBtn')?.addEventListener('click', () => {
     el.chatContainer.scrollTop = el.chatContainer.scrollHeight;
 });
 
+// ========== MULTI-KICK SYSTEM ==========
+if (!window._mkPanels) window._mkPanels = {}; // { slug: { panel, chatEl } }
+let _mkInitialized = false;
+
+function initMultiKick() {
+    if (_mkInitialized) return;
+    _mkInitialized = true;
+
+    const mkGrid = document.getElementById('mkGrid');
+    const mkInput = document.getElementById('mkChannelInput');
+    const mkAddBtn = document.getElementById('mkAddChannelBtn');
+    const mkEmpty = document.getElementById('mkEmptyState');
+
+    if (!mkGrid || !mkInput || !mkAddBtn) return;
+
+    // Load saved channels from localStorage
+    const savedSlugs = JSON.parse(localStorage.getItem('mkChannels') || '[]');
+    savedSlugs.forEach(slug => createMkPanel(slug));
+    updateMkEmpty();
+
+    // Add channel button
+    mkAddBtn.addEventListener('click', () => {
+        const slug = mkInput.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        if (!slug) return;
+        if (window._mkPanels[slug]) { mkInput.value = ''; return; }
+        createMkPanel(slug);
+        saveMkChannels();
+        mkInput.value = '';
+        updateMkEmpty();
+    });
+
+    // Enter key
+    mkInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); mkAddBtn.click(); }
+    });
+}
+
+function createMkPanel(slug) {
+    const mkGrid = document.getElementById('mkGrid');
+    if (!mkGrid || window._mkPanels[slug]) return;
+
+    const panel = document.createElement('div');
+    panel.className = 'mk-panel';
+    panel.id = `mk-panel-${slug}`;
+    panel.innerHTML = `
+        <div class="mk-header">
+            <div class="mk-header-title">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none"><path d="M22.8 2.4L24 0V24L22.8 21.6H12V24H0V0H12V2.4H22.8ZM9.6 4.8H4.8V19.2H9.6V14.4H12V19.2H19.2V14.4H14.4V9.6H19.2V4.8H12V9.6H9.6V4.8Z"></path></svg>
+                ${slug}
+            </div>
+            <div class="mk-header-actions">
+                <button class="mk-stream-toggle" title="Yayını İzle" data-slug="${slug}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+                <button class="mk-close" title="Paneli Kaldır" data-slug="${slug}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+        <iframe class="mk-stream" src="https://player.kick.com/${slug}" style="display: none;" allowfullscreen></iframe>
+        <div class="mk-chat" id="mk-chat-${slug}">
+            <div class="mk-chat-welcome">Mesajlar dinleniyor...</div>
+        </div>
+    `;
+
+    // Stream toggle
+    panel.querySelector('.mk-stream-toggle').addEventListener('click', function() {
+        const iframe = panel.querySelector('.mk-stream');
+        const isVisible = iframe.style.display !== 'none';
+        iframe.style.display = isVisible ? 'none' : 'block';
+        this.classList.toggle('mk-stream-active', !isVisible);
+        if (!isVisible) {
+            iframe.src = `https://player.kick.com/${slug}`;
+        } else {
+            iframe.src = 'about:blank';
+        }
+    });
+
+    // Close button
+    panel.querySelector('.mk-close').addEventListener('click', () => {
+        removeMkPanel(slug);
+    });
+
+    mkGrid.appendChild(panel);
+    window._mkPanels[slug] = {
+        panel: panel,
+        chatEl: panel.querySelector(`#mk-chat-${slug}`)
+    };
+}
+
+function removeMkPanel(slug) {
+    const mkPanel = window._mkPanels[slug];
+    if (mkPanel && mkPanel.panel) {
+        // Stop stream
+        const iframe = mkPanel.panel.querySelector('.mk-stream');
+        if (iframe) iframe.src = 'about:blank';
+        mkPanel.panel.remove();
+    }
+    delete window._mkPanels[slug];
+    saveMkChannels();
+    updateMkEmpty();
+}
+
+function saveMkChannels() {
+    const slugs = Object.keys(window._mkPanels);
+    localStorage.setItem('mkChannels', JSON.stringify(slugs));
+}
+
+function updateMkEmpty() {
+    const mkEmpty = document.getElementById('mkEmptyState');
+    if (!mkEmpty) return;
+    mkEmpty.style.display = Object.keys(window._mkPanels).length === 0 ? 'flex' : 'none';
+}
+
+// Route chat messages to Multi-Kick panels
+function appendMkChatMessage(msgData) {
+    const slug = msgData.channel;
+    const mkPanel = window._mkPanels[slug];
+    if (!mkPanel || !mkPanel.chatEl) return;
+
+    // Remove welcome
+    const welcome = mkPanel.chatEl.querySelector('.mk-chat-welcome');
+    if (welcome) welcome.remove();
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'kick-chat-msg';
+
+    // Username color
+    const color = (msgData.message.sender && msgData.message.sender.identity && msgData.message.sender.identity.color) || '#53fc18';
+    const rawContent = msgData.message.content || '';
+
+    // Parse emotes if available
+    let parsedContent = typeof parseKickEmotes === 'function' ? parseKickEmotes(rawContent) : rawContent;
+
+    // Watched words highlighting
+    const rawWatched = localStorage.getItem('chatWatchedWords') || '';
+    if (rawWatched.trim().length > 0) {
+        const watchedWords = rawWatched.split(',').map(w => w.replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/gi, '').trim()).filter(w => w.length > 0);
+        if (watchedWords.length > 0) {
+            const escapedWords = watchedWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            const regex = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapedWords.join('|')})(?=[^\\p{L}\\p{N}]|$)`, 'gui');
+            if (regex.test(parsedContent)) {
+                parsedContent = parsedContent.replace(regex, '$1<span class="watched-word-highlight">$2</span>');
+                msgEl.classList.add('has-watched-word');
+            }
+        }
+    }
+
+    // Mod actions
+    const modActionsHtml = `
+        <span class="quick-mod-actions">
+            <button class="quick-mod-btn delete" data-action="delete" title="Sil">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z"></path><path d="M9 8h2v9H9zm4 0h2v9h-2z"></path></svg>
+            </button>
+            <button class="quick-mod-btn timeout" data-action="timeout" title="Timeout">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6v6l4.5 4.5L6 17v5h12v-5l-4.5-4.5L18 8V2zm-2 4v1.5l-2.5 2.5h-3L8 7.5V6h8zm-8 12v-1.5l2.5-2.5h3l2.5 2.5V18H8z"></path></svg>
+            </button>
+            <button class="quick-mod-btn ban" data-action="ban" title="Banla">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 6v5.5c0 5.04 3.81 9.74 9 11.5 5.19-1.76 9-6.46 9-11.5V6l-9-4zm0 17c-4.14-1.51-7-5.58-7-9.5V7.4l7-3.11 7 3.11V11.5c0 3.92-2.86 7.99-7 9.5z"></path><path d="M14.59 8L8 14.59 9.41 16 16 9.41 14.59 8z"></path></svg>
+            </button>
+        </span>
+    `;
+
+    msgEl.innerHTML = `
+        ${modActionsHtml}
+        <span class="kick-chat-username" style="color: ${color}; margin-right: 6px; font-weight: 700;">${msgData.message.sender.username}</span>
+        <span class="kick-chat-content">${parsedContent}</span>
+    `;
+
+    // Mod action click handler
+    msgEl.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.quick-mod-btn');
+        if (!btn) return;
+        e.preventDefault();
+        const action = btn.getAttribute('data-action');
+        const duration = localStorage.getItem('chatDefaultTimeout') || 5;
+        msgEl.classList.add('action-feedback');
+        try {
+            await apiFetch('/api/manual-mod', {
+                method: 'POST',
+                body: JSON.stringify({
+                    action, userId: msgData.message.sender.id, messageId: msgData.message.id,
+                    duration, channelSlug: slug, reason: 'Multi-Kick moderasyonu',
+                    username: msgData.message.sender.username, messageContent: rawContent
+                })
+            });
+            if (action === 'delete') msgEl.style.display = 'none';
+            else msgEl.style.opacity = '0.5';
+        } catch (err) {
+            msgEl.classList.remove('action-feedback');
+        }
+    });
+
+    const isAtBottom = Math.abs((mkPanel.chatEl.scrollHeight - mkPanel.chatEl.clientHeight) - mkPanel.chatEl.scrollTop) < 50;
+    mkPanel.chatEl.appendChild(msgEl);
+    if (isAtBottom) mkPanel.chatEl.scrollTop = mkPanel.chatEl.scrollHeight;
+
+    // Prune (max 300 per panel)
+    while (mkPanel.chatEl.children.length > 300) {
+        mkPanel.chatEl.removeChild(mkPanel.chatEl.firstChild);
+    }
+}
 
 
 // ===== Boot =====

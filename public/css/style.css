@@ -1418,3 +1418,118 @@ input, select { font-family: inherit; outline: none; }
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* ═══════════════════════════════════════════════════
+   MULTI-KICK
+   ═══════════════════════════════════════════════════ */
+.multi-kick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1rem;
+    height: calc(100vh - 140px);
+    overflow-y: auto;
+    padding-bottom: 1rem;
+}
+.mk-empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    opacity: 0.6;
+}
+.mk-panel {
+    background: rgba(10, 10, 16, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+    max-height: calc(100vh - 150px);
+}
+.mk-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+.mk-header-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mk-header-actions {
+    display: flex;
+    gap: 4px;
+}
+.mk-header-actions button {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mk-header-actions button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-1);
+}
+.mk-header-actions button.mk-stream-active {
+    color: var(--green);
+    background: rgba(88, 221, 102, 0.12);
+    border-color: rgba(88, 221, 102, 0.3);
+}
+.mk-header-actions button.mk-close:hover {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--red);
+    border-color: rgba(244, 63, 94, 0.3);
+}
+.mk-stream {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+.mk-chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    min-height: 200px;
+    max-height: 400px;
+}
+.mk-chat .kick-chat-msg {
+    font-size: 0.82rem;
+    padding: 3px 6px;
+}
+.mk-chat .quick-mod-actions {
+    display: none;
+}
+.mk-chat .kick-chat-msg:hover .quick-mod-actions {
+    display: flex;
+}
+.mk-chat-welcome {
+    text-align: center;
+    color: var(--text-3);
+    font-size: 0.8rem;
+    padding: 20px;
+    opacity: 0.6;
+}
+@media (max-width: 900px) {
+    .multi-kick-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Kick AutoMod</title>
+    <title>Dashboard - Kickky</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='32' height='32'%3E%3Crect width='24' height='24' rx='5' fill='%2353fc18'/%3E%3Cpath d='M22.8 2.4L24 0V24L22.8 21.6H12V24H0V0H12V2.4H22.8ZM9.6 4.8H4.8V19.2H9.6V14.4H12V19.2H19.2V14.4H14.4V9.6H19.2V4.8H12V9.6H9.6V4.8Z' fill='%230a0a10'/%3E%3C/svg%3E">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20">
 </head>
@@ -29,6 +30,10 @@
             <button class="sidebar-link" id="chatControlNavBtn">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="none"><path d="M22.8 2.4L24 0V24L22.8 21.6H12V24H0V0H12V2.4H22.8ZM9.6 4.8H4.8V19.2H9.6V14.4H12V19.2H19.2V14.4H14.4V9.6H19.2V4.8H12V9.6H9.6V4.8Z"></path></svg>
                 <span>Kickky</span>
+            </button>
+            <button class="sidebar-link" id="multiKickNavBtn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="8" height="8" rx="1"></rect><rect x="14" y="3" width="8" height="8" rx="1"></rect><rect x="2" y="13" width="8" height="8" rx="1"></rect><rect x="14" y="13" width="8" height="8" rx="1"></rect></svg>
+                <span>Multi-Kick</span>
             </button>
             <button class="sidebar-link" id="channelsNavBtn">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -277,6 +282,9 @@
                             <button class="icon-btn" id="timedMessageBtn" title="Zamanlamalı Mesaj" style="padding: 0.5rem;">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             </button>
+                            <button class="icon-btn" id="autoReplyBtn" title="Oto Cevap" style="padding: 0.5rem;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                            </button>
                             <button class="icon-btn" id="chatSettingsBtn" title="Chat Ayarları" style="padding: 0.5rem;">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                             </button>
@@ -316,6 +324,30 @@
                             <div class="empty-state" id="chatEmptyModRow">Henüz kayıt yok.</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi-Kick View -->
+        <div id="multiKickView" style="display: none; height: 100%;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding: 0 4px;">
+                <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-1); display: flex; align-items: center; gap: 10px;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--green)" stroke-width="2"><rect x="2" y="3" width="8" height="8" rx="1"></rect><rect x="14" y="3" width="8" height="8" rx="1"></rect><rect x="2" y="13" width="8" height="8" rx="1"></rect><rect x="14" y="13" width="8" height="8" rx="1"></rect></svg>
+                    Multi-Kick
+                </h2>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="mkChannelInput" class="input-field" placeholder="Kanal slug'ı girin (örn: xqc)" style="width: 240px; height: 38px; font-size: 0.85rem;">
+                    <button class="btn-primary" id="mkAddChannelBtn" style="height: 38px; padding: 0 16px; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; white-space: nowrap;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Ekle
+                    </button>
+                </div>
+            </div>
+            <div class="multi-kick-grid" id="mkGrid">
+                <div class="mk-empty-state" id="mkEmptyState">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-3)" stroke-width="1.5"><rect x="2" y="3" width="8" height="8" rx="1"></rect><rect x="14" y="3" width="8" height="8" rx="1"></rect><rect x="2" y="13" width="8" height="8" rx="1"></rect><rect x="14" y="13" width="8" height="8" rx="1"></rect></svg>
+                    <p style="color: var(--text-3); margin-top: 12px; font-size: 0.95rem;">Henüz kanal eklenmedi</p>
+                    <p style="color: var(--text-3); font-size: 0.8rem; opacity: 0.7;">Yukarıdan kanal slug'ı girerek panel ekleyin</p>
                 </div>
             </div>
         </div>
@@ -700,9 +732,27 @@
                     <textarea id="timedMessageContent" class="input-field" placeholder="Gönderilecek mesajı yazın..." style="height: 100px; padding-top: 12px; resize: vertical;"></textarea>
                 </div>
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label class="input-label">Tekrar Süresi (Saniye)</label>
-                    <div style="font-size:0.85rem; color:var(--text-3); margin-bottom: 0.75rem;">Mesaj bu süre aralığında tekrar tekrar gönderilecek. Minimum 10 saniye.</div>
-                    <input type="number" id="timedMessageInterval" value="60" min="10" class="input-field" placeholder="Süre (saniye)">
+                    <label class="input-label">Gönderim Modu</label>
+                    <div style="display: flex; gap: 0; margin-bottom: 1rem; border-radius: var(--radius-md); overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+                        <button type="button" id="timedModeTime" class="timed-mode-btn active" style="flex: 1; padding: 10px 16px; background: rgba(88, 221, 102, 0.15); border: none; color: var(--green); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            Süreye Göre
+                        </button>
+                        <button type="button" id="timedModeCount" class="timed-mode-btn" style="flex: 1; padding: 10px 16px; background: rgba(255,255,255,0.03); border: none; border-left: 1px solid rgba(255,255,255,0.08); color: var(--text-3); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            Mesaj Sayısına Göre
+                        </button>
+                    </div>
+                    <!-- Time mode input -->
+                    <div id="timedModeTimeInput">
+                        <div style="font-size:0.85rem; color:var(--text-3); margin-bottom: 0.75rem;">Mesaj bu süre aralığında tekrar tekrar gönderilecek. Minimum 10 saniye.</div>
+                        <input type="number" id="timedMessageInterval" value="60" min="10" class="input-field" placeholder="Süre (saniye)">
+                    </div>
+                    <!-- Message count mode input -->
+                    <div id="timedModeCountInput" style="display: none;">
+                        <div style="font-size:0.85rem; color:var(--text-3); margin-bottom: 0.75rem;">Chatte bu kadar mesaj geldiğinde otomatik gönderilecek. Minimum 50 mesaj.</div>
+                        <input type="number" id="timedMessageMsgCount" value="100" min="50" class="input-field" placeholder="Mesaj sayısı">
+                    </div>
                 </div>
                 <!-- Status indicator -->
                 <div id="timedMessageStatus" style="display: none; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.9rem; display: flex; align-items: center; gap: 10px;">
@@ -718,6 +768,47 @@
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                     Durdur
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto Reply Modal -->
+    <div class="modal-overlay" id="autoReplyModal">
+        <div class="modal-box" style="max-width: 600px;">
+            <div class="modal-top">
+                <h3 style="display: flex; align-items: center; gap: 12px; font-size: 1.6rem; line-height: 1.2;">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                    <span>Oto Cevap</span>
+                </h3>
+                <button class="modal-close-btn" id="closeAutoReplyModal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div>
+                <div style="font-size: 0.85rem; color: var(--text-3); margin-bottom: 1.25rem;">Chatte soldaki kelime/cümle yazıldığında, sağdaki cevap otomatik olarak gönderilir.</div>
+                <!-- Column headers -->
+                <div style="display: flex; gap: 12px; margin-bottom: 8px; padding: 0 4px;">
+                    <div style="flex: 1; font-size: 0.8rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px;">Tetikleyici Mesaj</div>
+                    <div style="flex: 1; font-size: 0.8rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px;">Otomatik Cevap</div>
+                    <div style="width: 36px;"></div>
+                </div>
+                <!-- Auto reply rows container -->
+                <div id="autoReplyRows" style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 4px;">
+                    <!-- Rows will be added dynamically -->
+                </div>
+                <!-- Add button -->
+                <button class="btn-secondary" id="addAutoReplyRowBtn" style="margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Ekle
+                </button>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: space-between; align-items: center; margin-top: 1.25rem;">
+                <div id="autoReplyStatusText" style="font-size: 0.85rem; color: var(--text-3);"></div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn-secondary" id="cancelAutoReplyBtn">İptal</button>
+                    <button class="btn-primary" id="saveAutoReplyBtn" style="display: flex; align-items: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        Kaydet
+                    </button>
+                </div>
             </div>
         </div>
     </div>
