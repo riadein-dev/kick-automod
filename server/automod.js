@@ -244,14 +244,21 @@ class AutoModEngine {
             continue;
         }
         
-        // Moderatörler de muaf
+        // Moderatör kontrolü - ama targetUsername ile hedeflenmiş moddalar muaf DEĞİL
         const badges = message.sender?.identity?.badges || [];
         const isMod = badges.some(b => b.type === 'moderator');
-        if (isMod) {
-            continue;
+        const senderUsername = (message.sender?.username || message.username || '').toLowerCase();
+        
+        // Check if this sender is specifically targeted by username
+        const rules = store.getAutomodRules(userId);
+        const hasTargetRule = rules?.rules?.bannedWords?.words?.some(w => 
+            w.targetUsername && w.targetUsername.toLowerCase().trim() === senderUsername && w.enabled !== false
+        );
+        
+        if (isMod && !hasTargetRule) {
+            continue; // Genel kurallar için mod muafiyeti
         }
         
-        const rules = store.getAutomodRules(userId);
         if (!rules || !rules.enabled) {
           console.log(`[AutoMod] DEBUG: Rules disabled for user ${userId}, enabled=${rules?.enabled}`);
           continue;
@@ -284,6 +291,12 @@ class AutoModEngine {
         }
 
         if (violations.length === 0) continue;
+
+        // Mod ise sadece targetUsername ihlallerini tut (genel kelime kuralları modlara uygulanmaz)
+        if (isMod) {
+            violations = violations.filter(v => v.reason && v.reason.includes('Hedef kullanıcı'));
+            if (violations.length === 0) continue;
+        }
 
         // Eger mesajda "whitelist" aksiyonlu bir kelime gectiyse, o mesajdaki tum DİĞER KELİME ihlallerini yoksay!
         // Boylece icinde yasakli kelime gecen ama aslında masum olan kelimeler (örn: yasaklı "am", masum "ama") ban yemez.
