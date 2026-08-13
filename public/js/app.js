@@ -3115,10 +3115,28 @@ function initMultiKick() {
     updateMkEmpty();
 
     // Add channel button
-    mkAddBtn.addEventListener('click', () => {
-        const slug = mkInput.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    mkAddBtn.addEventListener('click', async () => {
+        const raw = mkInput.value.trim().toLowerCase();
+        const slug = raw.replace(/[^a-z0-9_.\-]/g, '');
         if (!slug) return;
         if (window._mkPanels[slug]) { mkInput.value = ''; return; }
+        
+        // Subscribe channel via API so we receive SSE messages
+        try {
+            mkAddBtn.disabled = true;
+            mkAddBtn.textContent = 'Ekleniyor...';
+            await apiFetch('/api/channels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug })
+            });
+        } catch(e) {
+            console.log('[MultiKick] Channel may already exist, continuing...');
+        } finally {
+            mkAddBtn.disabled = false;
+            mkAddBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Ekle';
+        }
+
         createMkPanel(slug);
         saveMkChannels();
         mkInput.value = '';
