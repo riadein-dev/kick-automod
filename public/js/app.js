@@ -2014,28 +2014,27 @@ function setupEventListeners() {
 // Helper to parse Kick emotes safely
 function parseKickEmotes(content, matchedWords = []) {
     if (!content) return '-';
-    // XSS Escape
-    let safeText = content.replace(/[&<>'"]/g, tag => ({
+
+    // Extract emotes BEFORE XSS escaping (so emote names with quotes don't break)
+    const emoteMap = new Map();
+    let emoteCounter = 0;
+    const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
+    let rawText = content.replace(emoteRegex, (match, id, name) => {
+        const placeholder = `__EMOTE_${emoteCounter}__`;
+        const safeName = name.replace(/["'<>&]/g, '');
+        emoteMap.set(placeholder, `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${safeName}" title="${safeName}" class="kick-emote" />`);
+        emoteCounter++;
+        return placeholder;
+    });
+
+    // XSS Escape (emotes already extracted as safe placeholders)
+    let safeText = rawText.replace(/[&<>'"]/g, tag => ({
         '&': '&amp;',
         '<': '&lt;',
         '>': '&gt;',
         "'": '&#39;',
         '"': '&quot;'
     }[tag] || tag));
-    
-    // Extract emotes into placeholders
-    const emoteMap = new Map();
-    let emoteCounter = 0;
-    const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
-    safeText = safeText.replace(emoteRegex, (match, id, name) => {
-        const placeholder = `__EMOTE_${emoteCounter}__`;
-        // Unescape name for attributes (was XSS-escaped above)
-        const cleanName = name.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"');
-        const safeName = cleanName.replace(/["<>]/g, '');
-        emoteMap.set(placeholder, `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${safeName}" title="${safeName}" class="kick-emote" />`);
-        emoteCounter++;
-        return placeholder;
-    });
 
     // Highlight matched words if any
     if (matchedWords && matchedWords.length > 0) {
@@ -3117,9 +3116,28 @@ function initMultiKick() {
 
     if (!mkGrid || !mkInput || !mkAddBtn) return;
 
-    // Load saved channels from localStorage
+    // Load saved channels from localStorage and subscribe via API
     const savedSlugs = JSON.parse(localStorage.getItem('mkChannels') || '[]');
-    savedSlugs.forEach(slug => createMkPanel(slug));
+    savedSlugs.forEach(slug => {
+        createMkPanel(slug);
+        // Subscribe via API so backend WebSocket listens to this channel
+        apiFetch('/api/channels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug })
+        }).then(res => {
+            if (res.ok) {
+                console.log('[MultiKick] Restored channel:', slug);
+                const chatEl = window._mkPanels[slug]?.chatEl;
+                if (chatEl) {
+                    const w = chatEl.querySelector('.mk-chat-welcome');
+                    if (w) w.textContent = 'Kanal bağlandı, mesajlar bekleniyor...';
+                }
+            } else {
+                console.warn('[MultiKick] Restore failed for:', slug);
+            }
+        }).catch(e => console.warn('[MultiKick] Restore error:', slug, e.message));
+    });
     updateMkEmpty();
 
     // Add channel button
