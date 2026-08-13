@@ -3191,17 +3191,10 @@ function initMultiKick() {
         }
 
         if (!apiSuccess) {
-            // API failed - show error, don't create panel
-            mkInput.value = '';
-            const mkEmpty = document.getElementById('mkEmpty');
-            if (mkEmpty) {
-                mkEmpty.innerHTML = '<span style="color:var(--red);">❌ Kanal bulunamadı veya bağlantı başarısız. Slug\'ı kontrol edin.</span>';
-                setTimeout(() => updateMkEmpty(), 3000);
-            }
-            return;
+            console.warn('[MultiKick] API failed, but creating panel for stream anyway.');
         }
 
-        // API succeeded - create panel
+        // Create panel regardless (channel might already be subscribed or user just wants to watch stream)
         createMkPanel(slug);
         saveMkChannels();
         mkInput.value = '';
@@ -3210,7 +3203,11 @@ function initMultiKick() {
         const chatEl = window._mkPanels[slug]?.chatEl;
         if (chatEl) {
             const welcomeEl = chatEl.querySelector('.mk-chat-welcome');
-            if (welcomeEl) welcomeEl.textContent = '✅ Kanal bağlandı, mesajlar bekleniyor...';
+            if (welcomeEl) {
+                welcomeEl.innerHTML = apiSuccess 
+                    ? '✅ Kanal bağlandı, mesajlar bekleniyor...' 
+                    : '<span style="color:var(--red);">⚠️ Chat bağlanamadı. Yayın izlenebilir.</span>';
+            }
         }
     });
 
