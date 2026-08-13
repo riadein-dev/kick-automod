@@ -421,9 +421,8 @@ class Store {
         }
         userSpecificData.stats = this.getUserStats(client.userId);
       } else if (event === 'chatMessage' && data.channel) {
-        // Only send chat message if it belongs to a channel added by this user (or an old channel without addedBy)
-        const hasChannel = this.channels.some(c => c.slug === data.channel && (!c.addedBy || c.addedBy === client.userId));
-        if (!hasChannel) continue;
+        // Chat messages are public Kick data - send to all connected clients
+        // Multi-Kick panels need messages from all subscribed channels
       }
 
       const payload = `event: ${event}\ndata: ${JSON.stringify(userSpecificData)}\n\n`;
