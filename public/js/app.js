@@ -2012,7 +2012,7 @@ function setupEventListeners() {
 }
 
 // Helper to parse Kick emotes safely
-function parseKickEmotes(content, matchedWords = []) {
+function parseKickEmotes(content, matchedWords = [], watchedWords = []) {
     if (!content) return '-';
 
     // Extract emotes BEFORE XSS escaping (so emote names with quotes don't break)
@@ -2036,7 +2036,7 @@ function parseKickEmotes(content, matchedWords = []) {
         '"': '&quot;'
     }[tag] || tag));
 
-    // Highlight matched words if any
+    // Highlight AutoMod matched words
     if (matchedWords && matchedWords.length > 0) {
         const sortedWords = [...matchedWords].sort((a, b) => b.length - a.length);
         sortedWords.forEach(word => {
@@ -2044,6 +2044,18 @@ function parseKickEmotes(content, matchedWords = []) {
             const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             const regex = new RegExp(`(${escapedWord})`, 'gi');
             safeText = safeText.replace(regex, '<span style="color: #FF9900; font-weight: bold; background: rgba(255, 153, 0, 0.15); padding: 0 4px; border-radius: 4px;">$1</span>');
+        });
+    }
+
+    // Highlight Custom Watched words
+    if (watchedWords && watchedWords.length > 0) {
+        const sortedWatched = [...watchedWords].sort((a, b) => b.length - a.length);
+        sortedWatched.forEach(word => {
+            if (!word) return;
+            const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            // Boundary check for watched words to avoid matching inside other words
+            const regex = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapedWord})(?=[^\\p{L}\\p{N}]|$)`, 'gui');
+            safeText = safeText.replace(regex, '$1<span class="watched-word-highlight">$2</span>');
         });
     }
 
@@ -2806,8 +2818,13 @@ window.appendChatMessage = function(msgData) {
 
     // ===== AUTO REPLY CHECK =====
     if (window._autoReplyRules && window._autoReplyRules.length > 0) {
+        // Skip own messages - don't auto-reply to yourself
+        const senderName = (msgData.message.sender?.username || msgData.message.username || '').toLowerCase();
+        const myName = (state.user?.username || state.user?.name || state.user?.slug || '').toLowerCase();
+        const isOwnMessage = myName && senderName === myName;
+        
         const msgContent = (msgData.message.content || '').toLowerCase().trim();
-        if (msgContent) {
+        if (msgContent && !isOwnMessage) {
             for (const rule of window._autoReplyRules) {
                 const trigger = rule.trigger.toLowerCase().trim();
                 if (msgContent.includes(trigger)) {
@@ -2865,25 +2882,27 @@ window.appendChatMessage = function(msgData) {
     let color = (msgData.message.sender && msgData.message.sender.identity && msgData.message.sender.identity.color) || '#53fc18';
 
     const rawContent = msgData.message.content || '';
-    let parsedContent = parseKickEmotes(rawContent);
-
+    
     const rawWatched = localStorage.getItem('chatWatchedWords') || '';
-    let isMessageWatched = false;
-
+    let watchedWords = [];
     if (rawWatched.trim().length > 0) {
-        const watchedWords = rawWatched.split(',')
-            .map(w => w.replace(/[^\w\sğüşıöçÄÜÅİÖÇ]/gi, '').trim())
+        watchedWords = rawWatched.split(',')
+            .map(w => w.replace(/[^\w\sğüşıöçÄžÜÅžİÖÇ]/gi, '').trim())
             .filter(w => w.length > 0);
-            
-        if (watchedWords.length > 0) {
-            const escapedWords = watchedWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-            const regex = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapedWords.join('|')})(?=[^\\p{L}\\p{N}]|$)`, 'gui');
-            
-            if (regex.test(parsedContent)) {
-                isMessageWatched = true;
-                parsedContent = parsedContent.replace(regex, '$1<span class="watched-word-highlight">$2</span>');
-                msgEl.classList.add('has-watched-word');
-            }
+    }
+    
+    let parsedContent = parseKickEmotes(rawContent, [], watchedWords);
+    let isMessageWatched = false;
+    
+    if (watchedWords.length > 0) {
+        const escapedWords = watchedWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const regex = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapedWords.join('|')})(?=[^\\p{L}\\p{N}]|$)`, 'gui');
+        
+        // Test against raw content (without emotes) to set the flag correctly without emotes breaking it
+        const rawContentWithoutEmotes = rawContent.replace(/\[emote:\d+:[^\]]+\]/gi, ' ');
+        if (regex.test(rawContentWithoutEmotes)) {
+            isMessageWatched = true;
+            msgEl.classList.add('has-watched-word');
         }
     }
 
@@ -3171,19 +3190,27 @@ function initMultiKick() {
             mkAddBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Ekle';
         }
 
-        // Create panel regardless (channel might already be subscribed)
+        if (!apiSuccess) {
+            // API failed - show error, don't create panel
+            mkInput.value = '';
+            const mkEmpty = document.getElementById('mkEmpty');
+            if (mkEmpty) {
+                mkEmpty.innerHTML = '<span style="color:var(--red);">❌ Kanal bulunamadı veya bağlantı başarısız. Slug\'ı kontrol edin.</span>';
+                setTimeout(() => updateMkEmpty(), 3000);
+            }
+            return;
+        }
+
+        // API succeeded - create panel
         createMkPanel(slug);
         saveMkChannels();
         mkInput.value = '';
         updateMkEmpty();
 
-        // If API succeeded, show success in panel
-        if (apiSuccess) {
-            const chatEl = window._mkPanels[slug]?.chatEl;
-            if (chatEl) {
-                const welcomeEl = chatEl.querySelector('.mk-chat-welcome');
-                if (welcomeEl) welcomeEl.textContent = 'Kanal bağlandı, mesajlar bekleniyor...';
-            }
+        const chatEl = window._mkPanels[slug]?.chatEl;
+        if (chatEl) {
+            const welcomeEl = chatEl.querySelector('.mk-chat-welcome');
+            if (welcomeEl) welcomeEl.textContent = '✅ Kanal bağlandı, mesajlar bekleniyor...';
         }
     });
 
@@ -3210,6 +3237,9 @@ function createMkPanel(slug) {
                 <button class="mk-stream-toggle" title="Yayını İzle" data-slug="${slug}">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 </button>
+                <button class="mk-chat-toggle" title="Chati Gizle" data-slug="${slug}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </button>
                 <button class="mk-close" title="Paneli Kaldır" data-slug="${slug}">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
@@ -3232,6 +3262,12 @@ function createMkPanel(slug) {
         } else {
             iframe.src = 'about:blank';
         }
+    });
+
+    // Chat toggle
+    panel.querySelector('.mk-chat-toggle').addEventListener('click', function() {
+        panel.classList.toggle('chat-hidden');
+        this.classList.toggle('mk-chat-hidden-btn', panel.classList.contains('chat-hidden'));
     });
 
     // Close button
@@ -3313,20 +3349,24 @@ function appendMkChatMessage(msgData) {
         badgesHtml += '</span>';
     }
 
-    // Parse emotes
-    let parsedContent = typeof parseKickEmotes === 'function' ? parseKickEmotes(rawContent) : rawContent;
-
     // Watched words highlighting
     const rawWatched = localStorage.getItem('chatWatchedWords') || '';
+    let watchedWords = [];
     if (rawWatched.trim().length > 0) {
-        const watchedWords = rawWatched.split(',').map(w => w.replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/gi, '').trim()).filter(w => w.length > 0);
-        if (watchedWords.length > 0) {
-            const escapedWords = watchedWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-            const regex = new RegExp(`(${escapedWords.join('|')})`, 'gi');
-            if (regex.test(parsedContent)) {
-                parsedContent = parsedContent.replace(regex, '<span class="watched-word-highlight">$1</span>');
-                msgEl.classList.add('has-watched-word');
-            }
+        watchedWords = rawWatched.split(',').map(w => w.replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/gi, '').trim()).filter(w => w.length > 0);
+    }
+    
+    // Parse emotes and highlight watched words safely
+    let parsedContent = typeof parseKickEmotes === 'function' ? parseKickEmotes(rawContent, [], watchedWords) : rawContent;
+
+    if (watchedWords.length > 0) {
+        const escapedWords = watchedWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const regex = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapedWords.join('|')})(?=[^\\p{L}\\p{N}]|$)`, 'gui');
+        
+        // Test against raw content without emotes to accurately set highlight class
+        const rawContentWithoutEmotes = rawContent.replace(/\[emote:\d+:[^\]]+\]/gi, ' ');
+        if (regex.test(rawContentWithoutEmotes)) {
+            msgEl.classList.add('has-watched-word');
         }
     }
 

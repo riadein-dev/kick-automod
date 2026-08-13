@@ -477,7 +477,10 @@ class AutoModEngine {
   // ============ Rule Checks ============
 
   checkBannedWords(message, rule) {
-    const content = (message.content || message.message || '').toLocaleLowerCase('tr-TR');
+    let rawContent = (message.content || message.message || '');
+    // Remove emotes from content so words inside emote names don't trigger filters
+    const contentWithoutEmotes = rawContent.replace(/\[emote:\d+:[^\]]+\]/gi, ' ');
+    const content = contentWithoutEmotes.toLocaleLowerCase('tr-TR');
     const channelName = message.channel || message.chatroom_slug;
     const senderUsername = (message.sender?.username || message.username || '').toLowerCase();
     let foundViolations = [];
