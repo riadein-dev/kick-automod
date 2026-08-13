@@ -1359,6 +1359,7 @@ function attachHoverSounds() {
 
     // Event delegation - daha performanslı
     document.addEventListener('mouseenter', (e) => {
+        if (!e.target || typeof e.target.closest !== 'function') return;
         const target = e.target.closest(selectors);
         if (target && !target._soundHoverBound) {
             SoundEngine.playHover();
@@ -2028,7 +2029,10 @@ function parseKickEmotes(content, matchedWords = []) {
     const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
     safeText = safeText.replace(emoteRegex, (match, id, name) => {
         const placeholder = `__EMOTE_${emoteCounter}__`;
-        emoteMap.set(placeholder, `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${name}" title="${name}" class="kick-emote" />`);
+        // Unescape name for attributes (was XSS-escaped above)
+        const cleanName = name.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"');
+        const safeName = cleanName.replace(/["<>]/g, '');
+        emoteMap.set(placeholder, `<img src="https://files.kick.com/emotes/${id}/fullsize" alt="${safeName}" title="${safeName}" class="kick-emote" />`);
         emoteCounter++;
         return placeholder;
     });
@@ -3126,25 +3130,43 @@ function initMultiKick() {
         if (window._mkPanels[slug]) { mkInput.value = ''; return; }
         
         // Subscribe channel via API so we receive SSE messages
+        let apiSuccess = false;
         try {
             mkAddBtn.disabled = true;
             mkAddBtn.textContent = 'Ekleniyor...';
-            await apiFetch('/api/channels', {
+            const res = await apiFetch('/api/channels', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ slug })
             });
+            if (res.ok) {
+                apiSuccess = true;
+                console.log('[MultiKick] Channel subscribed:', slug);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                console.warn('[MultiKick] Subscribe failed:', err.error || res.status);
+            }
         } catch(e) {
-            console.log('[MultiKick] Channel may already exist, continuing...');
+            console.warn('[MultiKick] API error:', e.message);
         } finally {
             mkAddBtn.disabled = false;
             mkAddBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Ekle';
         }
 
+        // Create panel regardless (channel might already be subscribed)
         createMkPanel(slug);
         saveMkChannels();
         mkInput.value = '';
         updateMkEmpty();
+
+        // If API succeeded, show success in panel
+        if (apiSuccess) {
+            const chatEl = window._mkPanels[slug]?.chatEl;
+            if (chatEl) {
+                const welcomeEl = chatEl.querySelector('.mk-chat-welcome');
+                if (welcomeEl) welcomeEl.textContent = 'Kanal bağlandı, mesajlar bekleniyor...';
+            }
+        }
     });
 
     // Enter key
