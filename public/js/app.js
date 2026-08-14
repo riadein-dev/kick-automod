@@ -2827,7 +2827,7 @@ window.appendChatMessage = function(msgData) {
         if (msgContent && !isOwnMessage) {
             for (const rule of window._autoReplyRules) {
                 const trigger = rule.trigger.toLowerCase().trim();
-                if (msgContent.includes(trigger)) {
+                if (msgContent === trigger) {
                     // Find active channel to send reply
                     const activeChannel = state.channels.find(ch => ch.slug === msgData.channel);
                     if (activeChannel) {
