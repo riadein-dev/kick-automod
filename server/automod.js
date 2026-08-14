@@ -478,9 +478,10 @@ class AutoModEngine {
 
   checkBannedWords(message, rule) {
     let rawContent = (message.content || message.message || '');
-    // Remove emotes from content so words inside emote names don't trigger filters
-    const contentWithoutEmotes = rawContent.replace(/\[emote:\d+:[^\]]+\]/gi, ' ');
-    const content = contentWithoutEmotes.toLocaleLowerCase('tr-TR');
+    // Replace emote codes with just their name so emote names are still searchable
+    // [emote:12345:emojiAngry] → emojiAngry
+    const contentWithoutEmoteCodes = rawContent.replace(/\[emote:\d+:([^\]]+)\]/gi, '$1');
+    const content = contentWithoutEmoteCodes.toLocaleLowerCase('tr-TR');
     const channelName = message.channel || message.chatroom_slug;
     const senderUsername = (message.sender?.username || message.username || '').toLowerCase();
     let foundViolations = [];
@@ -518,16 +519,19 @@ class AutoModEngine {
       if (!targetWord || targetWord.startsWith('[user:')) continue;
 
       let matched = false;
+      // If the user explicitly added an emote code to banned words, check the raw content
+      const contentToSearch = targetWord.includes('emote:') ? rawContent.toLocaleLowerCase('tr-TR') : content;
+      
       
       if (w.exactMatch) {
         // Escape special regex characters
         const escaped = targetWord.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         
         // Simple boundary check: target word must not be surrounded by letters/numbers
-        const idx = content.indexOf(targetWord);
+        const idx = contentToSearch.indexOf(targetWord);
         if (idx !== -1) {
-          const before = idx > 0 ? content[idx - 1] : ' ';
-          const after = idx + targetWord.length < content.length ? content[idx + targetWord.length] : ' ';
+          const before = idx > 0 ? contentToSearch[idx - 1] : ' ';
+          const after = idx + targetWord.length < contentToSearch.length ? contentToSearch[idx + targetWord.length] : ' ';
           const isWordChar = (ch) => /[a-zA-Z0-9\u00C0-\u024F\u0400-\u04FF\u00e7\u011f\u0131\u00f6\u015f\u00fc\u00c7\u011e\u0130\u00d6\u015e\u00dc]/.test(ch);
           if (!isWordChar(before) && !isWordChar(after)) {
             matched = true;
@@ -537,13 +541,13 @@ class AutoModEngine {
         if (!matched) {
           try {
             const re = new RegExp('(?:^|[^a-zA-Z0-9\\u00C0-\\u024F\\u0400-\\u04FF])(' + escaped + ')(?:$|[^a-zA-Z0-9\\u00C0-\\u024F\\u0400-\\u04FF])', 'i');
-            matched = re.test(content);
+            matched = re.test(contentToSearch);
           } catch(e) {
-            matched = content.includes(targetWord);
+            matched = contentToSearch.includes(targetWord);
           }
         }
       } else {
-        matched = content.includes(targetWord);
+        matched = contentToSearch.includes(targetWord);
       }
 
       if (matched) {
